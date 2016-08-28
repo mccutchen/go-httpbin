@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -145,6 +146,66 @@ func TestGet__XForwardedProto(t *testing.T) {
 
 		if !strings.HasPrefix(resp.URL, "https://") {
 			t.Fatalf("%s=%s should result in https URL", test.key, test.value)
+		}
+	}
+}
+
+func TestIP(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/ip", nil)
+	r.RemoteAddr = "192.168.0.100"
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *IPResp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if resp.Origin != r.RemoteAddr {
+		t.Fatalf("%#v != %#v", resp.Origin, r.RemoteAddr)
+	}
+}
+
+func TestUserAgent(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/user-agent", nil)
+	r.Header.Set("User-Agent", "test")
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *UserAgentResp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if resp.UserAgent != "test" {
+		t.Fatalf("%#v != \"test\"", resp.UserAgent)
+	}
+}
+
+func TestHeaders(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/headers", nil)
+	r.Header.Set("User-Agent", "test")
+	r.Header.Set("Foo-Header", "foo")
+	r.Header.Add("Bar-Header", "bar1")
+	r.Header.Add("Bar-Header", "bar2")
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *HeadersResp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	for k, expectedValues := range r.Header {
+		values, ok := resp.Headers[http.CanonicalHeaderKey(k)]
+		if !ok {
+			t.Fatalf("expected header %#v in response", k)
+		}
+		if !reflect.DeepEqual(expectedValues, values) {
+			t.Fatalf("%#v != %#v", values, expectedValues)
 		}
 	}
 }

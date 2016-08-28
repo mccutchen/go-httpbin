@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -19,6 +20,21 @@ type Resp struct {
 	Files map[string][]string `json:"files,omitempty"`
 	Form  map[string][]string `json:"form,omitempty"`
 	JSON  map[string][]string `json:"json,omitempty"`
+}
+
+// IPResp is the response for the /ip endpoint
+type IPResp struct {
+	Origin string `json:"origin"`
+}
+
+// HeadersResp is the response for the /headers endpoint
+type HeadersResp struct {
+	Headers http.Header `json:"headers"`
+}
+
+// UserAgentResp is the response for the /user-agent endpoint
+type UserAgentResp struct {
+	UserAgent string `json:"user-agent"`
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -44,10 +60,34 @@ func get(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, r, resp)
 }
 
+func ip(w http.ResponseWriter, r *http.Request) {
+	body, _ := json.Marshal(&IPResp{
+		Origin: getOrigin(r),
+	})
+	writeJSON(w, body)
+}
+
+func userAgent(w http.ResponseWriter, r *http.Request) {
+	body, _ := json.Marshal(&UserAgentResp{
+		UserAgent: r.Header.Get("User-Agent"),
+	})
+	writeJSON(w, body)
+}
+
+func headers(w http.ResponseWriter, r *http.Request) {
+	body, _ := json.Marshal(&HeadersResp{
+		Headers: r.Header,
+	})
+	writeJSON(w, body)
+}
+
 func app() http.Handler {
 	h := http.NewServeMux()
 	h.HandleFunc("/", index)
 	h.HandleFunc("/get", get)
+	h.HandleFunc("/ip", ip)
+	h.HandleFunc("/user-agent", userAgent)
+	h.HandleFunc("/headers", headers)
 	return logger(cors(h))
 }
 

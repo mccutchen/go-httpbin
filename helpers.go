@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
-
 	"net/http"
 	"net/url"
 )
@@ -50,11 +48,7 @@ func getURL(r *http.Request) string {
 func writeResponse(w http.ResponseWriter, r *http.Request, resp *Resp) {
 	resp.Origin = getOrigin(r)
 	resp.URL = getURL(r)
-
-	body, err := json.Marshal(resp)
-	if err != nil {
-		log.Printf("error marshalling %v as JSON: %s", resp, err)
-	}
+	body, _ := json.Marshal(resp)
 	writeJSON(w, body)
 }
 
