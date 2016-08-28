@@ -8,6 +8,16 @@ import (
 	"testing"
 )
 
+func TestIndex(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	if !strings.Contains(w.Body.String(), "go-httpbin") {
+		t.Fatalf("expected go-httpbin in index body")
+	}
+}
+
 func TestGet__Basic(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	r.Host = "localhost"
