@@ -58,9 +58,13 @@ func formsPost(w http.ResponseWriter, r *http.Request, t *template.Template) {
 }
 
 func get(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	args, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
+		return
+	}
 	resp := &Resp{
-		Args:    r.Form,
+		Args:    args,
 		Headers: r.Header,
 	}
 	writeResponse(w, r, resp)
