@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -98,6 +100,20 @@ func cors(h http.Handler) http.Handler {
 	})
 }
 
+func index(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseGlob("templates/*.html")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing templates: %s", err), http.StatusInternalServerError)
+		return
+	}
+	t = t.Lookup("index.html")
+	if t == nil {
+		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
+		return
+	}
+	t.Execute(w, nil)
+}
+
 func get(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	resp := &Resp{
@@ -109,6 +125,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 
 func app() http.Handler {
 	h := http.NewServeMux()
+	h.HandleFunc("/", index)
 	h.HandleFunc("/get", get)
 	return logger(cors(h))
 }
