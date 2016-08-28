@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 )
@@ -48,5 +49,21 @@ func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
 			return
 		}
 		h.ServeHTTP(w, r)
+	}
+}
+
+// Simplify function signatures below
+type templateHandlerFunc func(http.ResponseWriter, *http.Request, *template.Template)
+
+func withTemplates(path string) func(templateHandlerFunc) http.HandlerFunc {
+	t, err := template.ParseGlob(path)
+	if err != nil {
+		log.Fatalf("error parsing templates: %s", err)
+	}
+
+	return func(handler templateHandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			handler(w, r, t)
+		}
 	}
 }

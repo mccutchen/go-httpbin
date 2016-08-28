@@ -37,13 +37,19 @@ type UserAgentResp struct {
 	UserAgent string `json:"user-agent"`
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseGlob("templates/*.html")
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing templates: %s", err), http.StatusInternalServerError)
+// Index must be wrapped by the withTemplates middleware before it can be used
+func index(w http.ResponseWriter, r *http.Request, t *template.Template) {
+	t = t.Lookup("index.html")
+	if t == nil {
+		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
 		return
 	}
-	t = t.Lookup("index.html")
+	t.Execute(w, nil)
+}
+
+// FormsPost must be wrapped by withTemplates middleware before it can be used
+func formsPost(w http.ResponseWriter, r *http.Request, t *template.Template) {
+	t = t.Lookup("forms-post.html")
 	if t == nil {
 		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
 		return
@@ -83,7 +89,9 @@ func headers(w http.ResponseWriter, r *http.Request) {
 
 func app() http.Handler {
 	h := http.NewServeMux()
-	h.HandleFunc("/", methods(index, "GET"))
+	templateWrapper := withTemplates("templates/*.html")
+	h.HandleFunc("/", methods(templateWrapper(index), "GET"))
+	h.HandleFunc("/forms/post", methods(templateWrapper(formsPost), "GET"))
 	h.HandleFunc("/get", methods(get, "GET"))
 	h.HandleFunc("/ip", ip)
 	h.HandleFunc("/user-agent", userAgent)

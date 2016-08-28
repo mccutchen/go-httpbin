@@ -19,6 +19,16 @@ func TestIndex(t *testing.T) {
 	}
 }
 
+func TestFormsPost(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/forms/post", nil)
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	if !strings.Contains(w.Body.String(), `<form method="post" action="/post">`) {
+		t.Fatalf("expected <form> in body")
+	}
+}
+
 func TestGet__Basic(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	r.Host = "localhost"
