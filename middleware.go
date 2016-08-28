@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -31,4 +32,21 @@ func cors(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
+	if len(methods) == 0 {
+		return h
+	}
+	methodMap := make(map[string]struct{}, len(methods))
+	for _, m := range methods {
+		methodMap[m] = struct{}{}
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := methodMap[r.Method]; !ok {
+			http.Error(w, fmt.Sprintf("method %s not allowed", r.Method), http.StatusMethodNotAllowed)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}
 }

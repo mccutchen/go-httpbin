@@ -83,8 +83,8 @@ func headers(w http.ResponseWriter, r *http.Request) {
 
 func app() http.Handler {
 	h := http.NewServeMux()
-	h.HandleFunc("/", index)
-	h.HandleFunc("/get", get)
+	h.HandleFunc("/", methods(index, "GET"))
+	h.HandleFunc("/get", methods(get, "GET"))
 	h.HandleFunc("/ip", ip)
 	h.HandleFunc("/user-agent", userAgent)
 	h.HandleFunc("/headers", headers)

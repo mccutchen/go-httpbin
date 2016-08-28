@@ -60,6 +60,16 @@ func TestGet__Basic(t *testing.T) {
 	}
 }
 
+func TestGet__OnlyAllowsGets(t *testing.T) {
+	r, _ := http.NewRequest("POST", "/get", nil)
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected HTTP 405, got %d", w.Code)
+	}
+}
+
 func TestGet__CORSHeadersWithoutRequestOrigin(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	w := httptest.NewRecorder()
