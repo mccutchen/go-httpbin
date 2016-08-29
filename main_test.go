@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -225,7 +227,149 @@ func TestHeaders(t *testing.T) {
 			t.Fatalf("expected header %#v in response", k)
 		}
 		if !reflect.DeepEqual(expectedValues, values) {
-			t.Fatalf("%#v != %#v", values, expectedValues)
+			t.Fatalf("header value mismatch: %#v != %#v", values, expectedValues)
 		}
+	}
+}
+
+func TestPost__EmptyBody(t *testing.T) {
+	r, _ := http.NewRequest("POST", "/post", nil)
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *Resp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if len(resp.Args) > 0 {
+		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if len(resp.Form) > 0 {
+		t.Fatalf("expected no form data, got %#v", resp.Form)
+	}
+}
+
+func TestPost__FormEncodedBody(t *testing.T) {
+	params := url.Values{}
+	params.Set("foo", "foo")
+	params.Add("bar", "bar1")
+	params.Add("bar", "bar2")
+
+	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *Resp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %#v from JSON: %s", w.Body.String(), err)
+	}
+
+	if len(resp.Args) > 0 {
+		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if len(resp.Form) != len(params) {
+		t.Fatalf("expected %d form values, got %d", len(params), len(resp.Form))
+	}
+	for k, expectedValues := range params {
+		values, ok := resp.Form[k]
+		if !ok {
+			t.Fatalf("expected form field %#v in response", k)
+		}
+		if !reflect.DeepEqual(expectedValues, values) {
+			t.Fatalf("form value mismatch: %#v != %#v", values, expectedValues)
+		}
+	}
+}
+
+func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
+	params := url.Values{}
+	params.Set("foo", "foo")
+	params.Add("bar", "bar1")
+	params.Add("bar", "bar2")
+
+	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *Resp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if len(resp.Args) > 0 {
+		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if len(resp.Form) != 0 {
+		t.Fatalf("expected no form values, got %d", len(resp.Form))
+	}
+	if string(resp.Data) != params.Encode() {
+		t.Fatalf("response data mismatch, %#v != %#v", string(resp.Data), params.Encode())
+	}
+}
+
+func TestPost__JSON(t *testing.T) {
+	type testInput struct {
+		Foo  string
+		Bar  int
+		Baz  []float64
+		Quux map[int]string
+	}
+	input := &testInput{
+		Foo:  "foo",
+		Bar:  123,
+		Baz:  []float64{1.0, 1.1, 1.2},
+		Quux: map[int]string{1: "one", 2: "two", 3: "three"},
+	}
+	inputBody, _ := json.Marshal(input)
+
+	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(inputBody))
+	r.Header.Set("Content-Type", "application/json; charset=utf-8")
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	var resp *Resp
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if len(resp.Args) > 0 {
+		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if len(resp.Form) != 0 {
+		t.Fatalf("expected no form values, got %d", len(resp.Form))
+	}
+	if resp.Data != nil {
+		t.Fatalf("expected no data, got %#v", resp.Data)
+	}
+
+	// Need to re-marshall just the JSON field from the response in order to
+	// re-unmarshall it into our expected type
+	outputBodyBytes, _ := json.Marshal(resp.JSON)
+	output := &testInput{}
+	err = json.Unmarshal(outputBodyBytes, output)
+	if err != nil {
+		t.Fatalf("failed to round-trip JSON: coult not re-unmarshal JSON: %s", err)
+	}
+
+	if !reflect.DeepEqual(input, output) {
+		t.Fatalf("failed to round-trip JSON: %#v != %#v", output, input)
+	}
+}
+
+func TestPost__BodyTooBig(t *testing.T) {
+	body := make([]byte, maxMemory+1)
+
+	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected code %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }

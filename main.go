@@ -16,10 +16,10 @@ type Resp struct {
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
-	Data  string              `json:"data,omitempty"`
+	Data  []byte              `json:"data,omitempty"`
 	Files map[string][]string `json:"files,omitempty"`
 	Form  map[string][]string `json:"form,omitempty"`
-	JSON  map[string][]string `json:"json,omitempty"`
+	JSON  interface{}         `json:"json,omitempty"`
 }
 
 // IPResp is the response for the /ip endpoint
@@ -36,6 +36,9 @@ type HeadersResp struct {
 type UserAgentResp struct {
 	UserAgent string `json:"user-agent"`
 }
+
+// Max size of a request body we'll handle
+const maxMemory = 1024*1024*5 + 1
 
 // Index must be wrapped by the withTemplates middleware before it can be used
 func index(w http.ResponseWriter, r *http.Request, t *template.Template) {
@@ -70,6 +73,25 @@ func get(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, r, resp)
 }
 
+func post(w http.ResponseWriter, r *http.Request) {
+	args, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	resp := &Resp{
+		Args:    args,
+		Headers: r.Header,
+	}
+
+	err = parseBody(w, r, resp)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing request body: %s", err), http.StatusBadRequest)
+	}
+	writeResponse(w, r, resp)
+}
+
 func ip(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(&IPResp{
 		Origin: getOrigin(r),
@@ -97,6 +119,7 @@ func app() http.Handler {
 	h.HandleFunc("/", methods(templateWrapper(index), "GET"))
 	h.HandleFunc("/forms/post", methods(templateWrapper(formsPost), "GET"))
 	h.HandleFunc("/get", methods(get, "GET"))
+	h.HandleFunc("/post", methods(post, "POST"))
 	h.HandleFunc("/ip", ip)
 	h.HandleFunc("/user-agent", userAgent)
 	h.HandleFunc("/headers", headers)
