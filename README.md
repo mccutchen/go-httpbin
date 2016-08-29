@@ -2,6 +2,8 @@
 
 A WIP golang port of https://httpbin.org/.
 
+[![Build Status](https://travis-ci.org/mccutchen/go-httpbin.svg?branch=master)](http://travis-ci.org/mccutchen/go-httpbin)
+
 ## Testing
 
 ```
