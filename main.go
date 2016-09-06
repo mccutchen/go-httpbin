@@ -11,13 +11,20 @@ const maxMemory = 1024*1024*5 + 1
 func app() http.Handler {
 	h := http.NewServeMux()
 	templateWrapper := withTemplates("templates/*.html")
+
 	h.HandleFunc("/", methods(templateWrapper(index), "GET"))
 	h.HandleFunc("/forms/post", methods(templateWrapper(formsPost), "GET"))
+
 	h.HandleFunc("/get", methods(get, "GET"))
-	h.HandleFunc("/post", methods(post, "POST"))
+	h.HandleFunc("/post", methods(requestWithBody, "POST"))
+	h.HandleFunc("/put", methods(requestWithBody, "PUT"))
+	h.HandleFunc("/patch", methods(requestWithBody, "PATCH"))
+	h.HandleFunc("/delete", methods(requestWithBody, "DELETE"))
+
 	h.HandleFunc("/ip", ip)
 	h.HandleFunc("/user-agent", userAgent)
 	h.HandleFunc("/headers", headers)
+
 	return logger(cors(h))
 }
 

@@ -44,7 +44,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, body, http.StatusOK)
 }
 
-func post(w http.ResponseWriter, r *http.Request) {
+func requestWithBody(w http.ResponseWriter, r *http.Request) {
 	args, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
