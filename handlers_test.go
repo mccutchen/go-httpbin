@@ -42,7 +42,7 @@ func TestGet__Basic(t *testing.T) {
 		t.Fatalf("expected status code 200, got %d", w.Code)
 	}
 
-	var resp *Resp
+	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -160,7 +160,7 @@ func TestGet__XForwardedProto(t *testing.T) {
 		w := httptest.NewRecorder()
 		app().ServeHTTP(w, r)
 
-		var resp *Resp
+		var resp *bodyResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		if err != nil {
 			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -178,7 +178,7 @@ func TestIP(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *IPResp
+	var resp *ipResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -195,7 +195,7 @@ func TestUserAgent(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *UserAgentResp
+	var resp *userAgentResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -215,7 +215,7 @@ func TestHeaders(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *HeadersResp
+	var resp *headersResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -237,7 +237,7 @@ func TestPost__EmptyBody(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *Resp
+	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -262,7 +262,7 @@ func TestPost__FormEncodedBody(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *Resp
+	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %#v from JSON: %s", w.Body.String(), err)
@@ -295,7 +295,7 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *Resp
+	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -332,7 +332,7 @@ func TestPost__JSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	app().ServeHTTP(w, r)
 
-	var resp *Resp
+	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)

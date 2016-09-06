@@ -47,14 +47,8 @@ func getURL(r *http.Request) string {
 	return u.String()
 }
 
-func writeResponse(w http.ResponseWriter, r *http.Request, resp *Resp) {
-	resp.Origin = getOrigin(r)
-	resp.URL = getURL(r)
-	body, _ := json.Marshal(resp)
-	writeJSON(w, body)
-}
-
-func writeJSON(w http.ResponseWriter, body []byte) {
+func writeJSON(w http.ResponseWriter, body []byte, status int) {
+	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json; encoding=utf-8")
 	w.Write(body)
 }
@@ -62,7 +56,7 @@ func writeJSON(w http.ResponseWriter, body []byte) {
 // parseBody handles parsing a request body into our standard API response,
 // taking care to only consume the request body once based on the Content-Type
 // of the request. The given Resp will be updated.
-func parseBody(w http.ResponseWriter, r *http.Request, resp *Resp) error {
+func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error {
 	if r.Body == nil {
 		return nil
 	}
