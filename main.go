@@ -14,6 +14,7 @@ func app() http.Handler {
 
 	h.HandleFunc("/", methods(templateWrapper(index), "GET"))
 	h.HandleFunc("/forms/post", methods(templateWrapper(formsPost), "GET"))
+	h.HandleFunc("/encoding/utf8", methods(templateWrapper(utf8), "GET"))
 
 	h.HandleFunc("/get", methods(get, "GET"))
 	h.HandleFunc("/post", methods(requestWithBody, "POST"))

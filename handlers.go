@@ -28,6 +28,17 @@ func formsPost(w http.ResponseWriter, r *http.Request, t *template.Template) {
 	t.Execute(w, nil)
 }
 
+// utf8 must be wrapped by withTemplates middleware before it can be used
+func utf8(w http.ResponseWriter, r *http.Request, t *template.Template) {
+	t = t.Lookup("utf8.html")
+	if t == nil {
+		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	t.Execute(w, nil)
+}
+
 func get(w http.ResponseWriter, r *http.Request) {
 	args, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {

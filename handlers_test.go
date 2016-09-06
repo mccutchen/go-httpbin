@@ -31,6 +31,19 @@ func TestFormsPost(t *testing.T) {
 	}
 }
 
+func TestUTF8(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/encoding/utf8", nil)
+	w := httptest.NewRecorder()
+	app().ServeHTTP(w, r)
+
+	if w.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+		t.Fatalf("expected 'text/html; charset=utf-8' content type")
+	}
+	if !strings.Contains(w.Body.String(), `Hello world, Καλημέρα κόσμε, コンニチハ`) {
+		t.Fatalf("expected utf8 text in body")
+	}
+}
+
 func TestGet__Basic(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	r.Host = "localhost"
