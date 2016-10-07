@@ -1,4 +1,4 @@
-package main
+package httpbin
 
 import (
 	"encoding/json"
@@ -56,7 +56,7 @@ func writeJSON(w http.ResponseWriter, body []byte, status int) {
 // parseBody handles parsing a request body into our standard API response,
 // taking care to only consume the request body once based on the Content-Type
 // of the request. The given Resp will be updated.
-func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error {
+func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMemory int64) error {
 	if r.Body == nil {
 		return nil
 	}

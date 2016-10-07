@@ -1,4 +1,4 @@
-package main
+package httpbin
 
 import (
 	"bytes"
@@ -11,10 +11,18 @@ import (
 	"testing"
 )
 
+const maxMemory = 1024 * 1024
+
+var app = NewHTTPBin(&Options{
+	MaxMemory: maxMemory,
+})
+
+var handler = app.Handler()
+
 func TestIndex(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if !strings.Contains(w.Body.String(), "go-httpbin") {
 		t.Fatalf("expected go-httpbin in index body")
@@ -24,7 +32,7 @@ func TestIndex(t *testing.T) {
 func TestFormsPost(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/forms/post", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if !strings.Contains(w.Body.String(), `<form method="post" action="/post">`) {
 		t.Fatalf("expected <form> in body")
@@ -34,7 +42,7 @@ func TestFormsPost(t *testing.T) {
 func TestUTF8(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/encoding/utf8", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Header().Get("Content-Type") != "text/html; charset=utf-8" {
 		t.Fatalf("expected 'text/html; charset=utf-8' content type")
@@ -49,7 +57,7 @@ func TestGet__Basic(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("User-Agent", "test")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Code != 200 {
 		t.Fatalf("expected status code 200, got %d", w.Code)
@@ -88,7 +96,7 @@ func TestGet__Basic(t *testing.T) {
 func TestGet__OnlyAllowsGets(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/get", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected HTTP 405, got %d", w.Code)
@@ -98,7 +106,7 @@ func TestGet__OnlyAllowsGets(t *testing.T) {
 func TestGet__CORSHeadersWithoutRequestOrigin(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("expected Access-Control-Allow-Origin=*, got %#v", w.Header().Get("Access-Control-Allow-Origin"))
@@ -109,7 +117,7 @@ func TestGet__CORSHeadersWithRequestOrigin(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/get", nil)
 	r.Header.Set("Origin", "origin")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Header().Get("Access-Control-Allow-Origin") != "origin" {
 		t.Fatalf("expected Access-Control-Allow-Origin=origin, got %#v", w.Header().Get("Access-Control-Allow-Origin"))
@@ -119,7 +127,7 @@ func TestGet__CORSHeadersWithRequestOrigin(t *testing.T) {
 func TestGet__CORSHeadersWithOptionsVerb(t *testing.T) {
 	r, _ := http.NewRequest("OPTIONS", "/get", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var headerTests = []struct {
 		key      string
@@ -142,7 +150,7 @@ func TestGet__CORSAllowHeaders(t *testing.T) {
 	r, _ := http.NewRequest("OPTIONS", "/get", nil)
 	r.Header.Set("Access-Control-Request-Headers", "X-Test-Header")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var headerTests = []struct {
 		key      string
@@ -171,7 +179,7 @@ func TestGet__XForwardedProto(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/get", nil)
 		r.Header.Set(test.key, test.value)
 		w := httptest.NewRecorder()
-		app().ServeHTTP(w, r)
+		handler.ServeHTTP(w, r)
 
 		var resp *bodyResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -189,7 +197,7 @@ func TestIP(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/ip", nil)
 	r.RemoteAddr = "192.168.0.100"
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *ipResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -206,7 +214,7 @@ func TestUserAgent(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/user-agent", nil)
 	r.Header.Set("User-Agent", "test")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *userAgentResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -226,7 +234,7 @@ func TestHeaders(t *testing.T) {
 	r.Header.Add("Bar-Header", "bar1")
 	r.Header.Add("Bar-Header", "bar2")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *headersResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -248,7 +256,7 @@ func TestHeaders(t *testing.T) {
 func TestPost__EmptyBody(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/post", nil)
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -273,7 +281,7 @@ func TestPost__FormEncodedBody(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -306,7 +314,7 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 
 	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -343,7 +351,7 @@ func TestPost__JSON(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(inputBody))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -380,7 +388,7 @@ func TestPost__BodyTooBig(t *testing.T) {
 
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
 	w := httptest.NewRecorder()
-	app().ServeHTTP(w, r)
+	handler.ServeHTTP(w, r)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected code %d, got %d", http.StatusBadRequest, w.Code)
