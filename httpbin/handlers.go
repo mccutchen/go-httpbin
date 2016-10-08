@@ -5,7 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 )
+
+var acceptedMediaTypes = []string{
+	"image/webp",
+	"image/svg+xml",
+	"image/jpeg",
+	"image/png",
+	"image/",
+}
 
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
@@ -86,4 +96,83 @@ func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
 		Headers: r.Header,
 	})
 	writeJSON(w, body, http.StatusOK)
+}
+
+// Status responds with the specified status code. TODO: support random choice
+// from multiple, optionally weighted status codes.
+func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	code, err := strconv.Atoi(parts[2])
+	if err != nil {
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+	}
+
+	type statusCase struct {
+		headers map[string]string
+		body    []byte
+	}
+
+	redirectHeaders := &statusCase{
+		headers: map[string]string{
+			"Location": "/redirect/1",
+		},
+	}
+	notAcceptableBody, _ := json.Marshal(map[string]interface{}{
+		"message": "Client did not request a supported media type",
+		"accept":  acceptedMediaTypes,
+	})
+
+	specialCases := map[int]*statusCase{
+		301: redirectHeaders,
+		302: redirectHeaders,
+		303: redirectHeaders,
+		305: redirectHeaders,
+		307: redirectHeaders,
+		401: &statusCase{
+			headers: map[string]string{
+				"WWW-Authenticate": `Basic realm="Fake Realm"`,
+			},
+		},
+		402: &statusCase{
+			body: []byte("Fuck you, pay me!"),
+			headers: map[string]string{
+				"X-More-Info": "http://vimeo.com/22053820",
+			},
+		},
+		406: &statusCase{
+			body: notAcceptableBody,
+			headers: map[string]string{
+				"Content-Type": "application/json; encoding=utf-8",
+			},
+		},
+		407: &statusCase{
+			headers: map[string]string{
+				"Proxy-Authenticate": `Basic realm="Fake Realm"`,
+			},
+		},
+		418: &statusCase{
+			body: []byte("I'm a teapot!"),
+			headers: map[string]string{
+				"X-More-Info": "http://tools.ietf.org/html/rfc2324",
+			},
+		},
+	}
+
+	if specialCase, ok := specialCases[code]; ok {
+		if specialCase.headers != nil {
+			for key, val := range specialCase.headers {
+				w.Header().Set(key, val)
+			}
+		}
+		w.WriteHeader(code)
+		if specialCase.body != nil {
+			w.Write(specialCase.body)
+		}
+	} else {
+		w.WriteHeader(code)
+	}
 }

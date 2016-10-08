@@ -64,6 +64,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/ip", h.IP)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/headers", h.Headers)
+	mux.HandleFunc("/status/", h.Status)
 
 	return logger(cors(mux))
 }

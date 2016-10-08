@@ -3,6 +3,7 @@ package httpbin
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -25,10 +26,14 @@ func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
 	}
 }
 
-func assertContentType(t *testing.T, w *httptest.ResponseRecorder, contentType string) {
-	if w.Header().Get("Content-Type") != contentType {
-		t.Fatalf("expected content type %s, got %s", contentType, w.Header().Get("Content-Type"))
+func assertHeader(t *testing.T, w *httptest.ResponseRecorder, key, val string) {
+	if w.Header().Get(key) != val {
+		t.Fatalf("expected header %s=%#v, got %#v", key, val, w.Header().Get(key))
 	}
+}
+
+func assertContentType(t *testing.T, w *httptest.ResponseRecorder, contentType string) {
+	assertHeader(t, w, "Content-Type", contentType)
 }
 
 func assertBodyContains(t *testing.T, w *httptest.ResponseRecorder, needle string) {
@@ -118,9 +123,7 @@ func TestGet__CORSHeadersWithoutRequestOrigin(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Header().Get("Access-Control-Allow-Origin") != "*" {
-		t.Fatalf("expected Access-Control-Allow-Origin=*, got %#v", w.Header().Get("Access-Control-Allow-Origin"))
-	}
+	assertHeader(t, w, "Access-Control-Allow-Origin", "*")
 }
 
 func TestGet__CORSHeadersWithRequestOrigin(t *testing.T) {
@@ -129,9 +132,7 @@ func TestGet__CORSHeadersWithRequestOrigin(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Header().Get("Access-Control-Allow-Origin") != "origin" {
-		t.Fatalf("expected Access-Control-Allow-Origin=origin, got %#v", w.Header().Get("Access-Control-Allow-Origin"))
-	}
+	assertHeader(t, w, "Access-Control-Allow-Origin", "origin")
 }
 
 func TestGet__CORSHeadersWithOptionsVerb(t *testing.T) {
@@ -150,9 +151,7 @@ func TestGet__CORSHeadersWithOptionsVerb(t *testing.T) {
 		{"Access-Control-Allow-Headers", ""},
 	}
 	for _, test := range headerTests {
-		if w.Header().Get(test.key) != test.expected {
-			t.Fatalf("expected %s = %#v, got %#v", test.key, test.expected, w.Header().Get(test.key))
-		}
+		assertHeader(t, w, test.key, test.expected)
 	}
 }
 
@@ -169,9 +168,7 @@ func TestGet__CORSAllowHeaders(t *testing.T) {
 		{"Access-Control-Allow-Headers", "X-Test-Header"},
 	}
 	for _, test := range headerTests {
-		if w.Header().Get(test.key) != test.expected {
-			t.Fatalf("expected %s = %#v, got %#v", test.key, test.expected, w.Header().Get(test.key))
-		}
+		assertHeader(t, w, test.key, test.expected)
 	}
 }
 
@@ -423,4 +420,44 @@ func TestPost__BodyTooBig(t *testing.T) {
 
 	assertStatusCode(t, w, http.StatusBadRequest)
 	assertContentType(t, w, "application/json; encoding=utf-8")
+}
+
+func TestStatus__Simple(t *testing.T) {
+	redirectHeaders := map[string]string{
+		"Location": "/redirect/1",
+	}
+	unauthorizedHeaders := map[string]string{
+		"WWW-Authenticate": `Basic realm="Fake Realm"`,
+	}
+	var tests = []struct {
+		code    int
+		headers map[string]string
+		body    string
+	}{
+		{200, nil, ""},
+		{301, redirectHeaders, ""},
+		{302, redirectHeaders, ""},
+		{401, unauthorizedHeaders, ""},
+		{418, nil, "I'm a teapot!"},
+	}
+
+	for _, test := range tests {
+		r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, test.code)
+
+		if test.headers != nil {
+			for key, val := range test.headers {
+				assertHeader(t, w, key, val)
+			}
+		}
+
+		if test.body != "" {
+			if w.Body.String() != test.body {
+				t.Fatalf("expected body %#v, got %#v", test.body, w.Body.String())
+			}
+		}
+	}
 }
