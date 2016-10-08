@@ -9,33 +9,18 @@ import (
 
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
-	t := h.templates.Lookup("index.html")
-	if t == nil {
-		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
-		return
-	}
-	t.Execute(w, nil)
+	w.Write(MustAsset("index.html"))
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, r *http.Request) {
-	t := h.templates.Lookup("forms-post.html")
-	if t == nil {
-		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
-		return
-	}
-	t.Execute(w, nil)
+	w.Write(MustAsset("forms-post.html"))
 }
 
 // UTF8 renders an HTML encoding stress test
 func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
-	t := h.templates.Lookup("utf8.html")
-	if t == nil {
-		http.Error(w, fmt.Sprintf("error looking up index.html"), http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	t.Execute(w, nil)
+	w.Write(MustAsset("utf8.html"))
 }
 
 // Get handles HTTP GET requests

@@ -1,8 +1,6 @@
 package httpbin
 
 import (
-	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -46,8 +44,7 @@ type Options struct {
 
 // HTTPBin contains the business logic
 type HTTPBin struct {
-	options   *Options
-	templates *template.Template
+	options *Options
 }
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
@@ -76,14 +73,7 @@ func NewHTTPBin(options *Options) *HTTPBin {
 	if options == nil {
 		options = &Options{}
 	}
-
-	t, err := template.ParseGlob("templates/*.html")
-	if err != nil {
-		log.Fatalf("error parsing templates: %s", err)
-	}
-
 	return &HTTPBin{
-		options:   options,
-		templates: t,
+		options: options,
 	}
 }
