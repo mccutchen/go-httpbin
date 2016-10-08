@@ -48,8 +48,8 @@ func getURL(r *http.Request) string {
 }
 
 func writeJSON(w http.ResponseWriter, body []byte, status int) {
-	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json; encoding=utf-8")
+	w.WriteHeader(status)
 	w.Write(body)
 }
 

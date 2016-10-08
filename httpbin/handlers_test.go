@@ -19,14 +19,31 @@ var app = NewHTTPBin(&Options{
 
 var handler = app.Handler()
 
+func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
+	if w.Code != code {
+		t.Fatalf("expected status code %d, got %d", code, w.Code)
+	}
+}
+
+func assertContentType(t *testing.T, w *httptest.ResponseRecorder, contentType string) {
+	if w.Header().Get("Content-Type") != contentType {
+		t.Fatalf("expected content type %s, got %s", contentType, w.Header().Get("Content-Type"))
+	}
+}
+
+func assertBodyContains(t *testing.T, w *httptest.ResponseRecorder, needle string) {
+	if !strings.Contains(w.Body.String(), needle) {
+		t.Fatalf("expected string %v in body", needle)
+	}
+}
+
 func TestIndex(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if !strings.Contains(w.Body.String(), "go-httpbin") {
-		t.Fatalf("expected go-httpbin in index body")
-	}
+	assertContentType(t, w, "text/html; charset=utf-8")
+	assertBodyContains(t, w, "go-httpbin")
 }
 
 func TestFormsPost(t *testing.T) {
@@ -34,9 +51,8 @@ func TestFormsPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if !strings.Contains(w.Body.String(), `<form method="post" action="/post">`) {
-		t.Fatalf("expected <form> in body")
-	}
+	assertContentType(t, w, "text/html; charset=utf-8")
+	assertBodyContains(t, w, `<form method="post" action="/post">`)
 }
 
 func TestUTF8(t *testing.T) {
@@ -44,12 +60,8 @@ func TestUTF8(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Header().Get("Content-Type") != "text/html; charset=utf-8" {
-		t.Fatalf("expected 'text/html; charset=utf-8' content type")
-	}
-	if !strings.Contains(w.Body.String(), `Hello world, Καλημέρα κόσμε, コンニチハ`) {
-		t.Fatalf("expected utf8 text in body")
-	}
+	assertContentType(t, w, "text/html; charset=utf-8")
+	assertBodyContains(t, w, `Hello world, Καλημέρα κόσμε, コンニチハ`)
 }
 
 func TestGet__Basic(t *testing.T) {
@@ -59,9 +71,8 @@ func TestGet__Basic(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Code != 200 {
-		t.Fatalf("expected status code 200, got %d", w.Code)
-	}
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -98,9 +109,8 @@ func TestGet__OnlyAllowsGets(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("expected HTTP 405, got %d", w.Code)
-	}
+	assertStatusCode(t, w, http.StatusMethodNotAllowed)
+	assertContentType(t, w, "text/plain; charset=utf-8")
 }
 
 func TestGet__CORSHeadersWithoutRequestOrigin(t *testing.T) {
@@ -199,6 +209,9 @@ func TestIP(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
+
 	var resp *ipResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
@@ -215,6 +228,9 @@ func TestUserAgent(t *testing.T) {
 	r.Header.Set("User-Agent", "test")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *userAgentResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -235,6 +251,9 @@ func TestHeaders(t *testing.T) {
 	r.Header.Add("Bar-Header", "bar2")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *headersResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -257,6 +276,9 @@ func TestPost__EmptyBody(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/post", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -282,6 +304,9 @@ func TestPost__FormEncodedBody(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -315,6 +340,9 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -353,6 +381,9 @@ func TestPost__JSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
+
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
@@ -390,7 +421,6 @@ func TestPost__BodyTooBig(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected code %d, got %d", http.StatusBadRequest, w.Code)
-	}
+	assertStatusCode(t, w, http.StatusBadRequest)
+	assertContentType(t, w, "application/json; encoding=utf-8")
 }
