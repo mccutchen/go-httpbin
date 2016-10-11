@@ -176,3 +176,23 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(code)
 	}
 }
+
+// ResponseHeaders responds with a map of header values
+func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
+	args, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	for k, vs := range args {
+		for _, v := range vs {
+			w.Header().Add(http.CanonicalHeaderKey(k), v)
+		}
+	}
+	body, _ := json.Marshal(args)
+	if contentType := w.Header().Get("Content-Type"); contentType == "" {
+		w.Header().Set("Content-Type", "application/json; encoding=utf-8")
+	}
+	w.Write(body)
+}

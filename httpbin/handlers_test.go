@@ -109,6 +109,30 @@ func TestGet__Basic(t *testing.T) {
 	}
 }
 
+func TestGet__WithParams(t *testing.T) {
+	params := url.Values{}
+	params.Set("foo", "foo")
+	params.Add("bar", "bar1")
+	params.Add("bar", "bar2")
+
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/get?%s", params.Encode()), nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, "application/json; encoding=utf-8")
+
+	var resp *bodyResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if resp.Args.Encode() != params.Encode() {
+		t.Fatalf("args mismatch: %s != %s", resp.Args.Encode(), params.Encode())
+	}
+}
+
 func TestGet__OnlyAllowsGets(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/get", nil)
 	w := httptest.NewRecorder()
@@ -458,6 +482,53 @@ func TestStatus__Simple(t *testing.T) {
 			if w.Body.String() != test.body {
 				t.Fatalf("expected body %#v, got %#v", test.body, w.Body.String())
 			}
+		}
+	}
+}
+
+func TestResponseHeaders(t *testing.T) {
+	headers := map[string][]string{
+		"Content-Type": {"test/test"},
+		"Foo":          {"foo"},
+		"Bar":          {"bar1, bar2"},
+	}
+
+	params := url.Values{}
+	for k, vs := range headers {
+		for _, v := range vs {
+			params.Add(k, v)
+		}
+	}
+
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/response-headers?%s", params.Encode()), nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+
+	for k, expectedValues := range headers {
+		values, ok := w.HeaderMap[k]
+		if !ok {
+			t.Fatalf("expected header %s in response headers", k)
+		}
+		if !reflect.DeepEqual(values, expectedValues) {
+			t.Fatalf("expected key values %#v for header %s, got %#v", expectedValues, k, values)
+		}
+	}
+
+	resp := &http.Header{}
+	err := json.Unmarshal(w.Body.Bytes(), resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	for k, expectedValues := range headers {
+		values, ok := (*resp)[k]
+		if !ok {
+			t.Fatalf("expected header %s in response body", k)
+		}
+		if !reflect.DeepEqual(values, expectedValues) {
+			t.Fatalf("expected key values %#v for header %s, got %#v", expectedValues, k, values)
 		}
 	}
 }
