@@ -35,9 +35,6 @@ func cors(h http.Handler) http.Handler {
 }
 
 func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
-	if len(methods) == 0 {
-		return h
-	}
 	methodMap := make(map[string]struct{}, len(methods))
 	for _, m := range methods {
 		methodMap[m] = struct{}{}

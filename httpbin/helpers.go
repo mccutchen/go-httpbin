@@ -72,7 +72,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMe
 			return err
 		}
 		resp.Form = r.PostForm
-	case ct == "multipart/form-data":
+	case strings.HasPrefix(ct, "multipart/form-data"):
 		err := r.ParseMultipartForm(maxMemory)
 		if err != nil {
 			return err
