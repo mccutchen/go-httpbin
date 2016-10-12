@@ -532,3 +532,42 @@ func TestResponseHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestRelativeRedirect__OK(t *testing.T) {
+	var tests = []struct {
+		n        int
+		location string
+	}{
+		{1, "/get"},
+		{2, "/relative-redirect/1"},
+		{100, "/relative-redirect/99"},
+	}
+
+	for _, test := range tests {
+		r, _ := http.NewRequest("GET", fmt.Sprintf("/relative-redirect/%d", test.n), nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusFound)
+		assertHeader(t, w, "Location", test.location)
+	}
+}
+
+func TestRelativeRedirect__Errors(t *testing.T) {
+	var tests = []struct {
+		given  interface{}
+		status int
+	}{
+		{3.14, http.StatusBadRequest},
+		{-1, http.StatusBadRequest},
+		{"foo", http.StatusBadRequest},
+	}
+
+	for _, test := range tests {
+		r, _ := http.NewRequest("GET", fmt.Sprintf("/relative-redirect/%v", test.given), nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, test.status)
+	}
+}

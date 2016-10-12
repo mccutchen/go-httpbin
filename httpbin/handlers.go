@@ -196,3 +196,24 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(body)
 }
+
+// RelativeRedirect responds with an HTTP 302 redirect a given number of times
+func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	n, err := strconv.Atoi(parts[2])
+	if err != nil || n < 1 {
+		http.Error(w, "Invalid redirect", http.StatusBadRequest)
+	}
+
+	location := fmt.Sprintf("/relative-redirect/%d", n-1)
+	if n == 1 {
+		location = "/get"
+	}
+
+	w.Header().Set("Location", location)
+	w.WriteHeader(http.StatusFound)
+}

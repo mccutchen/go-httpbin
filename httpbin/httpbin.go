@@ -67,6 +67,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/status/", h.Status)
 	mux.HandleFunc("/response-headers", h.ResponseHeaders)
 
+	mux.HandleFunc("/relative-redirect/", h.RelativeRedirect)
+
 	return logger(cors(mux))
 }
 
