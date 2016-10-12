@@ -10,6 +10,11 @@ assets: httpbin/templates/*.html
 test:
 	go test -v github.com/mccutchen/go-httpbin/httpbin
 
+testcover:
+	mkdir -p dist
+	go test -coverprofile=dist/coverage.out github.com/mccutchen/go-httpbin/httpbin
+	go tool cover -html=dist/coverage.out
+
 run: build
 	./dist/go-httpbin
 
