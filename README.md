@@ -4,16 +4,21 @@ A WIP golang port of https://httpbin.org/.
 
 [![Build Status](https://travis-ci.org/mccutchen/go-httpbin.svg?branch=master)](http://travis-ci.org/mccutchen/go-httpbin)
 
+## Building
+
+```
+make
+```
+
 ## Testing
 
 ```
-go test
-go test -cover
-go test -coverprofile=cover.out && go tool cover -html=cover.out
+make test
+make testcover
 ```
 
 ## Running
 
 ```
-go build && ./go-httpbin
+make run
 ```
