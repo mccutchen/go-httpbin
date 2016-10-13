@@ -750,18 +750,30 @@ func TestResponseHeaders__InvalidQuery(t *testing.T) {
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
-func TestRelativeRedirect__OK(t *testing.T) {
+func TestRedirects__OK(t *testing.T) {
 	var tests = []struct {
+		relative bool
 		n        int
 		location string
 	}{
-		{1, "/get"},
-		{2, "/relative-redirect/1"},
-		{100, "/relative-redirect/99"},
+		{true, 1, "/get"},
+		{true, 2, "/relative-redirect/1"},
+		{true, 100, "/relative-redirect/99"},
+
+		{false, 1, "http://host/get"},
+		{false, 2, "http://host/absolute-redirect/1"},
+		{false, 100, "http://host/absolute-redirect/99"},
 	}
 
 	for _, test := range tests {
-		r, _ := http.NewRequest("GET", fmt.Sprintf("/relative-redirect/%d", test.n), nil)
+		var urlTemplate string
+		if test.relative {
+			urlTemplate = "/relative-redirect/%d"
+		} else {
+			urlTemplate = "/absolute-redirect/%d"
+		}
+		r, _ := http.NewRequest("GET", fmt.Sprintf(urlTemplate, test.n), nil)
+		r.Host = "host"
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
@@ -770,20 +782,33 @@ func TestRelativeRedirect__OK(t *testing.T) {
 	}
 }
 
-func TestRelativeRedirect__Errors(t *testing.T) {
+func TestRedirects__Errors(t *testing.T) {
 	var tests = []struct {
-		given  interface{}
-		status int
+		relative bool
+		given    interface{}
+		status   int
 	}{
-		{3.14, http.StatusBadRequest},
-		{-1, http.StatusBadRequest},
-		{"", http.StatusBadRequest},
-		{"foo", http.StatusBadRequest},
-		{"10/bar", http.StatusNotFound},
+		{true, 3.14, http.StatusBadRequest},
+		{true, -1, http.StatusBadRequest},
+		{true, "", http.StatusBadRequest},
+		{true, "foo", http.StatusBadRequest},
+		{true, "10/bar", http.StatusNotFound},
+
+		{false, 3.14, http.StatusBadRequest},
+		{false, -1, http.StatusBadRequest},
+		{false, "", http.StatusBadRequest},
+		{false, "foo", http.StatusBadRequest},
+		{false, "10/bar", http.StatusNotFound},
 	}
 
 	for _, test := range tests {
-		r, _ := http.NewRequest("GET", fmt.Sprintf("/relative-redirect/%v", test.given), nil)
+		var urlTemplate string
+		if test.relative {
+			urlTemplate = "/relative-redirect/%v"
+		} else {
+			urlTemplate = "/absolute-redirect/%v"
+		}
+		r, _ := http.NewRequest("GET", fmt.Sprintf(urlTemplate, test.given), nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 

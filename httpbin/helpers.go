@@ -16,7 +16,7 @@ func getOrigin(r *http.Request) string {
 	return origin
 }
 
-func getURL(r *http.Request) string {
+func getURL(r *http.Request) *url.URL {
 	scheme := r.Header.Get("X-Forwarded-Proto")
 	if scheme == "" {
 		scheme = r.Header.Get("X-Forwarded-Protocol")
@@ -33,7 +33,7 @@ func getURL(r *http.Request) string {
 		host = r.Host
 	}
 
-	u := &url.URL{
+	return &url.URL{
 		Scheme:     scheme,
 		Opaque:     r.URL.Opaque,
 		User:       r.URL.User,
@@ -44,7 +44,6 @@ func getURL(r *http.Request) string {
 		RawQuery:   r.URL.RawQuery,
 		Fragment:   r.URL.Fragment,
 	}
-	return u.String()
 }
 
 func writeJSON(w http.ResponseWriter, body []byte, status int) {

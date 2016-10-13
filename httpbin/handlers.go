@@ -44,7 +44,7 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 		Args:    args,
 		Headers: r.Header,
 		Origin:  getOrigin(r),
-		URL:     getURL(r),
+		URL:     getURL(r).String(),
 	}
 	body, _ := json.Marshal(resp)
 	writeJSON(w, body, http.StatusOK)
@@ -62,7 +62,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		Args:    args,
 		Headers: r.Header,
 		Origin:  getOrigin(r),
-		URL:     getURL(r),
+		URL:     getURL(r).String(),
 	}
 
 	err = parseBody(w, r, resp, h.options.MaxMemory)
@@ -197,8 +197,30 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-// RelativeRedirect responds with an HTTP 302 redirect a given number of times
-func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
+func redirectLocation(r *http.Request, relative bool, n int) string {
+	var location string
+	var path string
+
+	if n < 1 {
+		path = "/get"
+	} else if relative {
+		path = fmt.Sprintf("/relative-redirect/%d", n)
+	} else {
+		path = fmt.Sprintf("/absolute-redirect/%d", n)
+	}
+
+	if relative {
+		location = path
+	} else {
+		u := getURL(r)
+		u.Path = path
+		location = u.String()
+	}
+
+	return location
+}
+
+func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -209,11 +231,16 @@ func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid redirect", http.StatusBadRequest)
 	}
 
-	location := fmt.Sprintf("/relative-redirect/%d", n-1)
-	if n == 1 {
-		location = "/get"
-	}
-
-	w.Header().Set("Location", location)
+	w.Header().Set("Location", redirectLocation(r, relative, n-1))
 	w.WriteHeader(http.StatusFound)
+}
+
+// RelativeRedirect responds with an HTTP 302 redirect a given number of times
+func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
+	doRedirect(w, r, true)
+}
+
+// AbsoluteRedirect responds with an HTTP 302 redirect a given number of times
+func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
+	doRedirect(w, r, false)
 }
