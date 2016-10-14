@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 )
@@ -35,13 +34,8 @@ func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
 
 // Get handles HTTP GET requests
 func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
-	args, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
-		return
-	}
 	resp := &getResponse{
-		Args:    args,
+		Args:    r.URL.Query(),
 		Headers: r.Header,
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
@@ -52,20 +46,14 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 
 // RequestWithBody handles POST, PUT, and PATCH requests
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
-	args, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
-		return
-	}
-
 	resp := &bodyResponse{
-		Args:    args,
+		Args:    r.URL.Query(),
 		Headers: r.Header,
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
 	}
 
-	err = parseBody(w, r, resp, h.options.MaxMemory)
+	err := parseBody(w, r, resp, h.options.MaxMemory)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing request body: %s", err), http.StatusBadRequest)
 	}
@@ -179,12 +167,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 
 // ResponseHeaders responds with a map of header values
 func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
-	args, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing query params: %s", err), http.StatusBadRequest)
-		return
-	}
-
+	args := r.URL.Query()
 	for k, vs := range args {
 		for _, v := range vs {
 			w.Header().Add(http.CanonicalHeaderKey(k), v)

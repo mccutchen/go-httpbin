@@ -141,14 +141,6 @@ func TestGet__WithParams(t *testing.T) {
 	}
 }
 
-func TestGet__InvalidQuery(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/get?foo=%ZZ", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
-
-	assertStatusCode(t, w, http.StatusBadRequest)
-}
-
 func TestGet__OnlyAllowsGets(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/get", nil)
 	w := httptest.NewRecorder()
@@ -540,13 +532,6 @@ func TestPost__BodyTooBig(t *testing.T) {
 	assertContentType(t, w, "application/json; encoding=utf-8")
 }
 
-func TestPost__InvalidQueryParams(t *testing.T) {
-	r, _ := http.NewRequest("POST", "/post?foo=%ZZ", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
-	assertStatusCode(t, w, http.StatusBadRequest)
-}
-
 func TestPost__QueryParams(t *testing.T) {
 	params := url.Values{}
 	params.Set("foo", "foo")
@@ -743,14 +728,7 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 	assertContentType(t, w, contentType)
 }
 
-func TestResponseHeaders__InvalidQuery(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/response-headers?foo=%ZZ", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
-	assertStatusCode(t, w, http.StatusBadRequest)
-}
-
-func TestRedirects__OK(t *testing.T) {
+func TestAbsoluteAndRelativeRedirects__OK(t *testing.T) {
 	var tests = []struct {
 		relative bool
 		n        int
@@ -782,7 +760,7 @@ func TestRedirects__OK(t *testing.T) {
 	}
 }
 
-func TestRedirects__Errors(t *testing.T) {
+func TestAbsoluteAndRelativeRedirects__Errors(t *testing.T) {
 	var tests = []struct {
 		relative bool
 		given    interface{}
