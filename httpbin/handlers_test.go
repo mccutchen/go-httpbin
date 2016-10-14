@@ -728,6 +728,68 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 	assertContentType(t, w, contentType)
 }
 
+func TestRedirect__OK(t *testing.T) {
+	var tests = []struct {
+		relative bool
+		n        int
+		location string
+	}{
+		{true, 1, "/get"},
+		{true, 2, "/relative-redirect/1"},
+		{true, 100, "/relative-redirect/99"},
+
+		{false, 1, "http://host/get"},
+		{false, 2, "http://host/absolute-redirect/1"},
+		{false, 100, "http://host/absolute-redirect/99"},
+	}
+
+	for _, test := range tests {
+		u := fmt.Sprintf("/redirect/%d", test.n)
+		if !test.relative {
+			u = fmt.Sprintf("%s?absolute=true", u)
+		}
+		r, _ := http.NewRequest("GET", u, nil)
+		r.Host = "host"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusFound)
+		assertHeader(t, w, "Location", test.location)
+	}
+}
+
+func TestRedirect__Errors(t *testing.T) {
+	var tests = []struct {
+		relative bool
+		given    interface{}
+		status   int
+	}{
+		{true, 3.14, http.StatusBadRequest},
+		{true, -1, http.StatusBadRequest},
+		{true, "", http.StatusBadRequest},
+		{true, "foo", http.StatusBadRequest},
+		{true, "10/bar", http.StatusNotFound},
+
+		{false, 3.14, http.StatusBadRequest},
+		{false, -1, http.StatusBadRequest},
+		{false, "", http.StatusBadRequest},
+		{false, "foo", http.StatusBadRequest},
+		{false, "10/bar", http.StatusNotFound},
+	}
+
+	for _, test := range tests {
+		u := fmt.Sprintf("/redirect/%v", test.given)
+		if !test.relative {
+			u = fmt.Sprintf("%s?absolute=true", u)
+		}
+		r, _ := http.NewRequest("GET", u, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, test.status)
+	}
+}
+
 func TestAbsoluteAndRelativeRedirects__OK(t *testing.T) {
 	var tests = []struct {
 		relative bool

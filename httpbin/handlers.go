@@ -197,6 +197,7 @@ func redirectLocation(r *http.Request, relative bool, n int) string {
 	} else {
 		u := getURL(r)
 		u.Path = path
+		u.RawQuery = ""
 		location = u.String()
 	}
 
@@ -216,6 +217,15 @@ func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 
 	w.Header().Set("Location", redirectLocation(r, relative, n-1))
 	w.WriteHeader(http.StatusFound)
+}
+
+// Redirect responds with 302 redirect a given number of times. Defaults to a
+// relative redirect, but an ?absolute=true query param will trigger an
+// absolute redirect.
+func (h *HTTPBin) Redirect(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	relative := strings.ToLower(params.Get("absolute")) != "true"
+	doRedirect(w, r, relative)
 }
 
 // RelativeRedirect responds with an HTTP 302 redirect a given number of times
