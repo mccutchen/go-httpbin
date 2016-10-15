@@ -39,7 +39,7 @@ type bodyResponse struct {
 	JSON  interface{}         `json:"json"`
 }
 
-type cookiesResponse map[string][]string
+type cookiesResponse map[string]string
 
 // Options are used to configure HTTPBin
 type Options struct {
@@ -77,6 +77,7 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/cookies", h.Cookies)
 	mux.HandleFunc("/cookies/set", h.SetCookies)
+	mux.HandleFunc("/cookies/delete", h.DeleteCookies)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more

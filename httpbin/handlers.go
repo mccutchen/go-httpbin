@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var acceptedMediaTypes = []string{
@@ -246,10 +247,7 @@ func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 	resp := cookiesResponse{}
 	for _, c := range r.Cookies() {
-		if _, found := resp[c.Name]; !found {
-			resp[c.Name] = []string{}
-		}
-		resp[c.Name] = append(resp[c.Name], c.Value)
+		resp[c.Name] = c.Value
 	}
 	body, _ := json.Marshal(resp)
 	writeJSON(w, body, http.StatusOK)
@@ -259,15 +257,29 @@ func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 // Cookies endpoint
 func (h *HTTPBin) SetCookies(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
-	for k, vs := range params {
-		for _, v := range vs {
-			fmt.Printf("setting cookie %#v = %#v\n", k, v)
-			http.SetCookie(w, &http.Cookie{
-				Name:     k,
-				Value:    v,
-				HttpOnly: true,
-			})
-		}
+	for k := range params {
+		http.SetCookie(w, &http.Cookie{
+			Name:     k,
+			Value:    params.Get(k),
+			HttpOnly: true,
+		})
+	}
+	w.Header().Set("Location", "/cookies")
+	w.WriteHeader(http.StatusFound)
+}
+
+// DeleteCookies deletes cookies specified in query params and redirects to
+// Cookies endpoint
+func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	for k := range params {
+		http.SetCookie(w, &http.Cookie{
+			Name:     k,
+			Value:    params.Get(k),
+			HttpOnly: true,
+			MaxAge:   -1,
+			Expires:  time.Now().Add(-1 * 24 * 365 * time.Hour),
+		})
 	}
 	w.Header().Set("Location", "/cookies")
 	w.WriteHeader(http.StatusFound)

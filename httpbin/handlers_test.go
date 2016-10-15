@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 const maxMemory = 1024 * 1024
@@ -812,13 +813,11 @@ func TestRedirects(t *testing.T) {
 func TestCookies(t *testing.T) {
 	testCookies := func(t *testing.T, cookies cookiesResponse) {
 		r, _ := http.NewRequest("GET", "/cookies", nil)
-		for k, vs := range cookies {
-			for _, v := range vs {
-				r.AddCookie(&http.Cookie{
-					Name:  k,
-					Value: v,
-				})
-			}
+		for k, v := range cookies {
+			r.AddCookie(&http.Cookie{
+				Name:  k,
+				Value: v,
+			})
 		}
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -841,28 +840,24 @@ func TestCookies(t *testing.T) {
 		testCookies(t, cookiesResponse{})
 	})
 
-	t.Run("ok/single cookies", func(t *testing.T) {
+	t.Run("ok/cookies", func(t *testing.T) {
 		testCookies(t, cookiesResponse{
-			"k1": {"v1"},
-			"k2": {"v2"},
-		})
-	})
-
-	t.Run("ok/duplicate cookies", func(t *testing.T) {
-		testCookies(t, cookiesResponse{
-			"k1": {"v1"},
-			"k2": {"v2a", "v2b"},
+			"k1": "v1",
+			"k2": "v2",
 		})
 	})
 }
 
 func TestSetCookies(t *testing.T) {
 	cookies := cookiesResponse{
-		"k1": {"v1"},
-		"k2": {"v2a", "v2b"},
+		"k1": "v1",
+		"k2": "v2",
 	}
 
-	params := url.Values(cookies)
+	params := &url.Values{}
+	for k, v := range cookies {
+		params.Set(k, v)
+	}
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/cookies/set?%s", params.Encode()), nil)
 	w := httptest.NewRecorder()
@@ -872,18 +867,44 @@ func TestSetCookies(t *testing.T) {
 	assertHeader(t, w, "Location", "/cookies")
 
 	for _, c := range w.Result().Cookies() {
-		values, ok := cookies[c.Name]
+		v, ok := cookies[c.Name]
 		if !ok {
 			t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
 		}
-		found := false
-		for _, v := range values {
-			if v == c.Value {
-				found = true
-			}
+		if v != c.Value {
+			t.Fatalf("got cookie %s=%s, expected value in %#v", c.Name, c.Value, v)
 		}
-		if !found {
-			t.Fatalf("got cookie %s=%s, expected value in %#v", c.Name, c.Value, values)
+	}
+}
+
+func TestDeleteCookies(t *testing.T) {
+	cookies := cookiesResponse{
+		"k1": "v1",
+		"k2": "v2",
+	}
+
+	toDelete := "k2"
+	params := &url.Values{}
+	params.Set(toDelete, "")
+
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/cookies/delete?%s", params.Encode()), nil)
+	for k, v := range cookies {
+		r.AddCookie(&http.Cookie{
+			Name:  k,
+			Value: v,
+		})
+	}
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusFound)
+	assertHeader(t, w, "Location", "/cookies")
+
+	for _, c := range w.Result().Cookies() {
+		if c.Name == toDelete {
+			if time.Now().Sub(c.Expires) < (24*365-1)*time.Hour {
+				t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
+			}
 		}
 	}
 }
