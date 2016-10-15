@@ -18,6 +18,10 @@ var acceptedMediaTypes = []string{
 
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	w.Write(MustAsset("index.html"))
 }
 

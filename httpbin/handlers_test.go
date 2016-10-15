@@ -59,6 +59,13 @@ func TestIndex(t *testing.T) {
 	assertBodyContains(t, w, "go-httpbin")
 }
 
+func TestIndex__NotFound(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/foo", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	assertStatusCode(t, w, http.StatusNotFound)
+}
+
 func TestFormsPost(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/forms/post", nil)
 	w := httptest.NewRecorder()
