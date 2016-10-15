@@ -938,6 +938,7 @@ func TestBasicAuth(t *testing.T) {
 
 		assertStatusCode(t, w, http.StatusUnauthorized)
 		assertContentType(t, w, jsonContentType)
+		assertHeader(t, w, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
 		resp := &authResponse{}
 		json.Unmarshal(w.Body.Bytes(), resp)
@@ -959,6 +960,7 @@ func TestBasicAuth(t *testing.T) {
 
 		assertStatusCode(t, w, http.StatusUnauthorized)
 		assertContentType(t, w, jsonContentType)
+		assertHeader(t, w, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
 		resp := &authResponse{}
 		json.Unmarshal(w.Body.Bytes(), resp)

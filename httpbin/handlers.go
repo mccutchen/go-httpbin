@@ -301,6 +301,7 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 	authorized := givenUser == expectedUser && givenPass == expectedPass
 	if !authorized {
 		status = http.StatusUnauthorized
+		w.Header().Set("WWW-Authenticate", `Basic realm="Fake Realm"`)
 	}
 
 	body, _ := json.Marshal(&authResponse{
