@@ -614,7 +614,7 @@ func TestPost__QueryParamsAndBody(t *testing.T) {
 }
 
 // TODO: implement and test more complex /status endpoint
-func TestStatus__Simple(t *testing.T) {
+func TestStatus(t *testing.T) {
 	redirectHeaders := map[string]string{
 		"Location": "/redirect/1",
 	}
@@ -634,43 +634,45 @@ func TestStatus__Simple(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		t.Run(fmt.Sprintf("ok/status/%d", test.code), func(t *testing.T) {
+			r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
 
-		assertStatusCode(t, w, test.code)
+			assertStatusCode(t, w, test.code)
 
-		if test.headers != nil {
-			for key, val := range test.headers {
-				assertHeader(t, w, key, val)
+			if test.headers != nil {
+				for key, val := range test.headers {
+					assertHeader(t, w, key, val)
+				}
 			}
-		}
 
-		if test.body != "" {
-			if w.Body.String() != test.body {
-				t.Fatalf("expected body %#v, got %#v", test.body, w.Body.String())
+			if test.body != "" {
+				if w.Body.String() != test.body {
+					t.Fatalf("expected body %#v, got %#v", test.body, w.Body.String())
+				}
 			}
-		}
+		})
 	}
-}
 
-func TestStatus__Errors(t *testing.T) {
-	var tests = []struct {
-		given  interface{}
+	var errorTests = []struct {
+		url    string
 		status int
 	}{
-		{"", http.StatusBadRequest},
-		{"200/foo", http.StatusNotFound},
-		{3.14, http.StatusBadRequest},
-		{"foo", http.StatusBadRequest},
+		{"/status", http.StatusNotFound},
+		{"/status/", http.StatusBadRequest},
+		{"/status/200/foo", http.StatusNotFound},
+		{"/status/3.14", http.StatusBadRequest},
+		{"/status/foo", http.StatusBadRequest},
 	}
 
-	for _, test := range tests {
-		url := fmt.Sprintf("/status/%v", test.given)
-		r, _ := http.NewRequest("GET", url, nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-		assertStatusCode(t, w, test.status)
+	for _, test := range errorTests {
+		t.Run("error"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.status)
+		})
 	}
 }
 
@@ -735,7 +737,7 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 	assertContentType(t, w, contentType)
 }
 
-func TestRedirects__OK(t *testing.T) {
+func TestRedirects(t *testing.T) {
 	var tests = []struct {
 		requestURL       string
 		expectedLocation string
@@ -762,18 +764,18 @@ func TestRedirects__OK(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		r, _ := http.NewRequest("GET", test.requestURL, nil)
-		r.Host = "host"
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		t.Run("ok"+test.requestURL, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.requestURL, nil)
+			r.Host = "host"
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
 
-		assertStatusCode(t, w, http.StatusFound)
-		assertHeader(t, w, "Location", test.expectedLocation)
+			assertStatusCode(t, w, http.StatusFound)
+			assertHeader(t, w, "Location", test.expectedLocation)
+		})
 	}
-}
 
-func TestRedirects__Errors(t *testing.T) {
-	var tests = []struct {
+	var errorTests = []struct {
 		requestURL     string
 		expectedStatus int
 	}{
@@ -796,11 +798,13 @@ func TestRedirects__Errors(t *testing.T) {
 		{"/absolute-redirect/10/foo", http.StatusNotFound},
 	}
 
-	for _, test := range tests {
-		r, _ := http.NewRequest("GET", test.requestURL, nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+	for _, test := range errorTests {
+		t.Run("error"+test.requestURL, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.requestURL, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
 
-		assertStatusCode(t, w, test.expectedStatus)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
 	}
 }
