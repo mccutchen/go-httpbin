@@ -837,21 +837,53 @@ func TestCookies(t *testing.T) {
 		}
 	}
 
-	t.Run("no cookies", func(t *testing.T) {
+	t.Run("ok/no cookies", func(t *testing.T) {
 		testCookies(t, cookiesResponse{})
 	})
 
-	t.Run("single cookies", func(t *testing.T) {
+	t.Run("ok/single cookies", func(t *testing.T) {
 		testCookies(t, cookiesResponse{
 			"k1": {"v1"},
 			"k2": {"v2"},
 		})
 	})
 
-	t.Run("duplicate cookies", func(t *testing.T) {
+	t.Run("ok/duplicate cookies", func(t *testing.T) {
 		testCookies(t, cookiesResponse{
 			"k1": {"v1"},
 			"k2": {"v2a", "v2b"},
 		})
 	})
+}
+
+func TestSetCookies(t *testing.T) {
+	cookies := cookiesResponse{
+		"k1": {"v1"},
+		"k2": {"v2a", "v2b"},
+	}
+
+	params := url.Values(cookies)
+
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/cookies/set?%s", params.Encode()), nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusFound)
+	assertHeader(t, w, "Location", "/cookies")
+
+	for _, c := range w.Result().Cookies() {
+		values, ok := cookies[c.Name]
+		if !ok {
+			t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
+		}
+		found := false
+		for _, v := range values {
+			if v == c.Value {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("got cookie %s=%s, expected value in %#v", c.Name, c.Value, values)
+		}
+	}
 }
