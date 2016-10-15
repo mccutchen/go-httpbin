@@ -39,6 +39,8 @@ type bodyResponse struct {
 	JSON  interface{}         `json:"json"`
 }
 
+type cookiesResponse map[string][]string
+
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory int64
@@ -72,6 +74,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/redirect/", h.Redirect)
 	mux.HandleFunc("/relative-redirect/", h.RelativeRedirect)
 	mux.HandleFunc("/absolute-redirect/", h.AbsoluteRedirect)
+
+	mux.HandleFunc("/cookies", h.Cookies)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more

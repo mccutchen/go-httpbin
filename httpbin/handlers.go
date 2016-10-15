@@ -241,3 +241,16 @@ func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
 	doRedirect(w, r, false)
 }
+
+// Cookies responds with the cookies in the incoming request
+func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
+	resp := cookiesResponse{}
+	for _, c := range r.Cookies() {
+		if _, found := resp[c.Name]; !found {
+			resp[c.Name] = []string{}
+		}
+		resp[c.Name] = append(resp[c.Name], c.Value)
+	}
+	body, _ := json.Marshal(resp)
+	writeJSON(w, body, http.StatusOK)
+}

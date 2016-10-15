@@ -808,3 +808,50 @@ func TestRedirects(t *testing.T) {
 		})
 	}
 }
+
+func TestCookies(t *testing.T) {
+	testCookies := func(t *testing.T, cookies cookiesResponse) {
+		r, _ := http.NewRequest("GET", "/cookies", nil)
+		for k, vs := range cookies {
+			for _, v := range vs {
+				r.AddCookie(&http.Cookie{
+					Name:  k,
+					Value: v,
+				})
+			}
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, jsonContentType)
+
+		resp := cookiesResponse{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		if err != nil {
+			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+		}
+
+		if !reflect.DeepEqual(cookies, resp) {
+			t.Fatalf("expected cookies %#v, got %#v", cookies, resp)
+		}
+	}
+
+	t.Run("no cookies", func(t *testing.T) {
+		testCookies(t, cookiesResponse{})
+	})
+
+	t.Run("single cookies", func(t *testing.T) {
+		testCookies(t, cookiesResponse{
+			"k1": {"v1"},
+			"k2": {"v2"},
+		})
+	})
+
+	t.Run("duplicate cookies", func(t *testing.T) {
+		testCookies(t, cookiesResponse{
+			"k1": {"v1"},
+			"k2": {"v2a", "v2b"},
+		})
+	})
+}
