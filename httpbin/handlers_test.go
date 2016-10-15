@@ -908,3 +908,85 @@ func TestDeleteCookies(t *testing.T) {
 		}
 	}
 }
+
+func TestBasicAuth(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
+		r.SetBasicAuth("user", "pass")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, jsonContentType)
+
+		resp := &authResponse{}
+		json.Unmarshal(w.Body.Bytes(), resp)
+
+		expectedResp := &authResponse{
+			Authorized: true,
+			User:       "user",
+		}
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Fatalf("expected response %#v, got %#v", expectedResp, resp)
+		}
+	})
+
+	t.Run("error/no auth", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusUnauthorized)
+		assertContentType(t, w, jsonContentType)
+
+		resp := &authResponse{}
+		json.Unmarshal(w.Body.Bytes(), resp)
+
+		expectedResp := &authResponse{
+			Authorized: false,
+			User:       "",
+		}
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Fatalf("expected response %#v, got %#v", expectedResp, resp)
+		}
+	})
+
+	t.Run("error/bad auth", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
+		r.SetBasicAuth("bad", "auth")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusUnauthorized)
+		assertContentType(t, w, jsonContentType)
+
+		resp := &authResponse{}
+		json.Unmarshal(w.Body.Bytes(), resp)
+
+		expectedResp := &authResponse{
+			Authorized: false,
+			User:       "bad",
+		}
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Fatalf("expected response %#v, got %#v", expectedResp, resp)
+		}
+	})
+
+	var errorTests = []struct {
+		url    string
+		status int
+	}{
+		{"/basic-auth", http.StatusNotFound},
+		{"/basic-auth/user", http.StatusNotFound},
+		{"/basic-auth/user/pass/extra", http.StatusNotFound},
+	}
+	for _, test := range errorTests {
+		t.Run("error"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			r.SetBasicAuth("foo", "bar")
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.status)
+		})
+	}
+}

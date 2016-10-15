@@ -284,3 +284,28 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", "/cookies")
 	w.WriteHeader(http.StatusFound)
 }
+
+// BasicAuth requires basic authentication
+func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	expectedUser := parts[2]
+	expectedPass := parts[3]
+
+	givenUser, givenPass, _ := r.BasicAuth()
+
+	status := http.StatusOK
+	authorized := givenUser == expectedUser && givenPass == expectedPass
+	if !authorized {
+		status = http.StatusUnauthorized
+	}
+
+	body, _ := json.Marshal(&authResponse{
+		Authorized: authorized,
+		User:       givenUser,
+	})
+	writeJSON(w, body, status)
+}

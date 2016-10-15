@@ -41,6 +41,11 @@ type bodyResponse struct {
 
 type cookiesResponse map[string]string
 
+type authResponse struct {
+	Authorized bool   `json:"authorized"`
+	User       string `json:"user"`
+}
+
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory int64
@@ -79,13 +84,16 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/cookies/set", h.SetCookies)
 	mux.HandleFunc("/cookies/delete", h.DeleteCookies)
 
+	mux.HandleFunc("/basic-auth/", h.BasicAuth)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
-	mux.HandleFunc("/status", http.NotFound)
+	mux.HandleFunc("/absolute-redirect", http.NotFound)
+	mux.HandleFunc("/basic-auth", http.NotFound)
 	mux.HandleFunc("/redirect", http.NotFound)
 	mux.HandleFunc("/relative-redirect", http.NotFound)
-	mux.HandleFunc("/absolute-redirect", http.NotFound)
+	mux.HandleFunc("/status", http.NotFound)
 
 	return logger(cors(mux))
 }
