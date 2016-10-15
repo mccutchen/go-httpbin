@@ -138,7 +138,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		406: &statusCase{
 			body: notAcceptableBody,
 			headers: map[string]string{
-				"Content-Type": "application/json; encoding=utf-8",
+				"Content-Type": jsonContentType,
 			},
 		},
 		407: &statusCase{
@@ -179,7 +179,7 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := json.Marshal(args)
 	if contentType := w.Header().Get("Content-Type"); contentType == "" {
-		w.Header().Set("Content-Type", "application/json; encoding=utf-8")
+		w.Header().Set("Content-Type", jsonContentType)
 	}
 	w.Write(body)
 }

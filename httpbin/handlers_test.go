@@ -92,7 +92,7 @@ func TestGet__Basic(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -135,7 +135,7 @@ func TestGet__WithParams(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -246,7 +246,7 @@ func TestIP(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *ipResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -266,7 +266,7 @@ func TestUserAgent(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *userAgentResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -289,7 +289,7 @@ func TestHeaders(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *headersResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -314,7 +314,7 @@ func TestPost__EmptyBody(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -342,7 +342,7 @@ func TestPost__FormEncodedBody(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -378,7 +378,7 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -426,7 +426,7 @@ func TestPost__MultiPartBody(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -488,7 +488,7 @@ func TestPost__JSON(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -536,7 +536,7 @@ func TestPost__BodyTooBig(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusBadRequest)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 }
 
 func TestPost__QueryParams(t *testing.T) {
@@ -550,7 +550,7 @@ func TestPost__QueryParams(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -587,7 +587,7 @@ func TestPost__QueryParamsAndBody(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	var resp *bodyResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -692,7 +692,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertContentType(t, w, jsonContentType)
 
 	for k, expectedValues := range headers {
 		values, ok := w.HeaderMap[k]

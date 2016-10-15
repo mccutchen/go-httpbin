@@ -5,6 +5,8 @@ import (
 	"net/url"
 )
 
+const jsonContentType = "application/json; encoding=utf-8"
+
 type headersResponse struct {
 	Headers http.Header `json:"headers"`
 }
