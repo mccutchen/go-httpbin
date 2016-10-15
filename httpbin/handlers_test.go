@@ -992,3 +992,67 @@ func TestBasicAuth(t *testing.T) {
 		})
 	}
 }
+
+func TestHiddenBasicAuth(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
+		r.SetBasicAuth("user", "pass")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, jsonContentType)
+
+		resp := &authResponse{}
+		json.Unmarshal(w.Body.Bytes(), resp)
+
+		expectedResp := &authResponse{
+			Authorized: true,
+			User:       "user",
+		}
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Fatalf("expected response %#v, got %#v", expectedResp, resp)
+		}
+	})
+
+	t.Run("error/no auth", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusNotFound)
+		if w.Header().Get("WWW-Authenticate") != "" {
+			t.Fatal("did not expect WWW-Authenticate header")
+		}
+	})
+
+	t.Run("error/bad auth", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
+		r.SetBasicAuth("bad", "auth")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusNotFound)
+		if w.Header().Get("WWW-Authenticate") != "" {
+			t.Fatal("did not expect WWW-Authenticate header")
+		}
+	})
+
+	var errorTests = []struct {
+		url    string
+		status int
+	}{
+		{"/hidden-basic-auth", http.StatusNotFound},
+		{"/hidden-basic-auth/user", http.StatusNotFound},
+		{"/hidden-basic-auth/user/pass/extra", http.StatusNotFound},
+	}
+	for _, test := range errorTests {
+		t.Run("error"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			r.SetBasicAuth("foo", "bar")
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.status)
+		})
+	}
+}

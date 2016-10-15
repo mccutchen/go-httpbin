@@ -310,3 +310,29 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 	})
 	writeJSON(w, body, status)
 }
+
+// HiddenBasicAuth requires HTTP Basic authentication but returns a status of
+// 404 if the request is unauthorized
+func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	expectedUser := parts[2]
+	expectedPass := parts[3]
+
+	givenUser, givenPass, _ := r.BasicAuth()
+
+	authorized := givenUser == expectedUser && givenPass == expectedPass
+	if !authorized {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	body, _ := json.Marshal(&authResponse{
+		Authorized: authorized,
+		User:       givenUser,
+	})
+	writeJSON(w, body, http.StatusOK)
+}
