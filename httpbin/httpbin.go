@@ -64,12 +64,20 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/ip", h.IP)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/headers", h.Headers)
-	mux.HandleFunc("/status/", h.Status)
 	mux.HandleFunc("/response-headers", h.ResponseHeaders)
 
+	mux.HandleFunc("/status/", h.Status)
 	mux.HandleFunc("/redirect/", h.Redirect)
 	mux.HandleFunc("/relative-redirect/", h.RelativeRedirect)
 	mux.HandleFunc("/absolute-redirect/", h.AbsoluteRedirect)
+
+	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
+	// endpoints by adding a trailing slash. See the ServeMux docs for more
+	// info: https://golang.org/pkg/net/http/#ServeMux
+	mux.HandleFunc("/status", http.NotFound)
+	mux.HandleFunc("/redirect", http.NotFound)
+	mux.HandleFunc("/relative-redirect", http.NotFound)
+	mux.HandleFunc("/absolute-redirect", http.NotFound)
 
 	return logger(cors(mux))
 }
