@@ -336,3 +336,15 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 	})
 	writeJSON(w, body, http.StatusOK)
 }
+
+// DigestAuth is not yet implemented, and returns 501 Not Implemented. It
+// appears that stdlib support for working with digest authentication is
+// lacking, and I'm not yet ready to implement it myself.
+func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 5 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	http.Error(w, "Not Implemented", http.StatusNotImplemented)
+}

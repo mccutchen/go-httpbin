@@ -1056,3 +1056,24 @@ func TestHiddenBasicAuth(t *testing.T) {
 		})
 	}
 }
+
+func TestDigestAuth(t *testing.T) {
+	var tests = []struct {
+		url    string
+		status int
+	}{
+		{"/digest-auth/qop/user/pass", http.StatusNotImplemented},
+		{"/digest-auth", http.StatusNotFound},
+		{"/digest-auth/user", http.StatusNotFound},
+		{"/digest-auth/user/pass", http.StatusNotFound},
+		{"/digest-auth/qop/user/pass/foo", http.StatusNotFound},
+	}
+	for _, test := range tests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.status)
+		})
+	}
+}
