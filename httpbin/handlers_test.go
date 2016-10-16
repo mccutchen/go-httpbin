@@ -95,7 +95,7 @@ func TestGet__Basic(t *testing.T) {
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
 
-	var resp *bodyResponse
+	var resp *getResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -138,7 +138,7 @@ func TestGet__WithParams(t *testing.T) {
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
 
-	var resp *bodyResponse
+	var resp *getResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -228,7 +228,7 @@ func TestGet__XForwardedProto(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
-		var resp *bodyResponse
+		var resp *getResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		if err != nil {
 			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
