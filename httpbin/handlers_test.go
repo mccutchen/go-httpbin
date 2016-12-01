@@ -2,13 +2,16 @@ package httpbin
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1073,5 +1076,49 @@ func TestDigestAuth(t *testing.T) {
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
+	}
+}
+
+func TestGzip(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/gzip", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertHeader(t, w, "Content-Encoding", "gzip")
+	assertStatusCode(t, w, http.StatusOK)
+
+	zippedContentLengthStr := w.HeaderMap.Get("Content-Length")
+	if zippedContentLengthStr == "" {
+		t.Fatalf("missing Content-Length header in response")
+	}
+
+	zippedContentLength, err := strconv.Atoi(zippedContentLengthStr)
+	if err != nil {
+		t.Fatalf("error converting Content-Lengh %v to integer: %s", zippedContentLengthStr, err)
+	}
+
+	gzipReader, err := gzip.NewReader(w.Body)
+	if err != nil {
+		t.Fatalf("error creating gzip reader: %s", err)
+	}
+
+	unzippedBody, err := ioutil.ReadAll(gzipReader)
+	if err != nil {
+		t.Fatalf("error reading gzipped body: %s", err)
+	}
+
+	var resp *gzipResponse
+	err = json.Unmarshal(unzippedBody, &resp)
+	if err != nil {
+		t.Fatalf("error unmarshalling response: %s", err)
+	}
+
+	if resp.Gzipped != true {
+		t.Fatalf("expected resp.Gzipped == true")
+	}
+
+	if len(unzippedBody) >= zippedContentLength {
+		t.Fatalf("expected compressed body")
 	}
 }

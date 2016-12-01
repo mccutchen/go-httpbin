@@ -1,6 +1,8 @@
 package httpbin
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -65,6 +67,27 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 
 	body, _ := json.Marshal(resp)
 	writeJSON(w, body, http.StatusOK)
+}
+
+// Gzip returns a gzipped response
+func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
+	resp := &gzipResponse{
+		Headers: r.Header,
+		Origin:  getOrigin(r),
+		Gzipped: true,
+	}
+	body, _ := json.Marshal(resp)
+
+	buf := &bytes.Buffer{}
+	gzw := gzip.NewWriter(buf)
+	gzw.Write(body)
+	gzw.Close()
+
+	gzBody := buf.Bytes()
+
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(gzBody)))
+	writeJSON(w, gzBody, http.StatusOK)
 }
 
 // IP echoes the IP address of the incoming request

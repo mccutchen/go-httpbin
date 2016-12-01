@@ -46,6 +46,12 @@ type authResponse struct {
 	User       string `json:"user"`
 }
 
+type gzipResponse struct {
+	Headers http.Header `json:"headers"`
+	Origin  string      `json:"origin"`
+	Gzipped bool        `json:"gzipped"`
+}
+
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory int64
@@ -87,6 +93,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/basic-auth/", h.BasicAuth)
 	mux.HandleFunc("/hidden-basic-auth/", h.HiddenBasicAuth)
 	mux.HandleFunc("/digest-auth/", h.DigestAuth)
+
+	mux.HandleFunc("/gzip", h.Gzip)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
