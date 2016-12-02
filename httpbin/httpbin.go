@@ -52,6 +52,12 @@ type gzipResponse struct {
 	Gzipped bool        `json:"gzipped"`
 }
 
+type deflateResponse struct {
+	Headers  http.Header `json:"headers"`
+	Origin   string      `json:"origin"`
+	Deflated bool        `json:"deflated"`
+}
+
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory int64
@@ -94,6 +100,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/hidden-basic-auth/", h.HiddenBasicAuth)
 	mux.HandleFunc("/digest-auth/", h.DigestAuth)
 
+	mux.HandleFunc("/deflate", h.Deflate)
 	mux.HandleFunc("/gzip", h.Gzip)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid

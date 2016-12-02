@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -88,6 +89,27 @@ func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(gzBody)))
 	writeJSON(w, gzBody, http.StatusOK)
+}
+
+// Deflate returns a gzipped response
+func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
+	resp := &deflateResponse{
+		Headers:  r.Header,
+		Origin:   getOrigin(r),
+		Deflated: true,
+	}
+	body, _ := json.Marshal(resp)
+
+	buf := &bytes.Buffer{}
+	w2, _ := flate.NewWriter(buf, flate.DefaultCompression)
+	w2.Write(body)
+	w2.Close()
+
+	compressedBody := buf.Bytes()
+
+	w.Header().Set("Content-Encoding", "deflate")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(compressedBody)))
+	writeJSON(w, compressedBody, http.StatusOK)
 }
 
 // IP echoes the IP address of the incoming request

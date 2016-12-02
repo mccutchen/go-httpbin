@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -1119,6 +1120,46 @@ func TestGzip(t *testing.T) {
 	}
 
 	if len(unzippedBody) >= zippedContentLength {
+		t.Fatalf("expected compressed body")
+	}
+}
+
+func TestDeflate(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/deflate", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, "application/json; encoding=utf-8")
+	assertHeader(t, w, "Content-Encoding", "deflate")
+	assertStatusCode(t, w, http.StatusOK)
+
+	contentLengthHeader := w.HeaderMap.Get("Content-Length")
+	if contentLengthHeader == "" {
+		t.Fatalf("missing Content-Length header in response")
+	}
+
+	contentLength, err := strconv.Atoi(contentLengthHeader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reader := flate.NewReader(w.Body)
+	body, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var resp *deflateResponse
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		t.Fatalf("error unmarshalling response: %s", err)
+	}
+
+	if resp.Deflated != true {
+		t.Fatalf("expected resp.Deflated == true")
+	}
+
+	if len(body) >= contentLength {
 		t.Fatalf("expected compressed body")
 	}
 }
