@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -48,6 +49,7 @@ func getURL(r *http.Request) *url.URL {
 
 func writeJSON(w http.ResponseWriter, body []byte, status int) {
 	w.Header().Set("Content-Type", jsonContentType)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	w.WriteHeader(status)
 	w.Write(body)
 }

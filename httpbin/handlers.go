@@ -87,7 +87,6 @@ func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 	gzBody := buf.Bytes()
 
 	w.Header().Set("Content-Encoding", "gzip")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(gzBody)))
 	writeJSON(w, gzBody, http.StatusOK)
 }
 
@@ -108,7 +107,6 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 	compressedBody := buf.Bytes()
 
 	w.Header().Set("Content-Encoding", "deflate")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(compressedBody)))
 	writeJSON(w, compressedBody, http.StatusOK)
 }
 
