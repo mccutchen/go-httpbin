@@ -47,11 +47,19 @@ func getURL(r *http.Request) *url.URL {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, body []byte, status int) {
-	w.Header().Set("Content-Type", jsonContentType)
+func writeResponse(w http.ResponseWriter, status int, contentType string, body []byte) {
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	w.WriteHeader(status)
 	w.Write(body)
+}
+
+func writeJSON(w http.ResponseWriter, body []byte, status int) {
+	writeResponse(w, status, jsonContentType, body)
+}
+
+func writeHTML(w http.ResponseWriter, body []byte, status int) {
+	writeResponse(w, status, htmlContentType, body)
 }
 
 // parseBody handles parsing a request body into our standard API response,

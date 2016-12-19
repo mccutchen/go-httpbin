@@ -60,7 +60,7 @@ func TestIndex(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	assertContentType(t, w, "text/html; charset=utf-8")
+	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, "go-httpbin")
 }
 
@@ -76,7 +76,7 @@ func TestFormsPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	assertContentType(t, w, "text/html; charset=utf-8")
+	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `<form method="post" action="/post">`)
 }
 
@@ -85,7 +85,7 @@ func TestUTF8(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
-	assertContentType(t, w, "text/html; charset=utf-8")
+	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `Hello world, Καλημέρα κόσμε, コンニチハ`)
 }
 

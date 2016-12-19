@@ -6,6 +6,7 @@ import (
 )
 
 const jsonContentType = "application/json; encoding=utf-8"
+const htmlContentType = "text/html; charset=utf-8"
 
 type headersResponse struct {
 	Headers http.Header `json:"headers"`

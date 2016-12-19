@@ -26,18 +26,17 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	w.Write(MustAsset("index.html"))
+	writeHTML(w, MustAsset("index.html"), http.StatusOK)
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, r *http.Request) {
-	w.Write(MustAsset("forms-post.html"))
+	writeHTML(w, MustAsset("forms-post.html"), http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test
 func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(MustAsset("utf8.html"))
+	writeHTML(w, MustAsset("utf8.html"), http.StatusOK)
 }
 
 // Get handles HTTP GET requests
