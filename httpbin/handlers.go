@@ -426,20 +426,24 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Delay waits for n seconds before responding
+// Delay waits for a given amount of time before responding, where the time may
+// be specified as a golang-style duration or seconds in floating point.
 func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	n, err := strconv.ParseFloat(parts[2], 64)
+
+	delay, err := time.ParseDuration(parts[2])
 	if err != nil {
-		http.Error(w, "Invalid float", http.StatusBadRequest)
+		n, err := strconv.ParseFloat(parts[2], 64)
+		if err != nil {
+			http.Error(w, "Invalid duration", http.StatusBadRequest)
+		}
+		delay = time.Duration(n*1000) * time.Millisecond
 	}
 
-	// n is seconds as a float, and we allow down to millisecond resolution
-	delay := time.Duration(n*1000) * time.Millisecond
 	if delay > h.options.MaxResponseTime {
 		delay = h.options.MaxResponseTime
 	} else if delay < 0 {

@@ -1233,6 +1233,12 @@ func TestDelay(t *testing.T) {
 		url           string
 		expectedDelay time.Duration
 	}{
+		// go-style durations are supported
+		{"/delay/0ms", 0},
+		{"/delay/500ms", 500 * time.Millisecond},
+		{"/delay/1.5s", maxResponseTime},
+
+		// as are floating point seconds
 		{"/delay/0", 0},
 		{"/delay/0.5", 500 * time.Millisecond},
 		{"/delay/1", maxResponseTime},
