@@ -3,6 +3,7 @@ package httpbin
 import (
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const jsonContentType = "application/json; encoding=utf-8"
@@ -71,7 +72,8 @@ type streamResponse struct {
 
 // Options are used to configure HTTPBin
 type Options struct {
-	MaxMemory int64
+	MaxMemory       int64
+	MaxResponseTime time.Duration
 }
 
 // HTTPBin contains the business logic
@@ -115,12 +117,14 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/gzip", h.Gzip)
 
 	mux.HandleFunc("/stream/", h.Stream)
+	mux.HandleFunc("/delay/", h.Delay)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
 	mux.HandleFunc("/absolute-redirect", http.NotFound)
 	mux.HandleFunc("/basic-auth", http.NotFound)
+	mux.HandleFunc("/delay", http.NotFound)
 	mux.HandleFunc("/digest-auth", http.NotFound)
 	mux.HandleFunc("/hidden-basic-auth", http.NotFound)
 	mux.HandleFunc("/redirect", http.NotFound)

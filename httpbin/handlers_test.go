@@ -19,10 +19,12 @@ import (
 	"time"
 )
 
-const maxMemory = 1024 * 1024
+const maxMemory int64 = 1024 * 1024
+const maxResponseTime time.Duration = 1 * time.Second
 
 var app = NewHTTPBin(&Options{
-	MaxMemory: maxMemory,
+	MaxMemory:       maxMemory,
+	MaxResponseTime: maxResponseTime,
 })
 
 var handler = app.Handler()
@@ -1214,6 +1216,61 @@ func TestStream(t *testing.T) {
 		{"/stream", http.StatusNotFound},
 		{"/stream/foo", http.StatusBadRequest},
 		{"/stream/3.1415", http.StatusBadRequest},
+	}
+
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.code)
+		})
+	}
+}
+
+func TestDelay(t *testing.T) {
+	var okTests = []struct {
+		url           string
+		expectedDelay time.Duration
+	}{
+		{"/delay/0", 0},
+		{"/delay/0.5", 500 * time.Millisecond},
+		{"/delay/1", maxResponseTime},
+		{"/delay/1.5", maxResponseTime},
+		{"/delay/-1", 0},
+		{"/delay/-3.14", 0},
+	}
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			start := time.Now()
+
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			elapsed := time.Now().Sub(start)
+
+			assertStatusCode(t, w, http.StatusOK)
+			assertHeader(t, w, "Content-Type", jsonContentType)
+
+			var resp *bodyResponse
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			if err != nil {
+				t.Fatalf("error unmarshalling response: %s", err)
+			}
+
+			if elapsed < test.expectedDelay {
+				t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
+			}
+		})
+	}
+
+	var badTests = []struct {
+		url  string
+		code int
+	}{
+		{"/delay", http.StatusNotFound},
+		{"/delay/foo", http.StatusBadRequest},
 	}
 
 	for _, test := range badTests {
