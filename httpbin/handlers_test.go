@@ -1,6 +1,7 @@
 package httpbin
 
 import (
+	"bufio"
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
@@ -1161,5 +1162,66 @@ func TestDeflate(t *testing.T) {
 
 	if len(body) >= contentLength {
 		t.Fatalf("expected compressed body")
+	}
+}
+
+func TestStream(t *testing.T) {
+	var okTests = []struct {
+		url           string
+		expectedLines int
+	}{
+		{"/stream/20", 20},
+		{"/stream/100", 100},
+		{"/stream/1000", 100},
+		{"/stream/0", 1},
+		{"/stream/-100", 1},
+	}
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			// The stdlib seems to automagically unchunk these responses and
+			// I'm not quite sure how to test this
+			// assertHeader(t, w, "Transfer-Encoding", "chunked")
+
+			var resp *streamResponse
+			var err error
+
+			i := 0
+			scanner := bufio.NewScanner(w.Body)
+			for scanner.Scan() {
+				err = json.Unmarshal(scanner.Bytes(), &resp)
+				if err != nil {
+					t.Fatalf("error unmarshalling response: %s", err)
+				}
+				if resp.ID != i {
+					t.Fatalf("bad id: %v != %v", resp.ID, i)
+				}
+				i++
+			}
+			if err := scanner.Err(); err != nil {
+				t.Fatalf("error scanning streaming response: %s", err)
+			}
+		})
+	}
+
+	var badTests = []struct {
+		url  string
+		code int
+	}{
+		{"/stream", http.StatusNotFound},
+		{"/stream/foo", http.StatusBadRequest},
+		{"/stream/3.1415", http.StatusBadRequest},
+	}
+
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.code)
+		})
 	}
 }

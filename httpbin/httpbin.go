@@ -59,6 +59,16 @@ type deflateResponse struct {
 	Deflated bool        `json:"deflated"`
 }
 
+// An actual stream response body will be made up of one or more of these
+// structs, encoded as JSON and separated by newlines
+type streamResponse struct {
+	ID      int         `json:"id"`
+	Args    url.Values  `json:"args"`
+	Headers http.Header `json:"headers"`
+	Origin  string      `json:"origin"`
+	URL     string      `json:"url"`
+}
+
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory int64
@@ -104,6 +114,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/deflate", h.Deflate)
 	mux.HandleFunc("/gzip", h.Gzip)
 
+	mux.HandleFunc("/stream/", h.Stream)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
@@ -114,6 +126,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/redirect", http.NotFound)
 	mux.HandleFunc("/relative-redirect", http.NotFound)
 	mux.HandleFunc("/status", http.NotFound)
+	mux.HandleFunc("/stream", http.NotFound)
 
 	return logger(cors(mux))
 }

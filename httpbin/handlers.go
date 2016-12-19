@@ -390,3 +390,38 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Error(w, "Not Implemented", http.StatusNotImplemented)
 }
+
+// Stream responds with max(n, 100) lines of JSON-encoded request data.
+func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	n, err := strconv.Atoi(parts[2])
+	if err != nil {
+		http.Error(w, "Invalid integer", http.StatusBadRequest)
+	}
+
+	if n > 100 {
+		n = 100
+	} else if n < 1 {
+		n = 1
+	}
+
+	resp := &streamResponse{
+		Args:    r.URL.Query(),
+		Headers: r.Header,
+		Origin:  getOrigin(r),
+		URL:     getURL(r).String(),
+	}
+
+	f := w.(http.Flusher)
+	for i := 0; i < n; i++ {
+		resp.ID = i
+		line, _ := json.Marshal(resp)
+		w.Write(line)
+		w.Write([]byte("\n"))
+		f.Flush()
+	}
+}
