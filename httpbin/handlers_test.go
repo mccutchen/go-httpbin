@@ -1216,6 +1216,7 @@ func TestStream(t *testing.T) {
 		{"/stream", http.StatusNotFound},
 		{"/stream/foo", http.StatusBadRequest},
 		{"/stream/3.1415", http.StatusBadRequest},
+		{"/stream/10/foo", http.StatusNotFound},
 	}
 
 	for _, test := range badTests {
@@ -1277,6 +1278,7 @@ func TestDelay(t *testing.T) {
 	}{
 		{"/delay", http.StatusNotFound},
 		{"/delay/foo", http.StatusBadRequest},
+		{"/delay/1/foo", http.StatusNotFound},
 	}
 
 	for _, test := range badTests {
