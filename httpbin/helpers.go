@@ -106,7 +106,8 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMe
 }
 
 // parseDuration takes a user's input as a string and attempts to convert it
-// into a time.Duration
+// into a time.Duration. If not given as a go-style duration string, the input
+// is assumed to be seconds as a float.
 func parseDuration(input string) (time.Duration, error) {
 	d, err := time.ParseDuration(input)
 	if err != nil {

@@ -20,10 +20,12 @@ import (
 )
 
 const maxMemory int64 = 1024 * 1024
+const maxResponseSize = 1024
 const maxResponseTime time.Duration = 1 * time.Second
 
 var app = NewHTTPBin(&Options{
 	MaxMemory:       maxMemory,
+	MaxResponseSize: maxResponseSize,
 	MaxResponseTime: maxResponseTime,
 })
 
@@ -1285,6 +1287,107 @@ func TestDelay(t *testing.T) {
 	for _, test := range badTests {
 		t.Run("bad"+test.url, func(t *testing.T) {
 			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.code)
+		})
+	}
+}
+
+func TestDrip(t *testing.T) {
+	var okTests = []struct {
+		params   *url.Values
+		duration time.Duration
+		numbytes int
+		code     int
+	}{
+		// there are useful defaults for all values
+		{&url.Values{}, 0, 10, http.StatusOK},
+
+		// go-style durations are accepted
+		{&url.Values{"duration": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
+		{&url.Values{"duration": {"0h"}}, 0, 10, http.StatusOK},
+		{&url.Values{"delay": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
+		{&url.Values{"delay": {"0h"}}, 0, 10, http.StatusOK},
+
+		// or floating point seconds
+		{&url.Values{"duration": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{&url.Values{"duration": {"0"}}, 0, 10, http.StatusOK},
+		{&url.Values{"duration": {"1"}}, 1 * time.Second, 10, http.StatusOK},
+		{&url.Values{"delay": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{&url.Values{"delay": {"0"}}, 0, 10, http.StatusOK},
+
+		{&url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
+		{&url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxResponseSize)}}, 0, maxResponseSize, http.StatusOK},
+
+		{&url.Values{"code": {"100"}}, 0, 10, 100},
+		{&url.Values{"code": {"404"}}, 0, 10, 404},
+		{&url.Values{"code": {"599"}}, 0, 10, 599},
+		{&url.Values{"code": {"567"}}, 0, 10, 567},
+
+		{&url.Values{"duration": {"750ms"}, "delay": {"250ms"}}, 1 * time.Second, 10, http.StatusOK},
+		{&url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
+	}
+	for _, test := range okTests {
+		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
+			url := "/drip?" + test.params.Encode()
+
+			start := time.Now()
+
+			r, _ := http.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			elapsed := time.Now().Sub(start)
+
+			assertHeader(t, w, "Content-Type", "application/octet-stream")
+			assertStatusCode(t, w, test.code)
+			if len(w.Body.Bytes()) != test.numbytes {
+				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(w.Body.Bytes()))
+			}
+
+			if elapsed < test.duration {
+				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
+			}
+		})
+	}
+
+	var badTests = []struct {
+		params *url.Values
+		code   int
+	}{
+		{&url.Values{"duration": {"1m"}}, http.StatusBadRequest},
+		{&url.Values{"duration": {"-1ms"}}, http.StatusBadRequest},
+		{&url.Values{"duration": {"1001"}}, http.StatusBadRequest},
+		{&url.Values{"duration": {"-1"}}, http.StatusBadRequest},
+		{&url.Values{"duration": {"foo"}}, http.StatusBadRequest},
+
+		{&url.Values{"delay": {"1m"}}, http.StatusBadRequest},
+		{&url.Values{"delay": {"-1ms"}}, http.StatusBadRequest},
+		{&url.Values{"delay": {"1001"}}, http.StatusBadRequest},
+		{&url.Values{"delay": {"-1"}}, http.StatusBadRequest},
+		{&url.Values{"delay": {"foo"}}, http.StatusBadRequest},
+
+		{&url.Values{"numbytes": {"foo"}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxResponseSize+1)}}, http.StatusBadRequest},
+
+		{&url.Values{"code": {"foo"}}, http.StatusBadRequest},
+		{&url.Values{"code": {"-1"}}, http.StatusBadRequest},
+		{&url.Values{"code": {"25"}}, http.StatusBadRequest},
+		{&url.Values{"code": {"600"}}, http.StatusBadRequest},
+
+		// request would take too long
+		{&url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
+			url := "/drip?" + test.params.Encode()
+
+			r, _ := http.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)

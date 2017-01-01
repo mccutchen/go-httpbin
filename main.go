@@ -11,6 +11,7 @@ import (
 func main() {
 	h := httpbin.NewHTTPBin(&httpbin.Options{
 		MaxMemory:       1024 * 1024 * 5,
+		MaxResponseSize: 1024 * 1024,
 		MaxResponseTime: 10 * time.Second,
 	})
 	log.Printf("listening on 9999")

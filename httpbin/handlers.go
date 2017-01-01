@@ -448,3 +448,71 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 	<-time.After(delay)
 	h.RequestWithBody(w, r)
 }
+
+// Drip returns data over a duration after an optional initial delay, then
+// (optionally) returns with the given status code.
+func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	duration := time.Duration(0)
+	delay := time.Duration(0)
+	numbytes := int64(10)
+	code := http.StatusOK
+
+	var err error
+
+	userDuration := q.Get("duration")
+	if userDuration != "" {
+		duration, err = parseBoundedDuration(userDuration, 0, h.options.MaxResponseTime)
+		if err != nil {
+			http.Error(w, "Invalid duration", http.StatusBadRequest)
+			return
+		}
+	}
+
+	userDelay := q.Get("delay")
+	if userDelay != "" {
+		delay, err = parseBoundedDuration(userDelay, 0, h.options.MaxResponseTime)
+		if err != nil {
+			http.Error(w, "Invalid delay", http.StatusBadRequest)
+			return
+		}
+	}
+
+	userNumBytes := q.Get("numbytes")
+	if userNumBytes != "" {
+		numbytes, err = strconv.ParseInt(userNumBytes, 10, 64)
+		if err != nil || numbytes <= 0 || numbytes > h.options.MaxResponseSize {
+			http.Error(w, "Invalid numbytes", http.StatusBadRequest)
+			return
+		}
+	}
+
+	userCode := q.Get("code")
+	if userCode != "" {
+		code, err = strconv.Atoi(userCode)
+		if err != nil || code < 100 || code >= 600 {
+			http.Error(w, "Invalid code", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if duration+delay > h.options.MaxResponseTime {
+		http.Error(w, "Too much time", http.StatusBadRequest)
+		return
+	}
+
+	pause := duration / time.Duration(numbytes)
+
+	<-time.After(delay)
+
+	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/octet-stream")
+
+	f := w.(http.Flusher)
+	for i := int64(0); i < numbytes; i++ {
+		w.Write([]byte("*"))
+		f.Flush()
+		<-time.After(pause)
+	}
+}

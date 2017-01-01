@@ -73,6 +73,7 @@ type streamResponse struct {
 // Options are used to configure HTTPBin
 type Options struct {
 	MaxMemory       int64
+	MaxResponseSize int64
 	MaxResponseTime time.Duration
 }
 
@@ -118,6 +119,7 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/stream/", h.Stream)
 	mux.HandleFunc("/delay/", h.Delay)
+	mux.HandleFunc("/drip", h.Drip)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
