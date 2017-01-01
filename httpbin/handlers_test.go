@@ -1236,15 +1236,11 @@ func TestDelay(t *testing.T) {
 		// go-style durations are supported
 		{"/delay/0ms", 0},
 		{"/delay/500ms", 500 * time.Millisecond},
-		{"/delay/1.5s", maxResponseTime},
 
 		// as are floating point seconds
 		{"/delay/0", 0},
 		{"/delay/0.5", 500 * time.Millisecond},
 		{"/delay/1", maxResponseTime},
-		{"/delay/1.5", maxResponseTime},
-		{"/delay/-1", 0},
-		{"/delay/-3.14", 0},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -1278,6 +1274,12 @@ func TestDelay(t *testing.T) {
 		{"/delay", http.StatusNotFound},
 		{"/delay/foo", http.StatusBadRequest},
 		{"/delay/1/foo", http.StatusNotFound},
+
+		{"/delay/1.5s", http.StatusBadRequest},
+		{"/delay/-1ms", http.StatusBadRequest},
+		{"/delay/1.5", http.StatusBadRequest},
+		{"/delay/-1", http.StatusBadRequest},
+		{"/delay/-3.14", http.StatusBadRequest},
 	}
 
 	for _, test := range badTests {

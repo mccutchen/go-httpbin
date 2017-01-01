@@ -439,20 +439,10 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delay, err := time.ParseDuration(parts[2])
+	delay, err := parseBoundedDuration(parts[2], 0, h.options.MaxResponseTime)
 	if err != nil {
-		n, err := strconv.ParseFloat(parts[2], 64)
-		if err != nil {
-			http.Error(w, "Invalid duration", http.StatusBadRequest)
-			return
-		}
-		delay = time.Duration(n*1000) * time.Millisecond
-	}
-
-	if delay > h.options.MaxResponseTime {
-		delay = h.options.MaxResponseTime
-	} else if delay < 0 {
-		delay = 0
+		http.Error(w, "Invalid duration", http.StatusBadRequest)
+		return
 	}
 
 	<-time.After(delay)

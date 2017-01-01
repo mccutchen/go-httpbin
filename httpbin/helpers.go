@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func getOrigin(r *http.Request) string {
@@ -101,4 +103,34 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMe
 		resp.Data = data
 	}
 	return nil
+}
+
+// parseDuration takes a user's input as a string and attempts to convert it
+// into a time.Duration
+func parseDuration(input string) (time.Duration, error) {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		n, err := strconv.ParseFloat(input, 64)
+		if err != nil {
+			return 0, err
+		}
+		d = time.Duration(n*1000) * time.Millisecond
+	}
+	return d, nil
+}
+
+// parseBoundedDuration parses a time.Duration from user input and ensures that
+// it is within a given maximum and minimum time
+func parseBoundedDuration(input string, min, max time.Duration) (time.Duration, error) {
+	d, err := parseDuration(input)
+	if err != nil {
+		return 0, err
+	}
+
+	if d > max {
+		err = fmt.Errorf("duration %s longer than %s", d, max)
+	} else if d < min {
+		err = fmt.Errorf("duration %s shorter than %s", d, min)
+	}
+	return d, err
 }
