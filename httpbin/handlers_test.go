@@ -542,7 +542,6 @@ func TestPost__BodyTooBig(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusBadRequest)
-	assertContentType(t, w, jsonContentType)
 }
 
 func TestPost__QueryParams(t *testing.T) {

@@ -63,6 +63,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	err := parseBody(w, r, resp, h.options.MaxMemory)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing request body: %s", err), http.StatusBadRequest)
+		return
 	}
 
 	body, _ := json.Marshal(resp)
@@ -144,6 +145,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	code, err := strconv.Atoi(parts[2])
 	if err != nil {
 		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
 	}
 
 	type statusCase struct {
@@ -260,6 +262,7 @@ func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 	n, err := strconv.Atoi(parts[2])
 	if err != nil || n < 1 {
 		http.Error(w, "Invalid redirect", http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Location", redirectLocation(r, relative, n-1))
@@ -401,6 +404,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	n, err := strconv.Atoi(parts[2])
 	if err != nil {
 		http.Error(w, "Invalid integer", http.StatusBadRequest)
+		return
 	}
 
 	if n > 100 {
@@ -440,6 +444,7 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		n, err := strconv.ParseFloat(parts[2], 64)
 		if err != nil {
 			http.Error(w, "Invalid duration", http.StatusBadRequest)
+			return
 		}
 		delay = time.Duration(n*1000) * time.Millisecond
 	}
