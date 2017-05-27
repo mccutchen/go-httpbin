@@ -2,7 +2,9 @@ package httpbin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -134,4 +136,50 @@ func parseBoundedDuration(input string, min, max time.Duration) (time.Duration, 
 		err = fmt.Errorf("duration %s shorter than %s", d, min)
 	}
 	return d, err
+}
+
+// syntheticReadSeeker implements the ReadSeeker interface to allow reading
+// arbitrary subsets of bytes up to a maximum size given a function for
+// generating the byte at a given offset.
+type syntheticReadSeeker struct {
+	numBytes    int64
+	offset      int64
+	byteFactory func(int64) byte
+}
+
+// Read implements the Reader interface for syntheticReadSeeker
+func (s *syntheticReadSeeker) Read(p []byte) (int, error) {
+	start := s.offset
+	end := start + int64(len(p))
+	var err error
+	if end > s.numBytes {
+		err = io.EOF
+		end = s.numBytes - start
+	}
+
+	for idx := start; idx < end; idx++ {
+		p[idx-start] = s.byteFactory(idx)
+	}
+
+	return int(end - start), err
+}
+
+// Seek implements the Seeker interface for syntheticReadSeeker
+func (s *syntheticReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		s.offset = offset
+	case io.SeekCurrent:
+		s.offset += offset
+	case io.SeekEnd:
+		s.offset = s.numBytes - offset
+	default:
+		return 0, errors.New("Seek: invalid whence")
+	}
+
+	if s.offset < 0 {
+		return 0, errors.New("Seek: invalid offset")
+	}
+
+	return s.offset, nil
 }

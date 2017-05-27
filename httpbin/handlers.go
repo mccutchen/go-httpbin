@@ -516,3 +516,36 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		<-time.After(pause)
 	}
 }
+
+// Range returns up to N bytes, with support for HTTP Range requests.
+//
+// This departs from httpbin by not supporting the chunk_size or duration
+// parameters.
+func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	numBytes, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Add("ETag", fmt.Sprintf("range%d", numBytes))
+	w.Header().Add("Accept-Ranges", "bytes")
+
+	if numBytes <= 0 || numBytes > h.options.MaxMemory {
+		http.Error(w, "Invalid number of bytes", http.StatusBadRequest)
+		return
+	}
+
+	content := &syntheticReadSeeker{
+		numBytes:    numBytes,
+		byteFactory: func(offset int64) byte { return byte(97 + (offset % 26)) },
+	}
+	var modtime time.Time
+	http.ServeContent(w, r, "", modtime, content)
+}

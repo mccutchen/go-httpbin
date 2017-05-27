@@ -53,6 +53,13 @@ func assertBodyContains(t *testing.T, w *httptest.ResponseRecorder, needle strin
 	}
 }
 
+func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
+	have := w.Body.String()
+	if want != have {
+		t.Fatalf("expected body = %v, got %v", want, have)
+	}
+}
+
 func TestNewHTTPBin__NilOptions(t *testing.T) {
 	h := NewHTTPBin(nil)
 	if h.options.MaxMemory != 0 {
@@ -1388,6 +1395,139 @@ func TestDrip(t *testing.T) {
 			url := "/drip?" + test.params.Encode()
 
 			r, _ := http.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.code)
+		})
+	}
+}
+
+func TestRange(t *testing.T) {
+	t.Run("ok_no_range", func(t *testing.T) {
+		url := "/range/1234"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertHeader(t, w, "ETag", "range1234")
+		assertHeader(t, w, "Accept-Ranges", "bytes")
+		assertHeader(t, w, "Content-Length", "1234")
+		assertContentType(t, w, "text/plain; charset=utf-8")
+
+		if len(w.Body.String()) != 1234 {
+			t.Errorf("expected content length 1234, got %d", len(w.Body.String()))
+		}
+	})
+
+	t.Run("ok_range", func(t *testing.T) {
+		url := "/range/100"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.Header.Add("Range", "bytes=10-24")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusPartialContent)
+		assertHeader(t, w, "ETag", "range100")
+		assertHeader(t, w, "Accept-Ranges", "bytes")
+		assertHeader(t, w, "Content-Length", "15")
+		assertHeader(t, w, "Content-Range", "bytes 10-24/100")
+		assertBodyEquals(t, w, "klmnopqrstuvwxy")
+	})
+
+	t.Run("ok_range_first_16_bytes", func(t *testing.T) {
+		url := "/range/1000"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.Header.Add("Range", "bytes=0-15")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusPartialContent)
+		assertHeader(t, w, "ETag", "range1000")
+		assertHeader(t, w, "Accept-Ranges", "bytes")
+		assertHeader(t, w, "Content-Length", "16")
+		assertHeader(t, w, "Content-Range", "bytes 0-15/1000")
+		assertBodyEquals(t, w, "abcdefghijklmnop")
+	})
+
+	t.Run("ok_range_open_ended_last_6_bytes", func(t *testing.T) {
+		url := "/range/26"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.Header.Add("Range", "bytes=20-")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusPartialContent)
+		assertHeader(t, w, "ETag", "range26")
+		assertHeader(t, w, "Content-Length", "6")
+		assertHeader(t, w, "Content-Range", "bytes 20-25/26")
+		assertBodyEquals(t, w, "uvwxyz")
+	})
+
+	t.Run("ok_range_suffix", func(t *testing.T) {
+		url := "/range/26"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.Header.Add("Range", "bytes=-5")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		t.Logf("headers = %v", w.HeaderMap)
+		assertStatusCode(t, w, http.StatusPartialContent)
+		assertHeader(t, w, "ETag", "range26")
+		assertHeader(t, w, "Content-Length", "5")
+		assertHeader(t, w, "Content-Range", "bytes 21-25/26")
+		assertBodyEquals(t, w, "vwxyz")
+	})
+
+	t.Run("err_range_out_of_bounds", func(t *testing.T) {
+		url := "/range/26"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.Header.Add("Range", "bytes=-5")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusPartialContent)
+		assertHeader(t, w, "ETag", "range26")
+		assertHeader(t, w, "Content-Length", "5")
+		assertHeader(t, w, "Content-Range", "bytes 21-25/26")
+		assertBodyEquals(t, w, "vwxyz")
+	})
+
+	// Note: httpbin rejects these requests with invalid range headers, but the
+	// go stdlib just ignores them.
+	var badRangeTests = []struct {
+		url         string
+		rangeHeader string
+	}{
+		{"/range/26", "bytes=10-5"},
+		{"/range/26", "bytes=32-40"},
+		{"/range/26", "bytes=0-40"},
+	}
+	for _, test := range badRangeTests {
+		t.Run(fmt.Sprintf("ok_bad_range_header/%s", test.rangeHeader), func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusOK)
+			assertBodyEquals(t, w, "abcdefghijklmnopqrstuvwxyz")
+		})
+	}
+
+	var badTests = []struct {
+		url  string
+		code int
+	}{
+		{"/range/1/foo", http.StatusNotFound},
+
+		{"/range/", http.StatusBadRequest},
+		{"/range/foo", http.StatusBadRequest},
+		{"/range/1.5", http.StatusBadRequest},
+		{"/range/-1", http.StatusBadRequest},
+	}
+
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
