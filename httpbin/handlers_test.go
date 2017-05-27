@@ -1534,3 +1534,12 @@ func TestRange(t *testing.T) {
 		})
 	}
 }
+
+func TestHTML(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/html", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, htmlContentType)
+	assertBodyContains(t, w, `<h1>Herman Melville - Moby-Dick</h1>`)
+}

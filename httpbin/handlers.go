@@ -549,3 +549,8 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 	var modtime time.Time
 	http.ServeContent(w, r, "", modtime, content)
 }
+
+// HTML renders a basic HTML page
+func (h *HTTPBin) HTML(w http.ResponseWriter, r *http.Request) {
+	writeHTML(w, MustAsset("moby.html"), http.StatusOK)
+}

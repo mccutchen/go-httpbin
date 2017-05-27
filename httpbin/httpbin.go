@@ -122,6 +122,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/drip", h.Drip)
 	mux.HandleFunc("/range/", h.Range)
 
+	mux.HandleFunc("/html", h.HTML)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
