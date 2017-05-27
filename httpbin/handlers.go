@@ -554,3 +554,11 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) HTML(w http.ResponseWriter, r *http.Request) {
 	writeHTML(w, MustAsset("moby.html"), http.StatusOK)
 }
+
+// Robots renders a basic robots.txt file
+func (h *HTTPBin) Robots(w http.ResponseWriter, r *http.Request) {
+	robotsTxt := []byte(`User-agent: *
+Disallow: /deny
+`)
+	writeResponse(w, http.StatusOK, "text/plain", robotsTxt)
+}

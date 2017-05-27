@@ -123,6 +123,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/range/", h.Range)
 
 	mux.HandleFunc("/html", h.HTML)
+	mux.HandleFunc("/robots.txt", h.Robots)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more

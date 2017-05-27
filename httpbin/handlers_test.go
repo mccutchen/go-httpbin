@@ -1543,3 +1543,12 @@ func TestHTML(t *testing.T) {
 	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `<h1>Herman Melville - Moby-Dick</h1>`)
 }
+
+func TestRobots(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/robots.txt", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, "text/plain")
+	assertBodyContains(t, w, `Disallow: /deny`)
+}
