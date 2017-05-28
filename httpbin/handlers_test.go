@@ -1192,9 +1192,14 @@ func TestStream(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 
-			// The stdlib seems to automagically unchunk these responses and
-			// I'm not quite sure how to test this
-			// assertHeader(t, w, "Transfer-Encoding", "chunked")
+			// TODO: The stdlib seems to automagically unchunk these responses
+			// and I'm not quite sure how to test this:
+			//
+			//     assertHeader(t, w, "Transfer-Encoding", "chunked")
+			//
+			// Instead, we assert that we got no Content-Length header, which
+			// is an indication that the Go stdlib streamed the response.
+			assertHeader(t, w, "Content-Length", "")
 
 			var resp *streamResponse
 			var err error
@@ -1688,6 +1693,143 @@ func TestETag(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}
+
+func TestBytes(t *testing.T) {
+	t.Run("ok_no_seed", func(t *testing.T) {
+		url := "/bytes/1024"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, "application/octet-stream")
+		if len(w.Body.String()) != 1024 {
+			t.Errorf("expected content length 1024, got %d", len(w.Body.String()))
+		}
+	})
+
+	t.Run("ok_seed", func(t *testing.T) {
+		url := "/bytes/16?seed=1234567890"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, "application/octet-stream")
+
+		bodyHex := fmt.Sprintf("%x", w.Body.Bytes())
+		wantHex := "bfcd2afa15a2b372c707985a22024a8e"
+		if bodyHex != wantHex {
+			t.Errorf("expected body in hexadecimal = %v, got %v", wantHex, bodyHex)
+		}
+	})
+
+	var edgeCaseTests = []struct {
+		url                   string
+		expectedContentLength int
+	}{
+		{"/bytes/-1", 1},
+		{"/bytes/99999999", 100 * 1024},
+
+		// negative seed allowed
+		{"/bytes/16?seed=-12345", 16},
+	}
+	for _, test := range edgeCaseTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusOK)
+			assertHeader(t, w, "Content-Length", fmt.Sprintf("%d", test.expectedContentLength))
+			if len(w.Body.Bytes()) != test.expectedContentLength {
+				t.Errorf("expected body of length %d, got %d", test.expectedContentLength, len(w.Body.Bytes()))
+			}
+		})
+	}
+
+	var badTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/bytes", http.StatusNotFound},
+		{"/bytes/16/foo", http.StatusNotFound},
+
+		{"/bytes/foo", http.StatusBadRequest},
+		{"/bytes/3.14", http.StatusBadRequest},
+
+		{"/bytes/16?seed=12345678901234567890", http.StatusBadRequest}, // seed too big
+		{"/bytes/16?seed=foo", http.StatusBadRequest},
+		{"/bytes/16?seed=3.14", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}
+
+func TestStreamBytes(t *testing.T) {
+	var okTests = []struct {
+		url                   string
+		expectedContentLength int
+	}{
+		{"/stream-bytes/256", 256},
+		{"/stream-bytes/256?chunk_size=1", 256},
+		{"/stream-bytes/256?chunk_size=256", 256},
+		{"/stream-bytes/256?chunk_size=7", 256},
+
+		// too-large chunk size is okay
+		{"/stream-bytes/256?chunk_size=512", 256},
+
+		// as is negative chunk size
+		{"/stream-bytes/256?chunk_size=-10", 256},
+	}
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			// TODO: The stdlib seems to automagically unchunk these responses
+			// and I'm not quite sure how to test this:
+			//
+			//     assertHeader(t, w, "Transfer-Encoding", "chunked")
+			//
+			// Instead, we assert that we got no Content-Length header, which
+			// is an indication that the Go stdlib streamed the response.
+			assertHeader(t, w, "Content-Length", "")
+
+			if len(w.Body.Bytes()) != test.expectedContentLength {
+				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, len(w.Body.Bytes()))
+			}
+		})
+	}
+
+	var badTests = []struct {
+		url  string
+		code int
+	}{
+		{"/stream-bytes", http.StatusNotFound},
+		{"/stream-bytes/10/foo", http.StatusNotFound},
+
+		{"/stream-bytes/foo", http.StatusBadRequest},
+		{"/stream-bytes/3.1415", http.StatusBadRequest},
+
+		{"/stream-bytes/16?chunk_size=foo", http.StatusBadRequest},
+		{"/stream-bytes/16?chunk_size=3.14", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.code)
 		})
 	}
 }

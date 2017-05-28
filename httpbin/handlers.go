@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -637,4 +638,97 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	// Let http.ServeContent deal with If-None-Match and If-Match headers:
 	// https://golang.org/pkg/net/http/#ServeContent
 	http.ServeContent(w, r, "response.json", time.Now(), bytes.NewReader(body))
+}
+
+// Bytes returns N random bytes generated with an optional seed
+func (h *HTTPBin) Bytes(w http.ResponseWriter, r *http.Request) {
+	handleBytes(w, r, false)
+}
+
+// StreamBytes streams N random bytes generated with an optional seed in chunks
+// of a given size.
+func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
+	handleBytes(w, r, true)
+}
+
+// handleBytes consolidates the logic for validating input params of the Bytes
+// and StreamBytes endpoints and knows how to write the response in chunks if
+// streaming is true.
+func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	numBytes, err := strconv.Atoi(parts[2])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if numBytes < 1 {
+		numBytes = 1
+	} else if numBytes > 100*1024 {
+		numBytes = 100 * 1024
+	}
+
+	var chunkSize int
+	var write func([]byte)
+
+	if streaming {
+		if r.URL.Query().Get("chunk_size") != "" {
+			chunkSize, err = strconv.Atoi(r.URL.Query().Get("chunk_size"))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			chunkSize = 10 * 1024
+		}
+
+		write = func() func(chunk []byte) {
+			f := w.(http.Flusher)
+			return func(chunk []byte) {
+				w.Write(chunk)
+				f.Flush()
+			}
+		}()
+	} else {
+		chunkSize = numBytes
+		write = func(chunk []byte) {
+			w.Header().Set("Content-Length", strconv.Itoa(len(chunk)))
+			w.Write(chunk)
+		}
+	}
+
+	var seed int64
+	rawSeed := r.URL.Query().Get("seed")
+	if rawSeed != "" {
+		seed, err = strconv.ParseInt(rawSeed, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid seed", http.StatusBadRequest)
+			return
+		}
+	} else {
+		seed = time.Now().Unix()
+	}
+
+	src := rand.NewSource(seed)
+	rng := rand.New(src)
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(http.StatusOK)
+
+	var chunk []byte
+	for i := 0; i < numBytes; i++ {
+		chunk = append(chunk, byte(rng.Intn(256)))
+		if len(chunk) == chunkSize {
+			write(chunk)
+			chunk = nil
+		}
+	}
+	if len(chunk) > 0 {
+		write(chunk)
+	}
 }

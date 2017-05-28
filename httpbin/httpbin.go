@@ -120,7 +120,10 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/stream/", h.Stream)
 	mux.HandleFunc("/delay/", h.Delay)
 	mux.HandleFunc("/drip", h.Drip)
+
 	mux.HandleFunc("/range/", h.Range)
+	mux.HandleFunc("/bytes/", h.Bytes)
+	mux.HandleFunc("/stream-bytes/", h.StreamBytes)
 
 	mux.HandleFunc("/html", h.HTML)
 	mux.HandleFunc("/robots.txt", h.Robots)
@@ -142,6 +145,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/relative-redirect", http.NotFound)
 	mux.HandleFunc("/status", http.NotFound)
 	mux.HandleFunc("/stream", http.NotFound)
+	mux.HandleFunc("/bytes", http.NotFound)
+	mux.HandleFunc("/stream-bytes", http.NotFound)
 
 	return logger(cors(mux))
 }
