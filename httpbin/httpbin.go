@@ -128,6 +128,7 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/cache", h.Cache)
 	mux.HandleFunc("/cache/", h.CacheControl)
+	mux.HandleFunc("/etag/", h.ETag)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more

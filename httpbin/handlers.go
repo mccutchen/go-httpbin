@@ -583,6 +583,7 @@ func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
 		seconds, err := strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
 	}
@@ -604,8 +605,36 @@ func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
 	seconds, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
 	h.Get(w, r)
+}
+
+// ETag assumes the resource has the given etag and response to If-None-Match
+// and If-Match headers appropriately.
+func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	etag := parts[2]
+	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, etag))
+
+	// TODO: This mostly duplicates the work of Get() above, should this be
+	// pulled into a little helper?
+	resp := &getResponse{
+		Args:    r.URL.Query(),
+		Headers: r.Header,
+		Origin:  getOrigin(r),
+		URL:     getURL(r).String(),
+	}
+	body, _ := json.Marshal(resp)
+
+	// Let http.ServeContent deal with If-None-Match and If-Match headers:
+	// https://golang.org/pkg/net/http/#ServeContent
+	http.ServeContent(w, r, "response.json", time.Now(), bytes.NewReader(body))
 }

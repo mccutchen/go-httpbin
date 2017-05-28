@@ -1589,8 +1589,6 @@ func TestCache(t *testing.T) {
 		}
 	})
 
-	// Note: httpbin rejects these requests with invalid range headers, but the
-	// go stdlib just ignores them.
 	var tests = []struct {
 		headerKey string
 		headerVal string
@@ -1621,8 +1619,6 @@ func TestCacheControl(t *testing.T) {
 		assertHeader(t, w, "Cache-Control", "public, max-age=60")
 	})
 
-	// Note: httpbin rejects these requests with invalid range headers, but the
-	// go stdlib just ignores them.
 	var badTests = []struct {
 		url            string
 		expectedStatus int
@@ -1630,6 +1626,61 @@ func TestCacheControl(t *testing.T) {
 		{"/cache/60/foo", http.StatusNotFound},
 		{"/cache/foo", http.StatusBadRequest},
 		{"/cache/3.14", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}
+
+func TestETag(t *testing.T) {
+	t.Run("ok_no_headers", func(t *testing.T) {
+		url := "/etag/abc"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		assertStatusCode(t, w, http.StatusOK)
+		assertHeader(t, w, "ETag", `"abc"`)
+	})
+
+	var tests = []struct {
+		name           string
+		etag           string
+		headerKey      string
+		headerVal      string
+		expectedStatus int
+	}{
+		{"if_none_match_matches", "abc", "If-None-Match", `"abc"`, http.StatusNotModified},
+		{"if_none_match_matches_list", "abc", "If-None-Match", `"123", "abc"`, http.StatusNotModified},
+		{"if_none_match_matches_star", "abc", "If-None-Match", "*", http.StatusNotModified},
+		{"if_none_match_matches_w_prefix", "c3piozzzz", "If-None-Match", `W/"xyzzy", W/"r2d2xxxx", W/"c3piozzzz"`, http.StatusNotModified},
+		{"if_none_match_has_no_match", "abc", "If-None-Match", `"123"`, http.StatusOK},
+
+		{"if_match_matches", "abc", "If-Match", `"abc"`, http.StatusOK},
+		{"if_match_matches_list", "abc", "If-Match", `"123", "abc"`, http.StatusOK},
+		{"if_match_matches_star", "abc", "If-Match", "*", http.StatusOK},
+		{"if_match_has_no_match", "abc", "If-Match", `"xxxxxx"`, http.StatusPreconditionFailed},
+	}
+	for _, test := range tests {
+		t.Run("ok_"+test.name, func(t *testing.T) {
+			url := "/etag/" + test.etag
+			r, _ := http.NewRequest("GET", url, nil)
+			r.Header.Add(test.headerKey, test.headerVal)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+
+	var badTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/etag/foo/bar", http.StatusNotFound},
 	}
 	for _, test := range badTests {
 		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
