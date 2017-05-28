@@ -1561,3 +1561,82 @@ func TestDeny(t *testing.T) {
 	assertContentType(t, w, "text/plain")
 	assertBodyContains(t, w, `YOU SHOULDN'T BE HERE`)
 }
+
+func TestCache(t *testing.T) {
+	t.Run("ok_no_cache", func(t *testing.T) {
+		url := "/cache"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, jsonContentType)
+
+		lastModified := w.Header().Get("Last-Modified")
+		if lastModified == "" {
+			t.Fatalf("did get Last-Modified header")
+		}
+
+		etag := w.Header().Get("ETag")
+		if etag != sha1hash(lastModified) {
+			t.Fatalf("expected ETag header %v, got %v", sha1hash(lastModified), etag)
+		}
+
+		var resp *getResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		if err != nil {
+			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+		}
+	})
+
+	// Note: httpbin rejects these requests with invalid range headers, but the
+	// go stdlib just ignores them.
+	var tests = []struct {
+		headerKey string
+		headerVal string
+	}{
+		{"If-None-Match", "my-custom-etag"},
+		{"If-Modified-Since", "my-custom-date"},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("ok_cache/%s", test.headerKey), func(t *testing.T) {
+			r, _ := http.NewRequest("GET", "/cache", nil)
+			r.Header.Add(test.headerKey, test.headerVal)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusNotModified)
+		})
+	}
+}
+
+func TestCacheControl(t *testing.T) {
+	t.Run("ok_cache_control", func(t *testing.T) {
+		url := "/cache/60"
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+		assertContentType(t, w, jsonContentType)
+		assertHeader(t, w, "Cache-Control", "public, max-age=60")
+	})
+
+	// Note: httpbin rejects these requests with invalid range headers, but the
+	// go stdlib just ignores them.
+	var badTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/cache/60/foo", http.StatusNotFound},
+		{"/cache/foo", http.StatusBadRequest},
+		{"/cache/3.14", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}

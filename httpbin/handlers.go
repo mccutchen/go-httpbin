@@ -567,3 +567,45 @@ Disallow: /deny
 func (h *HTTPBin) Deny(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, http.StatusOK, "text/plain", []byte(`YOU SHOULDN'T BE HERE`))
 }
+
+// Cache returns a 304 if an If-Modified-Since or an If-None-Match header is
+// present, otherwise returns the same response as Get.
+func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("If-Modified-Since") != "" || r.Header.Get("If-None-Match") != "" {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	// Did we get an additional /cache/N path parameter? If so, validate it
+	// and set the Cache-Control header.
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) == 3 {
+		seconds, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
+	}
+
+	lastModified := time.Now().Format(time.RFC1123)
+	w.Header().Add("Last-Modified", lastModified)
+	w.Header().Add("ETag", sha1hash(lastModified))
+	h.Get(w, r)
+}
+
+// CacheControl sets a Cache-Control header for N seconds for /cache/N requests
+func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	seconds, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
+	h.Get(w, r)
+}

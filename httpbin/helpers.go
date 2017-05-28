@@ -1,6 +1,7 @@
 package httpbin
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -182,4 +183,9 @@ func (s *syntheticReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return s.offset, nil
+}
+
+func sha1hash(input string) string {
+	h := sha1.New()
+	return fmt.Sprintf("%x", h.Sum([]byte(input)))
 }

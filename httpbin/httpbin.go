@@ -126,6 +126,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/robots.txt", h.Robots)
 	mux.HandleFunc("/deny", h.Deny)
 
+	mux.HandleFunc("/cache", h.Cache)
+	mux.HandleFunc("/cache/", h.CacheControl)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
