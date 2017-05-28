@@ -562,3 +562,8 @@ Disallow: /deny
 `)
 	writeResponse(w, http.StatusOK, "text/plain", robotsTxt)
 }
+
+// Deny renders a basic page that robots should never access
+func (h *HTTPBin) Deny(w http.ResponseWriter, r *http.Request) {
+	writeResponse(w, http.StatusOK, "text/plain", []byte(`YOU SHOULDN'T BE HERE`))
+}

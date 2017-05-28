@@ -124,6 +124,7 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/html", h.HTML)
 	mux.HandleFunc("/robots.txt", h.Robots)
+	mux.HandleFunc("/deny", h.Deny)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more

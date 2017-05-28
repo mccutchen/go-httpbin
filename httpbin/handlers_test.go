@@ -1552,3 +1552,12 @@ func TestRobots(t *testing.T) {
 	assertContentType(t, w, "text/plain")
 	assertBodyContains(t, w, `Disallow: /deny`)
 }
+
+func TestDeny(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/deny", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, "text/plain")
+	assertBodyContains(t, w, `YOU SHOULDN'T BE HERE`)
+}
