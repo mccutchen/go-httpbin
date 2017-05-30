@@ -4,8 +4,8 @@ dist/go-httpbin: assets *.go httpbin/*.go
 	mkdir -p dist
 	go build -o dist/go-httpbin
 
-assets: httpbin/templates/*.html
-	go-bindata -o httpbin/templates.go -pkg=httpbin -prefix=httpbin/templates httpbin/templates
+assets: httpbin/assets/*
+	go-bindata -o httpbin/assets.go -pkg=httpbin -prefix=httpbin/assets httpbin/assets
 
 test:
 	go test -v github.com/mccutchen/go-httpbin/httpbin
