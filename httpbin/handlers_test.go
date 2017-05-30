@@ -1902,3 +1902,59 @@ func TestLinks(t *testing.T) {
 		})
 	}
 }
+
+func TestImage(t *testing.T) {
+	var acceptTests = []struct {
+		acceptHeader        string
+		expectedContentType string
+		expectedStatus      int
+	}{
+		{"", "image/png", http.StatusOK},
+		{"image/*", "image/png", http.StatusOK},
+		{"image/png", "image/png", http.StatusOK},
+		{"image/jpeg", "image/jpeg", http.StatusOK},
+		{"image/webp", "image/webp", http.StatusOK},
+		{"image/svg+xml", "image/svg+xml", http.StatusOK},
+
+		{"image/raw", "", http.StatusUnsupportedMediaType},
+		{"image/jpg", "", http.StatusUnsupportedMediaType},
+		{"image/svg", "", http.StatusUnsupportedMediaType},
+	}
+
+	for _, test := range acceptTests {
+		t.Run("ok/accept="+test.acceptHeader, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", "/image", nil)
+			r.Header.Set("Accept", test.acceptHeader)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, test.expectedStatus)
+			if test.expectedContentType != "" {
+				assertContentType(t, w, test.expectedContentType)
+			}
+		})
+	}
+
+	var imageTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/image/png", http.StatusOK},
+		{"/image/jpeg", http.StatusOK},
+		{"/image/webp", http.StatusOK},
+		{"/image/svg", http.StatusOK},
+
+		{"/image/raw", http.StatusNotFound},
+		{"/image/jpg", http.StatusNotFound},
+		{"/image/png/foo", http.StatusNotFound},
+	}
+
+	for _, test := range imageTests {
+		t.Run("error"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}

@@ -135,6 +135,9 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/links/", h.Links)
 
+	mux.HandleFunc("/image", h.ImageAccept)
+	mux.HandleFunc("/image/", h.Image)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux

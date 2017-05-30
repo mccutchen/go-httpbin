@@ -778,3 +778,43 @@ func doLinksPage(w http.ResponseWriter, r *http.Request, n int, offset int) {
 	}
 	w.Write([]byte("</body></html>"))
 }
+
+// ImageAccept responds with an appropriate image based on the Accept header
+func (h *HTTPBin) ImageAccept(w http.ResponseWriter, r *http.Request) {
+	accept := r.Header.Get("Accept")
+	if accept == "" || strings.Contains(accept, "image/png") || strings.Contains(accept, "image/*") {
+		doImage(w, "png")
+	} else if strings.Contains(accept, "image/webp") {
+		doImage(w, "webp")
+	} else if strings.Contains(accept, "image/svg+xml") {
+		doImage(w, "svg")
+	} else if strings.Contains(accept, "image/jpeg") {
+		doImage(w, "jpeg")
+	} else {
+		http.Error(w, "Unsupported media type", http.StatusUnsupportedMediaType)
+	}
+}
+
+// Image responds with an image of a specific kind, from /image/<kind>
+func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	doImage(w, parts[2])
+}
+
+// doImage responds with a specific kind of image, if there is an image asset
+// of the given kind.
+func doImage(w http.ResponseWriter, kind string) {
+	img, err := Asset("image." + kind)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+	contentType := "image/" + kind
+	if kind == "svg" {
+		contentType = "image/svg+xml"
+	}
+	writeResponse(w, http.StatusOK, contentType, img)
+}
