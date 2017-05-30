@@ -7,10 +7,10 @@ dist/go-httpbin: assets *.go httpbin/*.go
 assets: httpbin/assets/*
 	go-bindata -o httpbin/assets.go -pkg=httpbin -prefix=httpbin/assets httpbin/assets
 
-test:
+test: assets
 	go test -v github.com/mccutchen/go-httpbin/httpbin
 
-testcover:
+testcover: assets
 	mkdir -p dist
 	go test -coverprofile=dist/coverage.out github.com/mccutchen/go-httpbin/httpbin
 	go tool cover -html=dist/coverage.out
