@@ -1833,3 +1833,72 @@ func TestStreamBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestLinks(t *testing.T) {
+	var redirectTests = []struct {
+		url              string
+		expectedLocation string
+	}{
+		{"/links/1", "/links/1/0"},
+		{"/links/100", "/links/100/0"},
+	}
+
+	for _, test := range redirectTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, http.StatusFound)
+			assertHeader(t, w, "Location", test.expectedLocation)
+		})
+	}
+
+	var errorTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		// invalid N
+		{"/links/3.14", http.StatusBadRequest},
+		{"/links/-1", http.StatusBadRequest},
+		{"/links/257", http.StatusBadRequest},
+
+		// invalid offset
+		{"/links/1/3.14", http.StatusBadRequest},
+		{"/links/1/foo", http.StatusBadRequest},
+	}
+
+	for _, test := range errorTests {
+		t.Run("error"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+
+	var linksPageTests = []struct {
+		url             string
+		expectedContent string
+	}{
+		{"/links/2/0", `<html><head><title>Links</title></head><body>0 <a href="/links/2/1">1</a> </body></html>`},
+		{"/links/2/1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> 1 </body></html>`},
+
+		// offsets too large and too small are ignored
+		{"/links/2/2", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
+		{"/links/2/10", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
+		{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
+	}
+	for _, test := range linksPageTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, http.StatusOK)
+			assertContentType(t, w, htmlContentType)
+			assertBodyEquals(t, w, test.expectedContent)
+		})
+	}
+}

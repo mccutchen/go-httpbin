@@ -133,6 +133,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/cache/", h.CacheControl)
 	mux.HandleFunc("/etag/", h.ETag)
 
+	mux.HandleFunc("/links/", h.Links)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux
@@ -147,6 +149,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/stream", http.NotFound)
 	mux.HandleFunc("/bytes", http.NotFound)
 	mux.HandleFunc("/stream-bytes", http.NotFound)
+	mux.HandleFunc("/links", http.NotFound)
 
 	return logger(cors(mux))
 }

@@ -732,3 +732,49 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		write(chunk)
 	}
 }
+
+// Links redirects to the first page in a series of N links
+func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 && len(parts) != 4 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	n, err := strconv.Atoi(parts[2])
+	if err != nil || n < 0 || n > 256 {
+		http.Error(w, "Invalid link count", http.StatusBadRequest)
+		return
+	}
+
+	// Are we handling /links/<n>/<offset>? If so, render an HTML page
+	if len(parts) == 4 {
+		offset, err := strconv.Atoi(parts[3])
+		if err != nil {
+			http.Error(w, "Invalid offset", http.StatusBadRequest)
+		}
+		doLinksPage(w, r, n, offset)
+		return
+	}
+
+	// Otherwise, redirect from /links/<n> to /links/<n>/0
+	r.URL.Path = r.URL.Path + "/0"
+	w.Header().Set("Location", r.URL.String())
+	w.WriteHeader(http.StatusFound)
+}
+
+// doLinksPage renders a page with a series of N links
+func doLinksPage(w http.ResponseWriter, r *http.Request, n int, offset int) {
+	w.Header().Add("Content-Type", htmlContentType)
+	w.WriteHeader(http.StatusOK)
+
+	w.Write([]byte("<html><head><title>Links</title></head><body>"))
+	for i := 0; i < n; i++ {
+		if i == offset {
+			fmt.Fprintf(w, "%d ", i)
+		} else {
+			fmt.Fprintf(w, `<a href="/links/%d/%d">%d</a> `, n, i, i)
+		}
+	}
+	w.Write([]byte("</body></html>"))
+}
