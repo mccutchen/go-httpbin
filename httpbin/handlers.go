@@ -818,3 +818,8 @@ func doImage(w http.ResponseWriter, kind string) {
 	}
 	writeResponse(w, http.StatusOK, contentType, img)
 }
+
+// XML responds with an XML document
+func (h *HTTPBin) XML(w http.ResponseWriter, r *http.Request) {
+	writeResponse(w, http.StatusOK, "application/xml", MustAsset("sample.xml"))
+}

@@ -1958,3 +1958,12 @@ func TestImage(t *testing.T) {
 		})
 	}
 }
+
+func TestXML(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/xml", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, "application/xml")
+	assertBodyContains(t, w, `<?xml version='1.0' encoding='us-ascii'?>`)
+}

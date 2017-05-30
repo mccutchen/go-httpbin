@@ -137,6 +137,7 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/image", h.ImageAccept)
 	mux.HandleFunc("/image/", h.Image)
+	mux.HandleFunc("/xml", h.XML)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
