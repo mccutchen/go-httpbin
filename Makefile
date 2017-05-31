@@ -18,6 +18,11 @@ testcover: assets
 run: build
 	./dist/go-httpbin
 
+watch:
+	# brew install entr
+	# https://bitbucket.org/eradman/entr/
+	ls */*.go | entr -r -s "go build -o dist/go-httpbin && dist/go-httpbin"
+
 clean:
 	rm -r dist
 
