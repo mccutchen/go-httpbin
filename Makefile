@@ -8,7 +8,7 @@ assets: httpbin/assets/*
 	go-bindata -o httpbin/assets.go -pkg=httpbin -prefix=httpbin/assets httpbin/assets
 
 test: assets
-	go test -v github.com/mccutchen/go-httpbin/httpbin
+	go test github.com/mccutchen/go-httpbin/httpbin
 
 testcover: assets
 	mkdir -p dist
