@@ -21,6 +21,10 @@ var acceptedMediaTypes = []string{
 	"image/",
 }
 
+func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Not implemented", http.StatusNotImplemented)
+}
+
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -381,18 +385,6 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 		User:       givenUser,
 	})
 	writeJSON(w, body, http.StatusOK)
-}
-
-// DigestAuth is not yet implemented, and returns 501 Not Implemented. It
-// appears that stdlib support for working with digest authentication is
-// lacking, and I'm not yet ready to implement it myself.
-func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 5 {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
-	http.Error(w, "Not Implemented", http.StatusNotImplemented)
 }
 
 // Stream responds with max(n, 100) lines of JSON-encoded request data.

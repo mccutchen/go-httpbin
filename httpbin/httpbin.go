@@ -112,7 +112,6 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/basic-auth/", h.BasicAuth)
 	mux.HandleFunc("/hidden-basic-auth/", h.HiddenBasicAuth)
-	mux.HandleFunc("/digest-auth/", h.DigestAuth)
 
 	mux.HandleFunc("/deflate", h.Deflate)
 	mux.HandleFunc("/gzip", h.Gzip)
@@ -138,6 +137,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/image", h.ImageAccept)
 	mux.HandleFunc("/image/", h.Image)
 	mux.HandleFunc("/xml", h.XML)
+
+	// Not implemented
+	mux.HandleFunc("/digest-auth/", notImplementedHandler)
 
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
