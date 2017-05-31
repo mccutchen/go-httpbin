@@ -293,6 +293,32 @@ func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
 	doRedirect(w, r, false)
 }
 
+// RedirectTo responds with a redirect to a specific URL with an optional
+// status code, which defaults to 302
+func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	url := q.Get("url")
+	if url == "" {
+		http.Error(w, "Missing URL", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	statusCode := http.StatusFound
+	rawStatusCode := q.Get("status_code")
+	if rawStatusCode != "" {
+		statusCode, err = strconv.Atoi(q.Get("status_code"))
+		if err != nil || statusCode < 300 || statusCode > 399 {
+			http.Error(w, "Invalid status code", http.StatusBadRequest)
+			return
+		}
+	}
+
+	w.Header().Set("Location", url)
+	w.WriteHeader(statusCode)
+}
+
 // Cookies responds with the cookies in the incoming request
 func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 	resp := cookiesResponse{}

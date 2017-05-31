@@ -823,6 +823,51 @@ func TestRedirects(t *testing.T) {
 	}
 }
 
+func TestRedirectTo(t *testing.T) {
+	var okTests = []struct {
+		url              string
+		expectedLocation string
+		expectedStatus   int
+	}{
+		{"/redirect-to?url=http://www.example.com/", "http://www.example.com/", http.StatusFound},
+		{"/redirect-to?url=http://www.example.com/&status_code=307", "http://www.example.com/", http.StatusTemporaryRedirect},
+
+		{"/redirect-to?url=/get", "/get", http.StatusFound},
+		{"/redirect-to?url=/get&status_code=307", "/get", http.StatusTemporaryRedirect},
+
+		{"/redirect-to?url=foo", "foo", http.StatusFound},
+	}
+
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, test.expectedStatus)
+			assertHeader(t, w, "Location", test.expectedLocation)
+		})
+	}
+
+	var badTests = []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/redirect-to", http.StatusBadRequest},
+		{"/redirect-to?status_code=302", http.StatusBadRequest},
+		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+}
+
 func TestCookies(t *testing.T) {
 	testCookies := func(t *testing.T, cookies cookiesResponse) {
 		r, _ := http.NewRequest("GET", "/cookies", nil)
