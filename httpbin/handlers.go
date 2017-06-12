@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mccutchen/go-httpbin/httpbin/digest"
 )
 
 var acceptedMediaTypes = []string{
@@ -840,4 +842,48 @@ func doImage(w http.ResponseWriter, kind string) {
 // XML responds with an XML document
 func (h *HTTPBin) XML(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, http.StatusOK, "application/xml", MustAsset("sample.xml"))
+}
+
+// DigestAuth blah
+//
+// /digest-auth/<qop>/<user>/<passwd>
+// /digest-auth/<qop>/<user>/<passwd>/<algorithm>
+func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	count := len(parts)
+
+	if count != 5 && count != 6 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	qop := strings.ToLower(parts[2])
+	user := parts[3]
+	password := parts[4]
+
+	algorithm := "MD5"
+	if count == 6 {
+		algorithm = strings.ToUpper(parts[5])
+	}
+
+	if qop != "auth" {
+		http.Error(w, "Invalid QOP directive", http.StatusBadRequest)
+		return
+	}
+	if algorithm != "MD5" && algorithm != "SHA-256" {
+		http.Error(w, "Invalid algorithm", http.StatusBadRequest)
+		return
+	}
+
+	if !digest.Check(r, user, password) {
+		w.Header().Set("WWW-Authenticate", digest.Challenge("go-httpbin", algorithm))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	resp, _ := json.Marshal(&authResponse{
+		Authorized: true,
+		User:       user,
+	})
+	writeJSON(w, resp, http.StatusOK)
 }

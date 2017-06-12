@@ -77,6 +77,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMe
 
 	// Restrict size of request body
 	r.Body = http.MaxBytesReader(w, r.Body, maxMemory)
+	defer r.Body.Close()
 
 	ct := r.Header.Get("Content-Type")
 	switch {
