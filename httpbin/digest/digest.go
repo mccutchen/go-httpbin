@@ -24,11 +24,9 @@ import (
 
 // Check returns a bool indicating whether the request is correctly
 // authenticated for the given username and password.
-//
-// TODO: use constant-time equality comparison.
 func Check(req *http.Request, username, password string) bool {
 	auth := parseAuthorizationHeader(req.Header.Get("Authorization"))
-	if auth == nil {
+	if auth == nil || auth.username != username {
 		return false
 	}
 	expectedResponse := response(auth, password, req.Method, req.RequestURI)
@@ -116,19 +114,22 @@ func parseAuthorizationHeader(value string) *authorization {
 // parseDictHeader is a simplistic, buggy, and incomplete implementation of
 // parsing key-value pairs from a header value into a map.
 func parseDictHeader(value string) map[string]string {
-	res := make(map[string]string)
-	for _, pair := range strings.Split(value, ",") {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 1 {
-			res[parts[0]] = ""
+	pairs := strings.Split(value, ",")
+	res := make(map[string]string, len(pairs))
+	for _, pair := range pairs {
+		parts := strings.SplitN(strings.TrimSpace(pair), "=", 2)
+		key := strings.TrimSpace(parts[0])
+		if len(key) == 0 {
 			continue
 		}
-		key := parts[0]
-		val := parts[1]
-		if strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`) {
-			val = val[1 : len(val)-1]
+		val := ""
+		if len(parts) > 1 {
+			val = strings.TrimSpace(parts[1])
+			if strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`) {
+				val = val[1 : len(val)-1]
+			}
 		}
-		res[strings.TrimSpace(key)] = strings.TrimSpace(val)
+		res[key] = val
 	}
 	return res
 }
