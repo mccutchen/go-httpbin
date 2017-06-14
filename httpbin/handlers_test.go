@@ -1121,10 +1121,11 @@ func TestDigestAuth(t *testing.T) {
 		status int
 	}{
 		{"/digest-auth", http.StatusNotFound},
-		{"/digest-auth/qop/user/pass", http.StatusNotImplemented},
-		{"/digest-auth/user", http.StatusNotImplemented},
-		{"/digest-auth/user/pass", http.StatusNotImplemented},
-		{"/digest-auth/qop/user/pass/foo", http.StatusNotImplemented},
+		{"/digest-auth/user", http.StatusNotFound},
+		{"/digest-auth/user/pass", http.StatusNotFound},
+
+		{"/digest-auth/auth/user/pass", http.StatusUnauthorized},
+		{"/digest-auth/auth/user/pass/MD5", http.StatusUnauthorized},
 	}
 	for _, test := range tests {
 		t.Run("ok"+test.url, func(t *testing.T) {
