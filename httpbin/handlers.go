@@ -861,18 +861,23 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	user := parts[3]
 	password := parts[4]
 
-	algorithm := "MD5"
+	algoName := "MD5"
 	if count == 6 {
-		algorithm = strings.ToUpper(parts[5])
+		algoName = strings.ToUpper(parts[5])
 	}
 
 	if qop != "auth" {
 		http.Error(w, "Invalid QOP directive", http.StatusBadRequest)
 		return
 	}
-	if algorithm != "MD5" && algorithm != "SHA-256" {
+	if algoName != "MD5" && algoName != "SHA-256" {
 		http.Error(w, "Invalid algorithm", http.StatusBadRequest)
 		return
+	}
+
+	algorithm := digest.MD5
+	if algoName == "SHA-256" {
+		algorithm = digest.SHA256
 	}
 
 	if !digest.Check(r, user, password) {

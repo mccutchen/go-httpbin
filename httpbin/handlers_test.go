@@ -1123,9 +1123,16 @@ func TestDigestAuth(t *testing.T) {
 		{"/digest-auth", http.StatusNotFound},
 		{"/digest-auth/user", http.StatusNotFound},
 		{"/digest-auth/user/pass", http.StatusNotFound},
+		{"/digest-auth/auth/user/pass/MD5/foo", http.StatusNotFound},
 
+		// valid but unauthenticated requests
 		{"/digest-auth/auth/user/pass", http.StatusUnauthorized},
 		{"/digest-auth/auth/user/pass/MD5", http.StatusUnauthorized},
+		{"/digest-auth/auth/user/pass/SHA-256", http.StatusUnauthorized},
+
+		// invalid requests
+		{"/digest-auth/bad-qop/user/pass/MD5", http.StatusBadRequest},
+		{"/digest-auth/auth/user/pass/SHA-512", http.StatusBadRequest},
 	}
 	for _, test := range tests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -1135,6 +1142,40 @@ func TestDigestAuth(t *testing.T) {
 			assertStatusCode(t, w, test.status)
 		})
 	}
+
+	t.Run("ok", func(t *testing.T) {
+		// Example captured from a successful login in a browser
+		authorization := `Digest username="user",
+			realm="go-httpbin",
+			nonce="6fb213c6593975c877bb1247370527ad",
+			uri="/digest-auth/auth/user/pass/MD5",
+			algorithm=MD5,
+			response="9b7a05d78051b4f668356eedf32f55d6",
+			opaque="fd1c386a015a2bb7c41585f54329ce91",
+			qop=auth,
+			nc=00000001,
+			cnonce="aaab705226af5bd4"`
+
+		url := "/digest-auth/auth/user/pass/MD5"
+		r, _ := http.NewRequest("GET", url, nil)
+		r.RequestURI = url
+		r.Header.Set("Authorization", authorization)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+
+		resp := &authResponse{}
+		json.Unmarshal(w.Body.Bytes(), resp)
+
+		expectedResp := &authResponse{
+			Authorized: true,
+			User:       "user",
+		}
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Fatalf("expected response %#v, got %#v", expectedResp, resp)
+		}
+	})
 }
 
 func TestGzip(t *testing.T) {

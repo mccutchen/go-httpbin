@@ -1,7 +1,6 @@
 package digest
 
 import (
-	"crypto"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -75,6 +74,27 @@ func TestCheck(t *testing.T) {
 	})
 }
 
+func TestChallenge(t *testing.T) {
+	var tests = []struct {
+		realm             string
+		expectedRealm     string
+		algorithm         digestAlgorithm
+		expectedAlgorithm string
+	}{
+		{"realm", "realm", MD5, "MD5"},
+		{"realm", "realm", SHA256, "SHA-256"},
+		{"realm with spaces", "realm with spaces", SHA256, "SHA-256"},
+		{`realm "with" "quotes"`, "realm with quotes", MD5, "MD5"},
+		{`spaces, "quotes," and commas`, "spaces quotes and commas", MD5, "MD5"},
+	}
+	for _, test := range tests {
+		challenge := Challenge(test.realm, test.algorithm)
+		result := parseDictHeader(challenge)
+		assertStringEquals(t, test.expectedRealm, result["realm"])
+		assertStringEquals(t, test.expectedAlgorithm, result["algorithm"])
+	}
+}
+
 func TestResponse(t *testing.T) {
 	auth := parseAuthorizationHeader(exampleAuthorization)
 	expected := auth.response
@@ -84,16 +104,15 @@ func TestResponse(t *testing.T) {
 
 func TestHash(t *testing.T) {
 	var tests = []struct {
-		algorithm crypto.Hash
+		algorithm digestAlgorithm
 		data      []byte
 		expected  string
 	}{
-		{crypto.SHA256, []byte("hello, world!\n"), "4dca0fd5f424a31b03ab807cbae77eb32bf2d089eed1cee154b3afed458de0dc"},
-		{crypto.MD5, []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
+		{SHA256, []byte("hello, world!\n"), "4dca0fd5f424a31b03ab807cbae77eb32bf2d089eed1cee154b3afed458de0dc"},
+		{MD5, []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
 
 		// Any unhandled hash results in MD5 being used
-		{crypto.MD4, []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
-		{crypto.SHA512, []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
+		{digestAlgorithm(10), []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("hash/%v", test.algorithm), func(t *testing.T) {
@@ -177,7 +196,7 @@ func TestParseAuthorizationHeader(t *testing.T) {
 
 		// incomplete headers are fine
 		{"Digest username=u, realm=r, nonce=n", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 			realm:     "r",
 			nonce:     "n",
@@ -185,51 +204,51 @@ func TestParseAuthorizationHeader(t *testing.T) {
 
 		// algorithm can be either MD5 or SHA-256, with MD5 as default
 		{"Digest username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		{"Digest algorithm=MD5, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		{"Digest algorithm=md5, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		{"Digest algorithm=SHA-256, username=u", &authorization{
-			algorithm: crypto.SHA256,
+			algorithm: SHA256,
 			username:  "u",
 		}},
 		{"Digest algorithm=foo, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		{"Digest algorithm=SHA-512, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		// algorithm not case sensitive
 		{"Digest algorithm=sha-256, username=u", &authorization{
-			algorithm: crypto.SHA256,
+			algorithm: SHA256,
 			username:  "u",
 		}},
 		// but dash is required in SHA-256 is not recognized
 		{"Digest algorithm=SHA256, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		// session variants not recognized
 		{"Digest algorithm=SHA-256-sess, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 		{"Digest algorithm=MD5-sess, username=u", &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			username:  "u",
 		}},
 
 		{exampleAuthorization, &authorization{
-			algorithm: crypto.MD5,
+			algorithm: MD5,
 			cnonce:    "0a4f113b",
 			nc:        "00000001",
 			nonce:     "dcd98b7102dd2f0e8b11d0f600bfb0c093",

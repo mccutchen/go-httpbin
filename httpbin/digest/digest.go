@@ -11,7 +11,6 @@
 package digest
 
 import (
-	"crypto"
 	"crypto/md5"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -21,6 +20,25 @@ import (
 	"strings"
 	"time"
 )
+
+// digestAlgorithm is an algorithm used to hash digest payloads
+type digestAlgorithm int
+
+// Digest algorithms supported by this package
+const (
+	MD5 digestAlgorithm = iota
+	SHA256
+)
+
+func (a digestAlgorithm) String() string {
+	switch a {
+	case MD5:
+		return "MD5"
+	case SHA256:
+		return "SHA-256"
+	}
+	return "UNKNOWN"
+}
 
 // Check returns a bool indicating whether the request is correctly
 // authenticated for the given username and password.
@@ -34,23 +52,32 @@ func Check(req *http.Request, username, password string) bool {
 }
 
 // Challenge returns a WWW-Authenticate header value for the given realm and
-// algorithm.
-func Challenge(realm, algorithm string) string {
+// algorithm. If an invalid realm or an unsupported algorithm is given
+func Challenge(realm string, algorithm digestAlgorithm) string {
 	entropy := make([]byte, 32)
 	rand.Read(entropy)
 
 	opaqueVal := entropy[:16]
 	nonceVal := fmt.Sprintf("%s:%x", time.Now(), entropy[16:31])
 
-	opaque := hash(opaqueVal, crypto.MD5)
-	nonce := hash([]byte(nonceVal), crypto.MD5)
+	// we use MD5 to hash nonces regardless of hash used for authentication
+	opaque := hash(opaqueVal, MD5)
+	nonce := hash([]byte(nonceVal), MD5)
 
-	return fmt.Sprintf("Digest qop=auth, realm=%s, algorithm=%s, nonce=%s, opaque=%s", realm, algorithm, nonce, opaque)
+	return fmt.Sprintf("Digest qop=auth, realm=%#v, algorithm=%s, nonce=%s, opaque=%s", sanitizeRealm(realm), algorithm, nonce, opaque)
+}
+
+// sanitizeRealm tries to ensure that a given realm does not include any
+// characters that will trip up our extremely simplistic header parser.
+func sanitizeRealm(realm string) string {
+	realm = strings.Replace(realm, `"`, "", -1)
+	realm = strings.Replace(realm, ",", "", -1)
+	return realm
 }
 
 // authorization is the result of parsing an Authorization header
 type authorization struct {
-	algorithm crypto.Hash
+	algorithm digestAlgorithm
 	cnonce    string
 	nc        string
 	nonce     string
@@ -92,9 +119,9 @@ func parseAuthorizationHeader(value string) *authorization {
 	authInfo := parts[1]
 	auth := parseDictHeader(authInfo)
 
-	algo := crypto.MD5
+	algo := MD5
 	if strings.ToLower(auth["algorithm"]) == "sha-256" {
-		algo = crypto.SHA256
+		algo = SHA256
 	}
 
 	return &authorization{
@@ -136,9 +163,9 @@ func parseDictHeader(value string) map[string]string {
 
 // hash generates the hex digest of the given data using the given hashing
 // algorithm, which must be one of MD5 or SHA256.
-func hash(data []byte, algorithm crypto.Hash) string {
+func hash(data []byte, algorithm digestAlgorithm) string {
 	switch algorithm {
-	case crypto.SHA256:
+	case SHA256:
 		return fmt.Sprintf("%x", sha256.Sum256(data))
 	default:
 		return fmt.Sprintf("%x", md5.Sum(data))
@@ -150,7 +177,7 @@ func hash(data []byte, algorithm crypto.Hash) string {
 //     HA1 = H(A1) = H(username:realm:password)
 //
 // and H is one of MD5 or SHA256.
-func makeHA1(realm, username, password string, algorithm crypto.Hash) string {
+func makeHA1(realm, username, password string, algorithm digestAlgorithm) string {
 	A1 := fmt.Sprintf("%s:%s:%s", username, realm, password)
 	return hash([]byte(A1), algorithm)
 }
