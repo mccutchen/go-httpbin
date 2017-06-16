@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -140,41 +141,60 @@ func parseBoundedDuration(input string, min, max time.Duration) (time.Duration, 
 	return d, err
 }
 
-// syntheticReadSeeker implements the ReadSeeker interface to allow reading
+// syntheticByteStream implements the ReadSeeker interface to allow reading
 // arbitrary subsets of bytes up to a maximum size given a function for
 // generating the byte at a given offset.
-type syntheticReadSeeker struct {
-	numBytes    int64
-	offset      int64
-	byteFactory func(int64) byte
+type syntheticByteStream struct {
+	mu sync.Mutex
+
+	size    int64
+	offset  int64
+	factory func(int64) byte
 }
 
-// Read implements the Reader interface for syntheticReadSeeker
-func (s *syntheticReadSeeker) Read(p []byte) (int, error) {
+// newSyntheticByteStream returns a new stream of bytes of a specific size,
+// given a factory function for generating the byte at a given offset.
+func newSyntheticByteStream(size int64, factory func(int64) byte) io.ReadSeeker {
+	return &syntheticByteStream{
+		size:    size,
+		factory: factory,
+	}
+}
+
+// Read implements the Reader interface for syntheticByteStream
+func (s *syntheticByteStream) Read(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	start := s.offset
 	end := start + int64(len(p))
 	var err error
-	if end > s.numBytes {
+	if end >= s.size {
 		err = io.EOF
-		end = s.numBytes - start
+		end = s.size
 	}
 
 	for idx := start; idx < end; idx++ {
-		p[idx-start] = s.byteFactory(idx)
+		p[idx-start] = s.factory(idx)
 	}
+
+	s.offset = end
 
 	return int(end - start), err
 }
 
-// Seek implements the Seeker interface for syntheticReadSeeker
-func (s *syntheticReadSeeker) Seek(offset int64, whence int) (int64, error) {
+// Seek implements the Seeker interface for syntheticByteStream
+func (s *syntheticByteStream) Seek(offset int64, whence int) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	switch whence {
 	case io.SeekStart:
 		s.offset = offset
 	case io.SeekCurrent:
 		s.offset += offset
 	case io.SeekEnd:
-		s.offset = s.numBytes - offset
+		s.offset = s.size - offset
 	default:
 		return 0, errors.New("Seek: invalid whence")
 	}

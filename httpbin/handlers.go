@@ -559,10 +559,9 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := &syntheticReadSeeker{
-		numBytes:    numBytes,
-		byteFactory: func(offset int64) byte { return byte(97 + (offset % 26)) },
-	}
+	content := newSyntheticByteStream(numBytes, func(offset int64) byte {
+		return byte(97 + (offset % 26))
+	})
 	var modtime time.Time
 	http.ServeContent(w, r, "", modtime, content)
 }
