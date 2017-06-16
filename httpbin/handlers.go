@@ -23,10 +23,6 @@ var acceptedMediaTypes = []string{
 	"image/",
 }
 
-func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
-}
-
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -595,18 +591,6 @@ func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("If-Modified-Since") != "" || r.Header.Get("If-None-Match") != "" {
 		w.WriteHeader(http.StatusNotModified)
 		return
-	}
-
-	// Did we get an additional /cache/N path parameter? If so, validate it
-	// and set the Cache-Control header.
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) == 3 {
-		seconds, err := strconv.ParseInt(parts[2], 10, 64)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
 	}
 
 	lastModified := time.Now().Format(time.RFC1123)

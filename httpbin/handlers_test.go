@@ -1720,7 +1720,7 @@ func TestCacheControl(t *testing.T) {
 		{"/cache/3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
+		t.Run("bad"+test.url, func(t *testing.T) {
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1945,6 +1945,8 @@ func TestLinks(t *testing.T) {
 		url            string
 		expectedStatus int
 	}{
+		{"/links/10/1/foo", http.StatusNotFound},
+
 		// invalid N
 		{"/links/3.14", http.StatusBadRequest},
 		{"/links/-1", http.StatusBadRequest},
