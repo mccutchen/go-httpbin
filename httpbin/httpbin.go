@@ -157,7 +157,13 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/stream-bytes", http.NotFound)
 	mux.HandleFunc("/links", http.NotFound)
 
-	return logger(cors(mux))
+	// Apply global middleware
+	var handler http.Handler
+	handler = mux
+	handler = limitRequestSize(h.options.MaxMemory, handler)
+	handler = logger(handler)
+	handler = cors(handler)
+	return handler
 }
 
 // NewHTTPBin creates a new HTTPBin

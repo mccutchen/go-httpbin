@@ -63,7 +63,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		URL:     getURL(r).String(),
 	}
 
-	err := parseBody(w, r, resp, h.options.MaxMemory)
+	err := parseBody(w, r, resp)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing request body: %s", err), http.StatusBadRequest)
 		return

@@ -47,3 +47,12 @@ func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
 		h.ServeHTTP(w, r)
 	}
 }
+
+func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		}
+		h.ServeHTTP(w, r)
+	})
+}

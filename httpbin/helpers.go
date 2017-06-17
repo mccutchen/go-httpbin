@@ -70,14 +70,14 @@ func writeHTML(w http.ResponseWriter, body []byte, status int) {
 
 // parseBody handles parsing a request body into our standard API response,
 // taking care to only consume the request body once based on the Content-Type
-// of the request. The given Resp will be updated.
-func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMemory int64) error {
+// of the request. The given bodyResponse will be modified.
+//
+// Note: this function expects callers to limit the the maximum size of the
+// request body. See, e.g., the limitRequestSize middleware.
+func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error {
 	if r.Body == nil {
 		return nil
 	}
-
-	// Restrict size of request body
-	r.Body = http.MaxBytesReader(w, r.Body, maxMemory)
 	defer r.Body.Close()
 
 	ct := r.Header.Get("Content-Type")
@@ -89,7 +89,10 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse, maxMe
 		}
 		resp.Form = r.PostForm
 	case strings.HasPrefix(ct, "multipart/form-data"):
-		err := r.ParseMultipartForm(maxMemory)
+		// The memory limit here only restricts how many parts will be kept in
+		// memory before overflowing to disk:
+		// http://localhost:8080/pkg/net/http/#Request.ParseMultipartForm
+		err := r.ParseMultipartForm(1024 * 1024)
 		if err != nil {
 			return err
 		}
