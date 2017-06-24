@@ -140,5 +140,17 @@ func TestSyntheticByteStream(t *testing.T) {
 		assertNil(t, err)
 		assertIntEqual(t, count, 5)
 		assertBytesEqual(t, p, []byte{90, 91, 92, 93, 94})
+
+		// invalid whence
+		_, err = s.Seek(10, 666)
+		if err.Error() != "Seek: invalid whence" {
+			t.Errorf("Expected \"Seek: invalid whence\", got %#v", err.Error())
+		}
+
+		// invalid offset
+		_, err = s.Seek(-10, io.SeekStart)
+		if err.Error() != "Seek: invalid offset" {
+			t.Errorf("Expected \"Seek: invalid offset\", got %#v", err.Error())
+		}
 	})
 }
