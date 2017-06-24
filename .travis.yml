@@ -5,5 +5,7 @@ go:
  - 1.8
  - tip
 script: make test
+before_install:
+  - go get -u github.com/jteeuwen/go-bindata/...
 notifications:
   email: false
