@@ -1,8 +1,8 @@
 build: dist/go-httpbin
 
-dist/go-httpbin: assets *.go httpbin/*.go
+dist/go-httpbin: assets cmd/go-httpbin/*.go httpbin/*.go
 	mkdir -p dist
-	go build -o dist/go-httpbin
+	go build -o dist/go-httpbin ./cmd/go-httpbin
 
 assets: httpbin/assets/*
 	go-bindata -o httpbin/assets.go -pkg=httpbin -prefix=httpbin/assets httpbin/assets
@@ -17,11 +17,6 @@ testcover: assets
 
 run: build
 	./dist/go-httpbin
-
-watch:
-	# brew install entr
-	# https://bitbucket.org/eradman/entr/
-	ls */*.go | entr -r -s "go build -o dist/go-httpbin && dist/go-httpbin"
 
 clean:
 	rm -r dist
