@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mccutchen/go-httpbin/httpbin/assets"
 	"github.com/mccutchen/go-httpbin/httpbin/digest"
 )
 
@@ -29,17 +30,17 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	writeHTML(w, MustAsset("index.html"), http.StatusOK)
+	writeHTML(w, assets.MustAsset("index.html"), http.StatusOK)
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, MustAsset("forms-post.html"), http.StatusOK)
+	writeHTML(w, assets.MustAsset("forms-post.html"), http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test
 func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, MustAsset("utf8.html"), http.StatusOK)
+	writeHTML(w, assets.MustAsset("utf8.html"), http.StatusOK)
 }
 
 // Get handles HTTP GET requests
@@ -568,7 +569,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 
 // HTML renders a basic HTML page
 func (h *HTTPBin) HTML(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, MustAsset("moby.html"), http.StatusOK)
+	writeHTML(w, assets.MustAsset("moby.html"), http.StatusOK)
 }
 
 // Robots renders a basic robots.txt file
@@ -811,7 +812,7 @@ func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
 // doImage responds with a specific kind of image, if there is an image asset
 // of the given kind.
 func doImage(w http.ResponseWriter, kind string) {
-	img, err := Asset("image." + kind)
+	img, err := assets.Asset("image." + kind)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 	}
@@ -824,10 +825,11 @@ func doImage(w http.ResponseWriter, kind string) {
 
 // XML responds with an XML document
 func (h *HTTPBin) XML(w http.ResponseWriter, r *http.Request) {
-	writeResponse(w, http.StatusOK, "application/xml", MustAsset("sample.xml"))
+	writeResponse(w, http.StatusOK, "application/xml", assets.MustAsset("sample.xml"))
 }
 
-// DigestAuth blah
+// DigestAuth handles a simple implementation of HTTP Digest Authentication,
+// which supports the "auth" QOP and the MD5 and SHA-256 crypto algorithms.
 //
 // /digest-auth/<qop>/<user>/<passwd>
 // /digest-auth/<qop>/<user>/<passwd>/<algorithm>

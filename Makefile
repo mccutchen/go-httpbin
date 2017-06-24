@@ -5,7 +5,7 @@ dist/go-httpbin: assets cmd/go-httpbin/*.go httpbin/*.go
 	go build -o dist/go-httpbin ./cmd/go-httpbin
 
 assets: httpbin/assets/*
-	go-bindata -o httpbin/assets.go -pkg=httpbin -prefix=httpbin/assets httpbin/assets
+	go-bindata -o httpbin/assets/assets.go -pkg=assets -prefix=static static
 
 test: assets
 	go test ./...
