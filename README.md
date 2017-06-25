@@ -30,6 +30,37 @@ Docker images are published to [Docker Hub][docker-hub]:
 $ docker run -P mccutchen/go-httpbin
 ```
 
+The `github.com/mccutchen/go-httpbin/httpbin` package can also be used as a
+library for testing an applications interactions with an upstream HTTP service,
+like so:
+
+```go
+package httpbin_test
+
+import (
+    "net/http"
+    "net/http/httptest"
+    "testing"
+    "time"
+
+    "github.com/mccutchen/go-httpbin/httpbin"
+)
+
+func TestSlowResponse(t *testing.T) {
+    handler := httpbin.NewHTTPBin().Handler()
+    srv := httptest.NewServer(handler)
+    defer srv.Close()
+
+    client := http.Client{
+        Timeout: time.Duration(1 * time.Second),
+    }
+    _, err := client.Get(srv.URL + "/delay/10")
+    if err == nil {
+        t.Fatal("expected timeout error")
+    }
+}
+```
+
 
 ## Installation
 
