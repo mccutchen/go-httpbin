@@ -24,4 +24,11 @@ clean:
 deps:
 	go get -u github.com/jteeuwen/go-bindata/...
 
-.PHONY: all
+image: assets cmd/go-httpbin/*.go httpbin/*.go
+	mkdir -p /tmp/go-httpbin-docker
+	cp Dockerfile /tmp/go-httpbin-docker
+	GOOS=linux GOARCH=amd64 go build -o /tmp/go-httpbin-docker/go-httpbin ./cmd/go-httpbin
+	docker build -t mccutchen/go-httpbin /tmp/go-httpbin-docker
+
+imagepush: image
+	docker push mccutchen/go-httpbin

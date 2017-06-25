@@ -23,6 +23,12 @@ Usage of ./dist/go-httpbin:
         Port to listen on (default 8080)
 ```
 
+Docker images are also available on [Docker Hub][docker-hub]:
+
+```
+$ docker run -P mccutchen/go-httpbin
+```
+
 ## Installation
 
 ```
@@ -38,13 +44,19 @@ go get github.com/mccutchen/go-httpbin/...
 ## Development
 
 ```
+# local development
 make
 make test
 make testcover
 make run
+
+# building & pushing docker images
+make image
+make imagepush
 ```
 
 [kr]: https://github.com/kennethreitz
 [httpbin-org]: https://httpbin.org/
 [httpbin-repo]: https://github.com/kennethreitz/httpbin
 [ahmet-go-httpbin]: https://github.com/ahmetb/go-httpbin
+[docker-hub]: https://hub.docker.com/r/mccutchen/go-httpbin/
