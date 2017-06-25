@@ -7,6 +7,7 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 [![Build Status](https://travis-ci.org/mccutchen/go-httpbin.svg?branch=master)](http://travis-ci.org/mccutchen/go-httpbin)
 [![Coverage](http://gocover.io/_badge/github.com/mccutchen/go-httpbin/httpbin?0)](http://gocover.io/github.com/mccutchen/go-httpbin/httpbin)
 
+
 ## Usage
 
 Run as a standalone binary, configured by command line flags or environment
@@ -23,11 +24,12 @@ Usage of ./dist/go-httpbin:
         Port to listen on (default 8080)
 ```
 
-Docker images are also available on [Docker Hub][docker-hub]:
+Docker images are published to [Docker Hub][docker-hub]:
 
 ```
 $ docker run -P mccutchen/go-httpbin
 ```
+
 
 ## Installation
 
@@ -35,11 +37,30 @@ $ docker run -P mccutchen/go-httpbin
 go get github.com/mccutchen/go-httpbin/...
 ```
 
-## See also
 
- - [kennethreitz/httpbin][httpbin-repo] — the original Python version, without
-   which this knock-off wouldn't exist
- - [ahmetb/go-httpbin][ahmet-go-httpbin] — another golang port
+## Inspiration & prior art
+
+I've been a longtime user of [Kenneith Reitz][kr]'s original httpbin.org, and
+wanted to write a golang port for fun and to see how far I could get using only
+the stdlib.
+
+When I started this project, there were a handful of existing and incomplete
+golang ports, with the most promising being [ahmetb/go-httpbin][ahmet]. This
+project showed me how useful it might be to have an `httpbin` package available
+for testing golang applications.
+
+### Known differences from other httpbin versions
+
+**Compared to [the original][httpbin-org]**:
+ - No `/brotli` endpoint (due to lack of support in Go's stdlib)
+ - Response values which may be encoded as either a string or a list of strings
+   will always be encoded as a list of strings (e.g. request headers, query
+   params, form values)
+
+**Compared to [ahmetb/go-httpbin][ahmet-go-httpbin]**:
+ - No dependencies on 3rd party packages
+ - More complete implementation of endpoints
+
 
 ## Development
 
