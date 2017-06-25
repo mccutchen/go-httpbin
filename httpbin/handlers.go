@@ -467,7 +467,11 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	<-time.After(delay)
+	select {
+	case <-r.Context().Done():
+		return
+	case <-time.After(delay):
+	}
 	h.RequestWithBody(w, r)
 }
 
@@ -526,7 +530,11 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 	pause := duration / time.Duration(numbytes)
 
-	<-time.After(delay)
+	select {
+	case <-r.Context().Done():
+		return
+	case <-time.After(delay):
+	}
 
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -535,7 +543,12 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	for i := int64(0); i < numbytes; i++ {
 		w.Write([]byte("*"))
 		f.Flush()
-		<-time.After(pause)
+
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(pause):
+		}
 	}
 }
 
