@@ -457,7 +457,7 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delay, err := parseBoundedDuration(parts[2], 0, h.options.MaxResponseTime)
+	delay, err := parseBoundedDuration(parts[2], 0, h.options.MaxDuration)
 	if err != nil {
 		http.Error(w, "Invalid duration", http.StatusBadRequest)
 		return
@@ -481,7 +481,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 	userDuration := q.Get("duration")
 	if userDuration != "" {
-		duration, err = parseBoundedDuration(userDuration, 0, h.options.MaxResponseTime)
+		duration, err = parseBoundedDuration(userDuration, 0, h.options.MaxDuration)
 		if err != nil {
 			http.Error(w, "Invalid duration", http.StatusBadRequest)
 			return
@@ -490,7 +490,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 	userDelay := q.Get("delay")
 	if userDelay != "" {
-		delay, err = parseBoundedDuration(userDelay, 0, h.options.MaxResponseTime)
+		delay, err = parseBoundedDuration(userDelay, 0, h.options.MaxDuration)
 		if err != nil {
 			http.Error(w, "Invalid delay", http.StatusBadRequest)
 			return
@@ -500,7 +500,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	userNumBytes := q.Get("numbytes")
 	if userNumBytes != "" {
 		numbytes, err = strconv.ParseInt(userNumBytes, 10, 64)
-		if err != nil || numbytes <= 0 || numbytes > h.options.MaxResponseSize {
+		if err != nil || numbytes <= 0 || numbytes > h.options.MaxMemory {
 			http.Error(w, "Invalid numbytes", http.StatusBadRequest)
 			return
 		}
@@ -515,7 +515,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if duration+delay > h.options.MaxResponseTime {
+	if duration+delay > h.options.MaxDuration {
 		http.Error(w, "Too much time", http.StatusBadRequest)
 		return
 	}

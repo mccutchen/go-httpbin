@@ -20,13 +20,11 @@ import (
 )
 
 const maxMemory int64 = 1024 * 1024
-const maxResponseSize = 1024
-const maxResponseTime time.Duration = 1 * time.Second
+const maxDuration time.Duration = 1 * time.Second
 
-var app = NewHTTPBin(&Options{
-	MaxMemory:       maxMemory,
-	MaxResponseSize: maxResponseSize,
-	MaxResponseTime: maxResponseTime,
+var app = NewHTTPBinWithOptions(&Options{
+	MaxMemory:   maxMemory,
+	MaxDuration: maxDuration,
 })
 
 var handler = app.Handler()
@@ -57,13 +55,6 @@ func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
 	have := w.Body.String()
 	if want != have {
 		t.Fatalf("expected body = %v, got %v", want, have)
-	}
-}
-
-func TestNewHTTPBin__NilOptions(t *testing.T) {
-	h := NewHTTPBin(nil)
-	if h.options.MaxMemory != 0 {
-		t.Fatalf("expected default MaxMemory == 0, got %#v", h.options.MaxMemory)
 	}
 }
 
@@ -1341,7 +1332,7 @@ func TestDelay(t *testing.T) {
 		// as are floating point seconds
 		{"/delay/0", 0},
 		{"/delay/0.5", 500 * time.Millisecond},
-		{"/delay/1", maxResponseTime},
+		{"/delay/1", maxDuration},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -1418,7 +1409,7 @@ func TestDrip(t *testing.T) {
 
 		{&url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
 		{&url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxResponseSize)}}, 0, maxResponseSize, http.StatusOK},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxMemory)}}, 0, int(maxMemory), http.StatusOK},
 
 		{&url.Values{"code": {"100"}}, 0, 10, 100},
 		{&url.Values{"code": {"404"}}, 0, 10, 404},
@@ -1472,7 +1463,7 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
 		{&url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
 		{&url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxResponseSize+1)}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxMemory+1)}}, http.StatusBadRequest},
 
 		{&url.Values{"code": {"foo"}}, http.StatusBadRequest},
 		{&url.Values{"code": {"-1"}}, http.StatusBadRequest},

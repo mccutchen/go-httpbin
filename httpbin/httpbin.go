@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// Default configuration values
+const (
+	DefaultMaxMemory   int64 = 1024 * 1024
+	DefaultMaxDuration       = 10 * time.Second
+)
+
 const jsonContentType = "application/json; encoding=utf-8"
 const htmlContentType = "text/html; charset=utf-8"
 
@@ -72,9 +78,13 @@ type streamResponse struct {
 
 // Options are used to configure HTTPBin
 type Options struct {
-	MaxMemory       int64
-	MaxResponseSize int64
-	MaxResponseTime time.Duration
+	// How much memory a request is allowed to consume in bytes, as a limit on
+	// the size of incoming request bodies and on responses generated
+	MaxMemory int64
+
+	// Maximum duration of a request, for those requests that allow user
+	// control over timing (e.g. /delay)
+	MaxDuration time.Duration
 }
 
 // HTTPBin contains the business logic
@@ -166,11 +176,18 @@ func (h *HTTPBin) Handler() http.Handler {
 	return handler
 }
 
-// NewHTTPBin creates a new HTTPBin
-func NewHTTPBin(options *Options) *HTTPBin {
-	if options == nil {
-		options = &Options{}
+// NewHTTPBin creates a new HTTPBin instance with default options
+func NewHTTPBin() *HTTPBin {
+	return &HTTPBin{
+		options: &Options{
+			MaxMemory:   DefaultMaxMemory,
+			MaxDuration: DefaultMaxDuration,
+		},
 	}
+}
+
+// NewHTTPBinWithOptions creates a new HTTPBin instance with the given options
+func NewHTTPBinWithOptions(options *Options) *HTTPBin {
 	return &HTTPBin{
 		options: options,
 	}
