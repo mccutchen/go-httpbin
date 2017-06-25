@@ -91,7 +91,7 @@ func formsPostHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "forms-post.html", size: 1398, mode: os.FileMode(420), modTime: time.Unix(1472451803, 0)}
+	info := bindataFileInfo{name: "forms-post.html", size: 1398, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -111,7 +111,7 @@ func imageJpeg() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "image.jpeg", size: 35588, mode: os.FileMode(420), modTime: time.Unix(1496118178, 0)}
+	info := bindataFileInfo{name: "image.jpeg", size: 35588, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -131,7 +131,7 @@ func imagePng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "image.png", size: 8090, mode: os.FileMode(420), modTime: time.Unix(1496118178, 0)}
+	info := bindataFileInfo{name: "image.png", size: 8090, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -151,7 +151,7 @@ func imageSvg() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "image.svg", size: 8984, mode: os.FileMode(420), modTime: time.Unix(1496118178, 0)}
+	info := bindataFileInfo{name: "image.svg", size: 8984, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -171,7 +171,7 @@ func imageWebp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "image.webp", size: 10568, mode: os.FileMode(420), modTime: time.Unix(1496118178, 0)}
+	info := bindataFileInfo{name: "image.webp", size: 10568, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -191,7 +191,7 @@ func indexHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "index.html", size: 10774, mode: os.FileMode(420), modTime: time.Unix(1495941556, 0)}
+	info := bindataFileInfo{name: "index.html", size: 10774, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -211,7 +211,7 @@ func mobyHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "moby.html", size: 3742, mode: os.FileMode(420), modTime: time.Unix(1495928878, 0)}
+	info := bindataFileInfo{name: "moby.html", size: 3742, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -231,7 +231,7 @@ func sampleXml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "sample.xml", size: 522, mode: os.FileMode(420), modTime: time.Unix(1496120449, 0)}
+	info := bindataFileInfo{name: "sample.xml", size: 522, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -251,7 +251,7 @@ func utf8Html() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "utf8.html", size: 14240, mode: os.FileMode(420), modTime: time.Unix(1473129060, 0)}
+	info := bindataFileInfo{name: "utf8.html", size: 14240, mode: os.FileMode(420), modTime: time.Unix(1498336884, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -309,14 +309,14 @@ func AssetNames() []string {
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
 	"forms-post.html": formsPostHtml,
-	"image.jpeg":      imageJpeg,
-	"image.png":       imagePng,
-	"image.svg":       imageSvg,
-	"image.webp":      imageWebp,
-	"index.html":      indexHtml,
-	"moby.html":       mobyHtml,
-	"sample.xml":      sampleXml,
-	"utf8.html":       utf8Html,
+	"image.jpeg": imageJpeg,
+	"image.png": imagePng,
+	"image.svg": imageSvg,
+	"image.webp": imageWebp,
+	"index.html": indexHtml,
+	"moby.html": mobyHtml,
+	"sample.xml": sampleXml,
+	"utf8.html": utf8Html,
 }
 
 // AssetDir returns the file names below a certain
@@ -358,17 +358,16 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
-
 var _bintree = &bintree{nil, map[string]*bintree{
 	"forms-post.html": &bintree{formsPostHtml, map[string]*bintree{}},
-	"image.jpeg":      &bintree{imageJpeg, map[string]*bintree{}},
-	"image.png":       &bintree{imagePng, map[string]*bintree{}},
-	"image.svg":       &bintree{imageSvg, map[string]*bintree{}},
-	"image.webp":      &bintree{imageWebp, map[string]*bintree{}},
-	"index.html":      &bintree{indexHtml, map[string]*bintree{}},
-	"moby.html":       &bintree{mobyHtml, map[string]*bintree{}},
-	"sample.xml":      &bintree{sampleXml, map[string]*bintree{}},
-	"utf8.html":       &bintree{utf8Html, map[string]*bintree{}},
+	"image.jpeg": &bintree{imageJpeg, map[string]*bintree{}},
+	"image.png": &bintree{imagePng, map[string]*bintree{}},
+	"image.svg": &bintree{imageSvg, map[string]*bintree{}},
+	"image.webp": &bintree{imageWebp, map[string]*bintree{}},
+	"index.html": &bintree{indexHtml, map[string]*bintree{}},
+	"moby.html": &bintree{mobyHtml, map[string]*bintree{}},
+	"sample.xml": &bintree{sampleXml, map[string]*bintree{}},
+	"utf8.html": &bintree{utf8Html, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory
@@ -417,3 +416,4 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
+
