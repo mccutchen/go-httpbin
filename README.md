@@ -69,7 +69,7 @@ go get github.com/mccutchen/go-httpbin/...
 ```
 
 
-## Inspiration & prior art
+## Motivation & prior art
 
 I've been a longtime user of [Kenneith Reitz][kr]'s original
 [httpbin.org][httpbin-org], and wanted to write a golang port for fun and to
@@ -82,13 +82,13 @@ available for testing golang applications.
 
 ### Known differences from other httpbin versions
 
-**Compared to [the original][httpbin-org]**:
+Compared to [the original][httpbin-org]:
  - No `/brotli` endpoint (due to lack of support in Go's stdlib)
  - Response values which may be encoded as either a string or a list of strings
    will always be encoded as a list of strings (e.g. request headers, query
    params, form values)
 
-**Compared to [ahmetb/go-httpbin][ahmet]**:
+Compared to [ahmetb/go-httpbin][ahmet]:
  - No dependencies on 3rd party packages
  - More complete implementation of endpoints
 
