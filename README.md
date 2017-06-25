@@ -84,6 +84,8 @@ available for testing golang applications.
 
 Compared to [the original][httpbin-org]:
  - No `/brotli` endpoint (due to lack of support in Go's stdlib)
+ - The `?show_env=1` query param is ignored (i.e. no special handling of
+   runtime environment headers)
  - Response values which may be encoded as either a string or a list of strings
    will always be encoded as a list of strings (e.g. request headers, query
    params, form values)
