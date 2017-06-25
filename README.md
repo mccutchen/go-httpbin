@@ -15,12 +15,12 @@ variables:
 ```
 $ go-httpbin -help
 Usage of ./dist/go-httpbin:
-  -listen string
-        Listen address (default ":8080")
   -max-duration duration
         Maximum duration a response may take (default 10s)
   -max-memory int
         Maximum size of request or response, in bytes (default 1048576)
+  -port int
+        Port to listen on (default 8080)
 ```
 
 ## Installation
@@ -37,22 +37,10 @@ go get github.com/mccutchen/go-httpbin/...
 
 ## Development
 
-### Building
-
 ```
 make
-```
-
-### Testing
-
-```
 make test
 make testcover
-```
-
-### Running
-
-```
 make run
 ```
 

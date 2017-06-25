@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,16 +13,16 @@ import (
 	"github.com/mccutchen/go-httpbin/httpbin"
 )
 
-const defaultListenAddr = ":8080"
+const defaultPort = 8080
 
 var (
-	listenAddr  string
+	port        int
 	maxMemory   int64
 	maxDuration time.Duration
 )
 
 func main() {
-	flag.StringVar(&listenAddr, "listen", ":8080", "Listen address")
+	flag.IntVar(&port, "port", defaultPort, "Port to listen on")
 	flag.Int64Var(&maxMemory, "max-memory", httpbin.DefaultMaxMemory, "Maximum size of request or response, in bytes")
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	flag.Parse()
@@ -46,14 +47,21 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if listenAddr == defaultListenAddr && os.Getenv("LISTEN") != "" {
-		listenAddr = os.Getenv("LISTEN")
+	if port == defaultPort && os.Getenv("PORT") != "" {
+		port, err = strconv.Atoi(os.Getenv("PORT"))
+		if err != nil {
+			fmt.Printf("invalid value %#v for env var PORT: %s\n", os.Getenv("PORT"), err)
+			flag.Usage()
+			os.Exit(1)
+		}
 	}
 
 	h := httpbin.NewHTTPBinWithOptions(&httpbin.Options{
 		MaxMemory:   maxMemory,
 		MaxDuration: maxDuration,
 	})
-	log.Printf("listening on %s", listenAddr)
+
+	listenAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(port))
+	log.Printf("listening on port %s", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, h.Handler()))
 }
