@@ -46,8 +46,8 @@ see how far I could get using only the stdlib.
 
 When I started this project, there were a handful of existing and incomplete
 golang ports, with the most promising being [ahmetb/go-httpbin][ahmet]. This
-project showed me how useful it might be to have an `httpbin` package available
-for testing golang applications.
+project showed me how useful it might be to have an `httpbin` _library_
+available for testing golang applications.
 
 ### Known differences from other httpbin versions
 
@@ -64,7 +64,7 @@ for testing golang applications.
 
 ## Development
 
-```
+```bash
 # local development
 make
 make test
