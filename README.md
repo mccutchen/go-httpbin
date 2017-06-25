@@ -40,9 +40,9 @@ go get github.com/mccutchen/go-httpbin/...
 
 ## Inspiration & prior art
 
-I've been a longtime user of [Kenneith Reitz][kr]'s original httpbin.org, and
-wanted to write a golang port for fun and to see how far I could get using only
-the stdlib.
+I've been a longtime user of [Kenneith Reitz][kr]'s original
+[httpbin.org][httpbin-org], and wanted to write a golang port for fun and to
+see how far I could get using only the stdlib.
 
 When I started this project, there were a handful of existing and incomplete
 golang ports, with the most promising being [ahmetb/go-httpbin][ahmet]. This
@@ -57,7 +57,7 @@ for testing golang applications.
    will always be encoded as a list of strings (e.g. request headers, query
    params, form values)
 
-**Compared to [ahmetb/go-httpbin][ahmet-go-httpbin]**:
+**Compared to [ahmetb/go-httpbin][ahmet]**:
  - No dependencies on 3rd party packages
  - More complete implementation of endpoints
 
@@ -79,5 +79,5 @@ make imagepush
 [kr]: https://github.com/kennethreitz
 [httpbin-org]: https://httpbin.org/
 [httpbin-repo]: https://github.com/kennethreitz/httpbin
-[ahmet-go-httpbin]: https://github.com/ahmetb/go-httpbin
+[ahmet]: https://github.com/ahmetb/go-httpbin
 [docker-hub]: https://hub.docker.com/r/mccutchen/go-httpbin/
