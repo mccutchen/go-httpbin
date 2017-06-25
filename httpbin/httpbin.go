@@ -151,6 +151,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/image/", h.Image)
 	mux.HandleFunc("/xml", h.XML)
 
+	// existing httpbin endpoints that we do not support
+	mux.HandleFunc("/brotli", notImplementedHandler)
+
 	// Make sure our ServeMux doesn't "helpfully" redirect these invalid
 	// endpoints by adding a trailing slash. See the ServeMux docs for more
 	// info: https://golang.org/pkg/net/http/#ServeMux

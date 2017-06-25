@@ -2047,3 +2047,19 @@ func TestXML(t *testing.T) {
 	assertContentType(t, w, "application/xml")
 	assertBodyContains(t, w, `<?xml version='1.0' encoding='us-ascii'?>`)
 }
+
+func TestNotImplemented(t *testing.T) {
+	var tests = []struct {
+		url string
+	}{
+		{"/brotli"},
+	}
+	for _, test := range tests {
+		t.Run(test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusNotImplemented)
+		})
+	}
+}

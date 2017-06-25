@@ -24,6 +24,10 @@ var acceptedMediaTypes = []string{
 	"image/",
 }
 
+func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Not implemented", http.StatusNotImplemented)
+}
+
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
