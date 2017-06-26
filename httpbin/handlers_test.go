@@ -1357,6 +1357,19 @@ func TestDelay(t *testing.T) {
 		})
 	}
 
+	t.Run("handle cancelation", func(t *testing.T) {
+		srv := httptest.NewServer(handler)
+		defer srv.Close()
+
+		client := http.Client{
+			Timeout: time.Duration(10 * time.Millisecond),
+		}
+		_, err := client.Get(srv.URL + "/delay/1")
+		if err == nil {
+			t.Fatal("expected timeout error")
+		}
+	})
+
 	var badTests = []struct {
 		url  string
 		code int
@@ -1440,6 +1453,42 @@ func TestDrip(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("handle cancelation during initial delay", func(t *testing.T) {
+		srv := httptest.NewServer(handler)
+		defer srv.Close()
+
+		client := http.Client{
+			Timeout: time.Duration(10 * time.Millisecond),
+		}
+		resp, err := client.Get(srv.URL + "/drip?duration=500ms&delay=500ms")
+		if err == nil {
+			body, _ := ioutil.ReadAll(resp.Body)
+			t.Fatalf("expected timeout error, got %d %s", resp.StatusCode, body)
+		}
+	})
+
+	t.Run("handle cancelation during drip", func(t *testing.T) {
+		srv := httptest.NewServer(handler)
+		defer srv.Close()
+
+		client := http.Client{
+			Timeout: time.Duration(250 * time.Millisecond),
+		}
+		resp, err := client.Get(srv.URL + "/drip?duration=900ms&delay=100ms")
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		// in this case, the timeout happens while trying to read the body
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			t.Fatal("expected timeout reading body")
+		}
+
+		// but we should have received a partial response
+		assertBytesEqual(t, body, []byte("**"))
+	})
 
 	var badTests = []struct {
 		params *url.Values
