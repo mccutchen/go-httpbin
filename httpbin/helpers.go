@@ -1,6 +1,7 @@
 package httpbin
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -78,13 +79,25 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	if r.Body == nil {
 		return nil
 	}
-	defer r.Body.Close()
+
+	// Always set resp.Data to the incoming request body, in case we don't know
+	// how to handle the content type
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		r.Body.Close()
+		return err
+	}
+	resp.Data = body
+
+	// After reading the body to populate resp.Data, we need to re-wrap it in
+	// an io.Reader for further processing below
+	r.Body.Close()
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
 	ct := r.Header.Get("Content-Type")
 	switch {
 	case ct == "application/x-www-form-urlencoded":
-		err := r.ParseForm()
-		if err != nil {
+		if err := r.ParseForm(); err != nil {
 			return err
 		}
 		resp.Form = r.PostForm
@@ -92,24 +105,16 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		// The memory limit here only restricts how many parts will be kept in
 		// memory before overflowing to disk:
 		// http://localhost:8080/pkg/net/http/#Request.ParseMultipartForm
-		err := r.ParseMultipartForm(1024 * 1024)
-		if err != nil {
+		if err := r.ParseMultipartForm(1024); err != nil {
 			return err
 		}
 		resp.Form = r.PostForm
 	case strings.HasPrefix(ct, "application/json"):
-		dec := json.NewDecoder(r.Body)
-		err := dec.Decode(&resp.JSON)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&resp.JSON); err != nil {
 			return err
 		}
-	default:
-		data, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			return err
-		}
-		resp.Data = data
 	}
+
 	return nil
 }
 

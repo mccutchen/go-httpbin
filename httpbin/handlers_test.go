@@ -502,14 +502,12 @@ func TestPost__JSON(t *testing.T) {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
 	}
 
+	assertBytesEqual(t, resp.Data, inputBody)
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
 	}
 	if len(resp.Form) != 0 {
 		t.Fatalf("expected no form values, got %d", len(resp.Form))
-	}
-	if resp.Data != nil {
-		t.Fatalf("expected no data, got %#v", resp.Data)
 	}
 
 	// Need to re-marshall just the JSON field from the response in order to
