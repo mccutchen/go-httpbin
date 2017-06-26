@@ -16,6 +16,17 @@ import (
 	"time"
 )
 
+// requestHeaders takes in incoming request and returns an http.Header map
+// suitable for inclusion in our response data structures.
+//
+// This is necessary to ensure that the incoming Host header is included,
+// because golang only exposes that header on the http.Request struct itself.
+func getRequestHeaders(r *http.Request) http.Header {
+	h := r.Header
+	h.Set("Host", r.Host)
+	return h
+}
+
 func getOrigin(r *http.Request) string {
 	origin := r.Header.Get("X-Forwarded-For")
 	if origin == "" {

@@ -51,7 +51,7 @@ func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 	resp := &getResponse{
 		Args:    r.URL.Query(),
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
 	}
@@ -63,7 +63,7 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
 		Args:    r.URL.Query(),
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
 	}
@@ -81,7 +81,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 // Gzip returns a gzipped response
 func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 	resp := &gzipResponse{
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		Gzipped: true,
 	}
@@ -101,7 +101,7 @@ func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 // Deflate returns a gzipped response
 func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 	resp := &deflateResponse{
-		Headers:  r.Header,
+		Headers:  getRequestHeaders(r),
 		Origin:   getOrigin(r),
 		Deflated: true,
 	}
@@ -137,7 +137,7 @@ func (h *HTTPBin) UserAgent(w http.ResponseWriter, r *http.Request) {
 // Headers echoes the incoming request headers
 func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(&headersResponse{
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 	})
 	writeJSON(w, body, http.StatusOK)
 }
@@ -437,7 +437,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 
 	resp := &streamResponse{
 		Args:    r.URL.Query(),
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
 	}
@@ -650,7 +650,7 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	// pulled into a little helper?
 	resp := &getResponse{
 		Args:    r.URL.Query(),
-		Headers: r.Header,
+		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
 	}

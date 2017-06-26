@@ -287,6 +287,7 @@ func TestUserAgent(t *testing.T) {
 
 func TestHeaders(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/headers", nil)
+	r.Host = "test-host"
 	r.Header.Set("User-Agent", "test")
 	r.Header.Set("Foo-Header", "foo")
 	r.Header.Add("Bar-Header", "bar1")
@@ -303,13 +304,20 @@ func TestHeaders(t *testing.T) {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
 	}
 
+	// Host header requires special treatment, because its an attribute of the
+	// http.Request struct itself, not part of its headers map
+	host := resp.Headers[http.CanonicalHeaderKey("Host")]
+	if host == nil || host[0] != "test-host" {
+		t.Fatalf("expected Host header \"test-host\", got %#v", host)
+	}
+
 	for k, expectedValues := range r.Header {
 		values, ok := resp.Headers[http.CanonicalHeaderKey(k)]
 		if !ok {
 			t.Fatalf("expected header %#v in response", k)
 		}
 		if !reflect.DeepEqual(expectedValues, values) {
-			t.Fatalf("header value mismatch: %#v != %#v", values, expectedValues)
+			t.Fatalf("header %s value mismatch: %#v != %#v", k, values, expectedValues)
 		}
 	}
 }
