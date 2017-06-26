@@ -87,7 +87,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		r.Body.Close()
 		return err
 	}
-	resp.Data = body
+	resp.Data = string(body)
 
 	// After reading the body to populate resp.Data, we need to re-wrap it in
 	// an io.Reader for further processing below

@@ -41,7 +41,7 @@ type bodyResponse struct {
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
-	Data  []byte              `json:"data"`
+	Data  string              `json:"data"`
 	Files map[string][]string `json:"files"`
 	Form  map[string][]string `json:"form"`
 	JSON  interface{}         `json:"json"`

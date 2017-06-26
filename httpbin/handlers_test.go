@@ -502,7 +502,9 @@ func TestPost__JSON(t *testing.T) {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
 	}
 
-	assertBytesEqual(t, resp.Data, inputBody)
+	if resp.Data != string(inputBody) {
+		t.Fatalf("expected data == %#v, got %#v", string(inputBody), resp.Data)
+	}
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
 	}
