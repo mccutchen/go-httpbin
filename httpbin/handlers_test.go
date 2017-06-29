@@ -323,24 +323,44 @@ func TestHeaders(t *testing.T) {
 }
 
 func TestPost__EmptyBody(t *testing.T) {
-	r, _ := http.NewRequest("POST", "/post", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
-
-	assertStatusCode(t, w, http.StatusOK)
-	assertContentType(t, w, jsonContentType)
-
-	var resp *bodyResponse
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	if err != nil {
-		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	var tests = []struct {
+		contentType string
+	}{
+		{""},
+		{"application/json; charset=utf-8"},
+		{"application/x-www-form-urlencoded"},
+		{"multipart/form-data; foo"},
 	}
+	for _, test := range tests {
+		t.Run("content type/"+test.contentType, func(t *testing.T) {
+			r, _ := http.NewRequest("POST", "/post", nil)
+			r.Header.Set("Content-Type", test.contentType)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
 
-	if len(resp.Args) > 0 {
-		t.Fatalf("expected no query params, got %#v", resp.Args)
-	}
-	if len(resp.Form) > 0 {
-		t.Fatalf("expected no form data, got %#v", resp.Form)
+			assertStatusCode(t, w, http.StatusOK)
+			assertContentType(t, w, jsonContentType)
+
+			var resp *bodyResponse
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			if err != nil {
+				t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+			}
+
+			if resp.Data != "" {
+				t.Fatalf("expected empty response data, got %#v", resp.Data)
+			}
+			if resp.JSON != nil {
+				t.Fatalf("expected nil response json, got %#v", resp.JSON)
+			}
+
+			if len(resp.Args) > 0 {
+				t.Fatalf("expected no query params, got %#v", resp.Args)
+			}
+			if len(resp.Form) > 0 {
+				t.Fatalf("expected no form data, got %#v", resp.Form)
+			}
+		})
 	}
 }
 

@@ -121,7 +121,8 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		}
 		resp.Form = r.PostForm
 	case strings.HasPrefix(ct, "application/json"):
-		if err := json.NewDecoder(r.Body).Decode(&resp.JSON); err != nil {
+		err := json.NewDecoder(r.Body).Decode(&resp.JSON)
+		if err != nil && err != io.EOF {
 			return err
 		}
 	}
