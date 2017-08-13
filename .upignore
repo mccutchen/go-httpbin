@@ -1,6 +1,4 @@
-.git
-cmd
-dist
-httpbin
-static
-Dockerfile
+*
+!server
+!main
+!*.js
