@@ -4,14 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
-
-func logger(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r)
-		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
-	})
-}
 
 func cors(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,5 +48,54 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 		}
 		h.ServeHTTP(w, r)
+	})
+}
+
+// metaResponseWriter implements is an http.ResponseWriter and http.Flusher
+// that records its status code and body size for logging purposes.
+type metaResponseWriter struct {
+	w      http.ResponseWriter
+	status int
+	size   int
+}
+
+func (mw *metaResponseWriter) Write(b []byte) (int, error) {
+	size, err := mw.w.Write(b)
+	mw.size += size
+	return size, err
+}
+
+func (mw *metaResponseWriter) WriteHeader(s int) {
+	mw.w.WriteHeader(s)
+	mw.status = s
+}
+
+func (mw *metaResponseWriter) Flush() {
+	f := mw.w.(http.Flusher)
+	f.Flush()
+}
+
+func (mw *metaResponseWriter) Header() http.Header {
+	return mw.w.Header()
+}
+
+func (mw *metaResponseWriter) Status() int {
+	if mw.status == 0 {
+		return http.StatusOK
+	}
+	return mw.status
+}
+
+func (mw *metaResponseWriter) Size() int {
+	return mw.size
+}
+
+func logger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mw := &metaResponseWriter{w: w}
+		t := time.Now()
+		h.ServeHTTP(mw, r)
+		duration := time.Now().Sub(t)
+		log.Printf("status=%d method=%s uri=%q size=%d duration=%s", mw.Status(), r.Method, r.URL.RequestURI(), mw.Size(), duration)
 	})
 }
