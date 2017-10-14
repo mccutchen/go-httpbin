@@ -34,6 +34,7 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'")
 	writeHTML(w, assets.MustAsset("index.html"), http.StatusOK)
 }
 
