@@ -64,7 +64,7 @@ func TestIndex(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assertContentType(t, w, htmlContentType)
-	assertHeader(t, w, "Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'")
+	assertHeader(t, w, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
 	assertBodyContains(t, w, "go-httpbin")
 }
 
