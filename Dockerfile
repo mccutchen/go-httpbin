@@ -1,7 +1,7 @@
 FROM golang:1.9
+RUN go get -u github.com/jteeuwen/go-bindata/...
 WORKDIR /go/src/github.com/mccutchen/go-httpbin
 COPY . .
-RUN make deps
 RUN make
 
 FROM gcr.io/distroless/base
