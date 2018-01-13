@@ -51,8 +51,8 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	})
 }
 
-// metaResponseWriter implements is an http.ResponseWriter and http.Flusher
-// that records its status code and body size for logging purposes.
+// metaResponseWriter implements http.ResponseWriter and http.Flusher in order
+// to record a response's status code and body size for logging purposes.
 type metaResponseWriter struct {
 	w      http.ResponseWriter
 	status int
