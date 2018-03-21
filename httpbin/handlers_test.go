@@ -192,6 +192,27 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestHEAD(t *testing.T) {
+	r, _ := http.NewRequest("HEAD", "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, 200)
+	assertBodyEquals(t, w, "")
+
+	contentLengthStr := w.HeaderMap.Get("Content-Length")
+	if contentLengthStr == "" {
+		t.Fatalf("missing Content-Length header in response")
+	}
+	contentLength, err := strconv.Atoi(contentLengthStr)
+	if err != nil {
+		t.Fatalf("error converting Content-Lengh %v to integer: %s", contentLengthStr, err)
+	}
+	if contentLength <= 0 {
+		t.Fatalf("Content-Lengh %v should be greater than 0", contentLengthStr)
+	}
+}
+
 func TestCORS(t *testing.T) {
 	t.Run("CORS/no_request_origin", func(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/get", nil)
@@ -213,13 +234,15 @@ func TestCORS(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
+		assertStatusCode(t, w, 200)
+
 		var headerTests = []struct {
 			key      string
 			expected string
 		}{
 			{"Access-Control-Allow-Origin", "*"},
 			{"Access-Control-Allow-Credentials", "true"},
-			{"Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS"},
+			{"Access-Control-Allow-Methods", "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS"},
 			{"Access-Control-Max-Age", "3600"},
 			{"Access-Control-Allow-Headers", ""},
 		}
@@ -233,6 +256,8 @@ func TestCORS(t *testing.T) {
 		r.Header.Set("Access-Control-Request-Headers", "X-Test-Header")
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, 200)
 
 		var headerTests = []struct {
 			key      string
