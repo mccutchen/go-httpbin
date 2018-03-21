@@ -3,8 +3,8 @@ package httpbin
 import (
 	"bufio"
 	"bytes"
-	"compress/flate"
 	"compress/gzip"
+	"compress/zlib"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -1261,7 +1261,10 @@ func TestDeflate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader := flate.NewReader(w.Body)
+	reader, err := zlib.NewReader(w.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
