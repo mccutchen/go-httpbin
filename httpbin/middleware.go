@@ -8,8 +8,16 @@ import (
 	"time"
 )
 
-func optionsAndHead(h http.Handler) http.Handler {
+func metaRequests(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		respHeader := w.Header()
+		respHeader.Set("Access-Control-Allow-Origin", origin)
+		respHeader.Set("Access-Control-Allow-Credentials", "true")
+
 		switch r.Method {
 		case "OPTIONS":
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS")
@@ -28,20 +36,6 @@ func optionsAndHead(h http.Handler) http.Handler {
 		default:
 			h.ServeHTTP(w, r)
 		}
-	})
-}
-
-func cors(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			origin = "*"
-		}
-		respHeader := w.Header()
-		respHeader.Set("Access-Control-Allow-Origin", origin)
-		respHeader.Set("Access-Control-Allow-Credentials", "true")
-
-		h.ServeHTTP(w, r)
 	})
 }
 
