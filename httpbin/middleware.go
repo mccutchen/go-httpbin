@@ -109,10 +109,11 @@ func (mw *metaResponseWriter) Size() int {
 
 func logger(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqMethod, reqURI := r.Method, r.URL.RequestURI()
 		mw := &metaResponseWriter{w: w}
 		t := time.Now()
 		h.ServeHTTP(mw, r)
 		duration := time.Now().Sub(t)
-		log.Printf("status=%d method=%s uri=%q size=%d duration=%s", mw.Status(), r.Method, r.URL.RequestURI(), mw.Size(), duration)
+		log.Printf("status=%d method=%s uri=%q size=%d duration=%s", mw.Status(), reqMethod, reqURI, mw.Size(), duration)
 	})
 }
