@@ -1,21 +1,39 @@
-commit := $(shell git rev-parse --short HEAD)
+.PHONY: clean deps image imagepush run test testcover
+
+COMMIT := $(shell git rev-parse --short HEAD)
+GENERATED_ASSETS_PATH := httpbin/assets/assets.go
+BIN_DIR := $(GOPATH)/bin
+GOLINT := $(BIN_DIR)/golint
+GOBINDATA := $(BIN_DIR)/go-bindata
+TEST_ARGS := -race
 
 build: dist/go-httpbin
 
-dist/go-httpbin: assets cmd/go-httpbin/*.go httpbin/*.go
+dist/go-httpbin: $(GENERATED_ASSETS_PATH) cmd/go-httpbin/*.go httpbin/*.go
 	mkdir -p dist
 	go build -o dist/go-httpbin ./cmd/go-httpbin
 
-assets: httpbin/assets/*
-	go-bindata -o httpbin/assets/assets.go -pkg=assets -prefix=static static
+$(GENERATED_ASSETS_PATH): $(GOBINDATA) static/*
+	$(GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
+	# reformat generated code
+	gofmt -s -w $(GENERATED_ASSETS_PATH)
+	# dumb hack to make generate code lint correctly
+	sed -i.bak 's/Html/HTML/g' $(GENERATED_ASSETS_PATH)
+	sed -i.bak 's/Xml/XML/g' $(GENERATED_ASSETS_PATH)
+	rm $(GENERATED_ASSETS_PATH).bak
 
-test: assets
-	go test ./...
+test:
+	go test $(TEST_ARGS) ./...
 
-testcover: assets
+testcover:
 	mkdir -p dist
-	go test -coverprofile=dist/coverage.out github.com/mccutchen/go-httpbin/httpbin
+	go test $(TEST_ARGS) -coverprofile=dist/coverage.out github.com/mccutchen/go-httpbin/httpbin
 	go tool cover -html=dist/coverage.out
+
+lint: $(GOLINT)
+	test -z "$$(gofmt -d -s -e .)" || (gofmt -d -s -e . ; exit 1)
+	$(GOLINT) -set_exit_status ./...
+	go vet ./...
 
 run: build
 	./dist/go-httpbin
@@ -23,14 +41,18 @@ run: build
 clean:
 	rm -r dist
 
-deps:
-	go get -u github.com/kevinburke/go-bindata/...
-
-image: assets cmd/go-httpbin/*.go httpbin/*.go
-	mkdir -p /tmp/go-httpbin-docker
-	cp Dockerfile /tmp/go-httpbin-docker
-	GOOS=linux GOARCH=amd64 go build -o /tmp/go-httpbin-docker/go-httpbin ./cmd/go-httpbin
-	docker build -t mccutchen/go-httpbin:$(commit) /tmp/go-httpbin-docker
+image: $(GENERATED_ASSETS_PATH) cmd/go-httpbin/*.go httpbin/*.go
+	docker build -t mccutchen/go-httpbin:$(COMMIT) .
 
 imagepush: image
-	docker push mccutchen/go-httpbin:$(commit)
+	docker push mccutchen/go-httpbin:$(COMMIT)
+
+assets: $(GENERATED_ASSETS_PATH)
+
+deps: $(GOLINT) $(GOBINDATA)
+
+$(GOLINT):
+	go get -u golang.org/x/lint/golint
+
+$(GOBINDATA):
+	go get -u github.com/kevinburke/go-bindata/...
