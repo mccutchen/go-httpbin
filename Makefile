@@ -24,7 +24,7 @@ clean:
 	rm -r dist
 
 deps:
-	go get -u github.com/jteeuwen/go-bindata/...
+	go get -u github.com/kevinburke/go-bindata/...
 
 image: assets cmd/go-httpbin/*.go httpbin/*.go
 	mkdir -p /tmp/go-httpbin-docker

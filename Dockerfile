@@ -1,5 +1,5 @@
 FROM golang:1.9
-RUN go get -u github.com/jteeuwen/go-bindata/...
+RUN go get -u github.com/kevinburke/go-bindata/...
 WORKDIR /go/src/github.com/mccutchen/go-httpbin
 COPY . .
 RUN make
