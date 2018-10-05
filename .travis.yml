@@ -1,10 +1,13 @@
 ---
 language: go
 go:
- - 1.8
- - tip
-script: make test
-before_install:
-  - go get -u github.com/jteeuwen/go-bindata/...
+  - '1.8'
+  - '1.9'
+  - '1.10'
+  - '1.11'
+  - 'tip'
+script:
+  - make lint
+  - make test
 notifications:
   email: false

@@ -1,6 +1,10 @@
-FROM golang:1.9
-RUN go get -u github.com/jteeuwen/go-bindata/...
+FROM golang:1.11
+
 WORKDIR /go/src/github.com/mccutchen/go-httpbin
+
+COPY Makefile .
+RUN make deps
+
 COPY . .
 RUN make
 

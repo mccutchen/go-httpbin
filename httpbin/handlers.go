@@ -178,29 +178,29 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		303: redirectHeaders,
 		305: redirectHeaders,
 		307: redirectHeaders,
-		401: &statusCase{
+		401: {
 			headers: map[string]string{
 				"WWW-Authenticate": `Basic realm="Fake Realm"`,
 			},
 		},
-		402: &statusCase{
+		402: {
 			body: []byte("Fuck you, pay me!"),
 			headers: map[string]string{
 				"X-More-Info": "http://vimeo.com/22053820",
 			},
 		},
-		406: &statusCase{
+		406: {
 			body: notAcceptableBody,
 			headers: map[string]string{
 				"Content-Type": jsonContentType,
 			},
 		},
-		407: &statusCase{
+		407: {
 			headers: map[string]string{
 				"Proxy-Authenticate": `Basic realm="Fake Realm"`,
 			},
 		},
-		418: &statusCase{
+		418: {
 			body: []byte("I'm a teapot!"),
 			headers: map[string]string{
 				"X-More-Info": "http://tools.ietf.org/html/rfc2324",
