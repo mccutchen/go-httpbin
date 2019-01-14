@@ -2,11 +2,12 @@ package httpbin
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
 )
+
+const loggerDateFormat string = "2006-01-02T15:04:05.9999"
 
 func metaRequests(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,13 +102,16 @@ func (mw *metaResponseWriter) Size() int {
 	return mw.size
 }
 
-func logger(h http.Handler) http.Handler {
+func logger(l Logger, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqMethod, reqURI := r.Method, r.URL.RequestURI()
 		mw := &metaResponseWriter{w: w}
 		t := time.Now()
 		h.ServeHTTP(mw, r)
-		duration := time.Now().Sub(t)
-		log.Printf("status=%d method=%s uri=%q size=%d duration=%s", mw.Status(), reqMethod, reqURI, mw.Size(), duration)
+		end := time.Now()
+		// non-obvious conversion from time.Duration to float64 milliseconds
+		// https://github.com/golang/go/issues/5491#issuecomment-66079585
+		duration := end.Sub(t).Seconds() * 1e3
+		l.Printf("time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f", end.Format(loggerDateFormat), mw.Status(), reqMethod, reqURI, mw.Size(), duration)
 	})
 }

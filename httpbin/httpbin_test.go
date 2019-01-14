@@ -1,6 +1,8 @@
 package httpbin
 
 import (
+	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -18,11 +20,16 @@ func TestNew(t *testing.T) {
 func TestNewOptions(t *testing.T) {
 	maxDuration := 1 * time.Second
 	maxBodySize := int64(1024)
+	logger := log.New(os.Stderr, "", log.LstdFlags)
 
 	h := New(
+		WithLogger(logger),
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration))
 
+	if h.Logger != logger {
+		t.Fatalf("expected Logger == %v, got %v", logger, h.Logger)
+	}
 	if h.MaxBodySize != maxBodySize {
 		t.Fatalf("expected MaxBodySize == %d, got %#v", maxBodySize, h.MaxBodySize)
 	}
