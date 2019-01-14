@@ -5,26 +5,28 @@ import (
 	"time"
 )
 
-func TestNewHTTPBin__Defaults(t *testing.T) {
-	h := NewHTTPBin()
-	if h.options.MaxMemory != DefaultMaxMemory {
-		t.Fatalf("expected default MaxMemory == %d, got %#v", DefaultMaxMemory, h.options.MaxMemory)
+func TestNew(t *testing.T) {
+	h := New()
+	if h.MaxBodySize != DefaultMaxBodySize {
+		t.Fatalf("expected default MaxBodySize == %d, got %#v", DefaultMaxBodySize, h.MaxBodySize)
 	}
-	if h.options.MaxDuration != DefaultMaxDuration {
-		t.Fatalf("expected default MaxDuration == %s, got %#v", DefaultMaxDuration, h.options.MaxDuration)
+	if h.MaxDuration != DefaultMaxDuration {
+		t.Fatalf("expected default MaxDuration == %s, got %#v", DefaultMaxDuration, h.MaxDuration)
 	}
 }
 
-func TestNewHTTPBinWithOptions__Defaults(t *testing.T) {
-	o := &Options{
-		MaxDuration: 1 * time.Second,
-		MaxMemory:   1024,
+func TestNewOptions(t *testing.T) {
+	maxDuration := 1 * time.Second
+	maxBodySize := int64(1024)
+
+	h := New(
+		WithMaxBodySize(maxBodySize),
+		WithMaxDuration(maxDuration))
+
+	if h.MaxBodySize != maxBodySize {
+		t.Fatalf("expected MaxBodySize == %d, got %#v", maxBodySize, h.MaxBodySize)
 	}
-	h := NewHTTPBinWithOptions(o)
-	if h.options.MaxMemory != o.MaxMemory {
-		t.Fatalf("expected MaxMemory == %d, got %#v", o.MaxMemory, h.options.MaxMemory)
-	}
-	if h.options.MaxDuration != o.MaxDuration {
-		t.Fatalf("expected MaxDuration == %s, got %#v", o.MaxDuration, h.options.MaxDuration)
+	if h.MaxDuration != maxDuration {
+		t.Fatalf("expected MaxDuration == %s, got %#v", maxDuration, h.MaxDuration)
 	}
 }

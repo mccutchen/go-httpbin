@@ -19,13 +19,12 @@ import (
 	"time"
 )
 
-const maxMemory int64 = 1024 * 1024
+const maxBodySize int64 = 1024 * 1024
 const maxDuration time.Duration = 1 * time.Second
 
-var app = NewHTTPBinWithOptions(&Options{
-	MaxMemory:   maxMemory,
-	MaxDuration: maxDuration,
-})
+var app = New(
+	WithMaxBodySize(maxBodySize),
+	WithMaxDuration(maxDuration))
 
 var handler = app.Handler()
 
@@ -589,7 +588,7 @@ func TestPost__InvalidJSON(t *testing.T) {
 }
 
 func TestPost__BodyTooBig(t *testing.T) {
-	body := make([]byte, maxMemory+1)
+	body := make([]byte, maxBodySize+1)
 
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -1479,7 +1478,7 @@ func TestDrip(t *testing.T) {
 
 		{&url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
 		{&url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxMemory)}}, 0, int(maxMemory), http.StatusOK},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize)}}, 0, int(maxBodySize), http.StatusOK},
 
 		{&url.Values{"code": {"100"}}, 0, 10, 100},
 		{&url.Values{"code": {"404"}}, 0, 10, 404},
@@ -1569,7 +1568,7 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
 		{&url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
 		{&url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxMemory+1)}}, http.StatusBadRequest},
+		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize+1)}}, http.StatusBadRequest},
 
 		{&url.Values{"code": {"foo"}}, http.StatusBadRequest},
 		{&url.Values{"code": {"-1"}}, http.StatusBadRequest},

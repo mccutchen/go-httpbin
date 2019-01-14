@@ -17,13 +17,13 @@ const defaultPort = 8080
 
 var (
 	port        int
-	maxMemory   int64
+	maxBodySize int64
 	maxDuration time.Duration
 )
 
 func main() {
 	flag.IntVar(&port, "port", defaultPort, "Port to listen on")
-	flag.Int64Var(&maxMemory, "max-memory", httpbin.DefaultMaxMemory, "Maximum size of request or response, in bytes")
+	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	flag.Parse()
 
@@ -33,10 +33,10 @@ func main() {
 	// check for environment vars if we have default values for our command
 	// line flags.
 	var err error
-	if maxMemory == httpbin.DefaultMaxMemory && os.Getenv("MAX_MEMORY") != "" {
-		maxMemory, err = strconv.ParseInt(os.Getenv("MAX_MEMORY"), 10, 64)
+	if maxBodySize == httpbin.DefaultMaxBodySize && os.Getenv("MAX_BODY_SIZE") != "" {
+		maxBodySize, err = strconv.ParseInt(os.Getenv("MAX_BODY_SIZE"), 10, 64)
 		if err != nil {
-			fmt.Printf("invalid value %#v for env var MAX_MEMORY: %s\n", os.Getenv("MAX_MEMORY"), err)
+			fmt.Printf("invalid value %#v for env var MAX_BODY_SIZE: %s\n", os.Getenv("MAX_BODY_SIZE"), err)
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -58,10 +58,9 @@ func main() {
 		}
 	}
 
-	h := httpbin.NewHTTPBinWithOptions(&httpbin.Options{
-		MaxMemory:   maxMemory,
-		MaxDuration: maxDuration,
-	})
+	h := httpbin.New(
+		httpbin.WithMaxBodySize(maxBodySize),
+		httpbin.WithMaxDuration(maxDuration))
 
 	listenAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(port))
 	log.Printf("addr=%s", listenAddr)
