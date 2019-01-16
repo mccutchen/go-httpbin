@@ -84,6 +84,9 @@ type HTTPBin struct {
 	// Max duration of a request, for those requests that allow user control
 	// over timing (e.g. /delay)
 	MaxDuration time.Duration
+
+	// Observer called with the result of each handled request
+	Observer Observer
 }
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
@@ -169,7 +172,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	handler = mux
 	handler = limitRequestSize(h.MaxBodySize, handler)
 	handler = metaRequests(handler)
-	handler = logger(handler)
+	if h.Observer != nil {
+		handler = observe(h.Observer, handler)
+	}
 	return handler
 }
 
@@ -200,5 +205,12 @@ func WithMaxBodySize(m int64) OptionFunc {
 func WithMaxDuration(d time.Duration) OptionFunc {
 	return func(h *HTTPBin) {
 		h.MaxDuration = d
+	}
+}
+
+// WithObserver sets the request observer callback
+func WithObserver(o Observer) OptionFunc {
+	return func(h *HTTPBin) {
+		h.Observer = o
 	}
 }

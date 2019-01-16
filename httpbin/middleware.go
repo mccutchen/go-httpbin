@@ -67,12 +67,12 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 type metaResponseWriter struct {
 	w      http.ResponseWriter
 	status int
-	size   int
+	size   int64
 }
 
 func (mw *metaResponseWriter) Write(b []byte) (int, error) {
 	size, err := mw.w.Write(b)
-	mw.size += size
+	mw.size += int64(size)
 	return size, err
 }
 
@@ -97,17 +97,54 @@ func (mw *metaResponseWriter) Status() int {
 	return mw.status
 }
 
-func (mw *metaResponseWriter) Size() int {
+func (mw *metaResponseWriter) Size() int64 {
 	return mw.size
 }
 
-func logger(h http.Handler) http.Handler {
+func observe(o Observer, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqMethod, reqURI := r.Method, r.URL.RequestURI()
 		mw := &metaResponseWriter{w: w}
 		t := time.Now()
 		h.ServeHTTP(mw, r)
-		duration := time.Now().Sub(t)
-		log.Printf("status=%d method=%s uri=%q size=%d duration=%s", mw.Status(), reqMethod, reqURI, mw.Size(), duration)
+		o(Result{
+			Status:   mw.Status(),
+			Method:   r.Method,
+			URI:      r.URL.RequestURI(),
+			Size:     mw.Size(),
+			Duration: time.Now().Sub(t),
+		})
 	})
+}
+
+// Result is the result of handling a request, used for instrumentation
+type Result struct {
+	Status   int
+	Method   string
+	URI      string
+	Size     int64
+	Duration time.Duration
+}
+
+// Observer is a function that will be called with the details of a handled
+// request, which can be used for logging, instrumentation, etc
+type Observer func(result Result)
+
+// StdLogObserver creates an Observer that will log each request in structured
+// format using the given stdlib logger
+func StdLogObserver(l *log.Logger) Observer {
+	const (
+		logFmt  = "time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f"
+		dateFmt = "2006-01-02T15:04:05.9999"
+	)
+	return func(result Result) {
+		l.Printf(
+			logFmt,
+			time.Now().Format(dateFmt),
+			result.Status,
+			result.Method,
+			result.URI,
+			result.Size,
+			result.Duration.Seconds()*1e3, // https://github.com/golang/go/issues/5491#issuecomment-66079585
+		)
+	}
 }
