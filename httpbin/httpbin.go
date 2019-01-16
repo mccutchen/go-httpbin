@@ -171,10 +171,12 @@ func (h *HTTPBin) Handler() http.Handler {
 	var handler http.Handler
 	handler = mux
 	handler = limitRequestSize(h.MaxBodySize, handler)
-	handler = metaRequests(handler)
+	handler = preflight(handler)
+	handler = autohead(handler)
 	if h.Observer != nil {
 		handler = observe(h.Observer, handler)
 	}
+
 	return handler
 }
 

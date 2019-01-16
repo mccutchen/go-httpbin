@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httptest"
 	"time"
 )
 
-func metaRequests(h http.Handler) http.Handler {
+func preflight(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin == "" {
@@ -18,24 +17,17 @@ func metaRequests(h http.Handler) http.Handler {
 		respHeader.Set("Access-Control-Allow-Origin", origin)
 		respHeader.Set("Access-Control-Allow-Credentials", "true")
 
-		switch r.Method {
-		case "OPTIONS":
+		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS")
 			w.Header().Set("Access-Control-Max-Age", "3600")
 			if r.Header.Get("Access-Control-Request-Headers") != "" {
 				w.Header().Set("Access-Control-Allow-Headers", r.Header.Get("Access-Control-Request-Headers"))
 			}
 			w.WriteHeader(200)
-		case "HEAD":
-			rwRec := httptest.NewRecorder()
-			r.Method = "GET"
-			h.ServeHTTP(rwRec, r)
-
-			copyHeader(w.Header(), rwRec.Header())
-			w.WriteHeader(rwRec.Code)
-		default:
-			h.ServeHTTP(w, r)
+			return
 		}
+
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -43,6 +35,10 @@ func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
 	methodMap := make(map[string]struct{}, len(methods))
 	for _, m := range methods {
 		methodMap[m] = struct{}{}
+		// GET implies support for HEAD
+		if m == "GET" {
+			methodMap["HEAD"] = struct{}{}
+		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := methodMap[r.Method]; !ok {
@@ -57,6 +53,26 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {
 			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
+// headResponseWriter implements http.ResponseWriter in order to discard the
+// body of the response
+type headResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (hw *headResponseWriter) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+// autohead automatically discards the body of responses to HEAD requests
+func autohead(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w = &headResponseWriter{w}
 		}
 		h.ServeHTTP(w, r)
 	})
