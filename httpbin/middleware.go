@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const loggerDateFormat string = "2006-01-02T15:04:05.9999"
-
 func metaRequests(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -134,10 +132,14 @@ type Observer func(result Result)
 // StdLogObserver creates an Observer that will log each request in structured
 // format using the given stdlib logger
 func StdLogObserver(l *log.Logger) Observer {
+	const (
+		logFmt  = "time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f"
+		dateFmt = "2006-01-02T15:04:05.9999"
+	)
 	return func(result Result) {
 		l.Printf(
-			"time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f",
-			time.Now().Format(loggerDateFormat),
+			logFmt,
+			time.Now().Format(dateFmt),
 			result.Status,
 			result.Method,
 			result.URI,
