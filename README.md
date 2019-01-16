@@ -15,11 +15,11 @@ variables:
 
 ```
 $ go-httpbin -help
-Usage of ./dist/go-httpbin:
+Usage of go-httpbin:
+  -max-body-size int
+        Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
         Maximum duration a response may take (default 10s)
-  -max-memory int
-        Maximum size of request or response, in bytes (default 1048576)
   -port int
         Port to listen on (default 8080)
 ```
@@ -47,8 +47,8 @@ import (
 )
 
 func TestSlowResponse(t *testing.T) {
-    handler := httpbin.NewHTTPBin().Handler()
-    srv := httptest.NewServer(handler)
+    svc := httpbin.New()
+    srv := httptest.NewServer(svc.Handler())
     defer srv.Close()
 
     client := http.Client{
