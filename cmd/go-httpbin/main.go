@@ -27,8 +27,6 @@ func main() {
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	flag.Parse()
 
-	logger := log.New(os.Stderr, "", 0)
-
 	// Command line flags take precedence over environment vars, so we only
 	// check for environment vars if we have default values for our command
 	// line flags.
@@ -58,14 +56,15 @@ func main() {
 		}
 	}
 
+	logger := log.New(os.Stderr, "", 0)
+
 	h := httpbin.New(
-		httpbin.WithLogger(logger),
 		httpbin.WithMaxBodySize(maxBodySize),
-		httpbin.WithMaxDuration(maxDuration))
+		httpbin.WithMaxDuration(maxDuration),
+		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
+	)
 
 	listenAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(port))
-
 	logger.Printf("go-httpbin listening on %s", listenAddr)
-
 	http.ListenAndServe(listenAddr, h.Handler())
 }

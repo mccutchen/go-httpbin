@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -24,7 +26,9 @@ const maxDuration time.Duration = 1 * time.Second
 
 var app = New(
 	WithMaxBodySize(maxBodySize),
-	WithMaxDuration(maxDuration))
+	WithMaxDuration(maxDuration),
+	WithObserver(StdLogObserver(log.New(os.Stderr, "", 0))),
+)
 
 var handler = app.Handler()
 

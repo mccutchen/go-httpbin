@@ -85,8 +85,8 @@ type HTTPBin struct {
 	// over timing (e.g. /delay)
 	MaxDuration time.Duration
 
-	// Logger used to log each request
-	Logger Logger
+	// Observer called with the result of each handled request
+	Observer Observer
 }
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
@@ -172,7 +172,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	handler = mux
 	handler = limitRequestSize(h.MaxBodySize, handler)
 	handler = metaRequests(handler)
-	handler = logger(h.Logger, handler)
+	if h.Observer != nil {
+		handler = observe(h.Observer, handler)
+	}
 	return handler
 }
 
@@ -181,7 +183,6 @@ func New(opts ...OptionFunc) *HTTPBin {
 	h := &HTTPBin{
 		MaxBodySize: DefaultMaxBodySize,
 		MaxDuration: DefaultMaxDuration,
-		Logger:      &discardLogger{},
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -207,19 +208,9 @@ func WithMaxDuration(d time.Duration) OptionFunc {
 	}
 }
 
-// WithLogger sets the request logger
-func WithLogger(l Logger) OptionFunc {
+// WithObserver sets the request observer callback
+func WithObserver(o Observer) OptionFunc {
 	return func(h *HTTPBin) {
-		h.Logger = l
+		h.Observer = o
 	}
 }
-
-// Logger is a minimal logging interface
-type Logger interface {
-	Printf(format string, v ...interface{})
-}
-
-// discardLogger is a Logger implementation that silently discards messages
-type discardLogger struct{}
-
-func (l *discardLogger) Printf(format string, v ...interface{}) {}
