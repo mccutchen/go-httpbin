@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -13,16 +14,23 @@ import (
 	"github.com/mccutchen/go-httpbin/httpbin"
 )
 
+const defaultHost = "0.0.0.0"
 const defaultPort = 8080
 
 var (
-	port        int
-	maxBodySize int64
-	maxDuration time.Duration
+	host          string
+	port          int
+	maxBodySize   int64
+	maxDuration   time.Duration
+	httpsCertFile string
+	httpsKeyFile  string
 )
 
 func main() {
+	flag.StringVar(&host, "host", defaultHost, "Host to listen on")
 	flag.IntVar(&port, "port", defaultPort, "Port to listen on")
+	flag.StringVar(&httpsCertFile, "https-cert-file", "", "HTTPS Server certificate file")
+	flag.StringVar(&httpsKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	flag.Parse()
@@ -47,6 +55,9 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if host == defaultHost && os.Getenv("HOST") != "" {
+		host = os.Getenv("HOST")
+	}
 	if port == defaultPort && os.Getenv("PORT") != "" {
 		port, err = strconv.Atoi(os.Getenv("PORT"))
 		if err != nil {
@@ -54,6 +65,13 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
+	}
+
+	if httpsCertFile == "" && os.Getenv("HTTPS_CERT_FILE") != "" {
+		httpsCertFile = os.Getenv("HTTPS_CERT_FILE")
+	}
+	if httpsKeyFile == "" && os.Getenv("HTTPS_KEY_FILE") != "" {
+		httpsKeyFile = os.Getenv("HTTPS_KEY_FILE")
 	}
 
 	logger := log.New(os.Stderr, "", 0)
@@ -64,7 +82,25 @@ func main() {
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
 	)
 
-	listenAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(port))
-	logger.Printf("go-httpbin listening on %s", listenAddr)
-	http.ListenAndServe(listenAddr, h.Handler())
+	listenAddr := net.JoinHostPort(host, strconv.Itoa(port))
+
+	server := &http.Server{
+		Addr:    listenAddr,
+		Handler: h.Handler(),
+	}
+
+	if httpsCertFile != "" && httpsKeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(httpsCertFile, httpsKeyFile)
+		if err != nil {
+			log.Fatal("Failed to generate https key pair: ", err)
+		}
+		server.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		logger.Printf("go-httpbin listening on https://%s", listenAddr)
+		server.ListenAndServeTLS("", "")
+	} else {
+		logger.Printf("go-httpbin listening on http://%s", listenAddr)
+		server.ListenAndServe()
+	}
 }

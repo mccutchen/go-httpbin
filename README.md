@@ -16,18 +16,41 @@ variables:
 ```
 $ go-httpbin -help
 Usage of go-httpbin:
+  -host string
+      Host to listen on (default "0.0.0.0")
+  -port int
+        Port to listen on (default 8080)
+  -https-cert-file string
+         HTTPS certificate file
+  -https-key-file string
+         HTTPS private key file
   -max-body-size int
         Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
         Maximum duration a response may take (default 10s)
-  -port int
-        Port to listen on (default 8080)
+
+Examples:
+  # Run http server
+  $ go-httpbin -host 127.0.0.1 -port 8081
+
+  # Run https server
+
+  # Generate .crt and .key files
+  $ openssl genrsa -out server.key 2048
+  $ openssl ecparam -genkey -name secp384r1 -out server.key
+  $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+
+  $ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
 ```
 
 Docker images are published to [Docker Hub][docker-hub]:
 
 ```
+# Run http server
 $ docker run -P mccutchen/go-httpbin
+
+# Run https server
+$ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
 ```
 
 The `github.com/mccutchen/go-httpbin/httpbin` package can also be used as a
