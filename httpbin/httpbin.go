@@ -76,6 +76,10 @@ type streamResponse struct {
 	URL     string      `json:"url"`
 }
 
+type uuidResponse struct {
+	UUID string `json:"uuid"`
+}
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -147,6 +151,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/image", h.ImageAccept)
 	mux.HandleFunc("/image/", h.Image)
 	mux.HandleFunc("/xml", h.XML)
+
+	mux.HandleFunc("/uuid", h.UUID)
 
 	// existing httpbin endpoints that we do not support
 	mux.HandleFunc("/brotli", notImplementedHandler)

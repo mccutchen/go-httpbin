@@ -89,18 +89,22 @@ func main() {
 		Handler: h.Handler(),
 	}
 
+	var listenErr error
 	if httpsCertFile != "" && httpsKeyFile != "" {
 		cert, err := tls.LoadX509KeyPair(httpsCertFile, httpsKeyFile)
 		if err != nil {
-			log.Fatal("Failed to generate https key pair: ", err)
+			logger.Fatal("Failed to generate https key pair: ", err)
 		}
 		server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		}
 		logger.Printf("go-httpbin listening on https://%s", listenAddr)
-		server.ListenAndServeTLS("", "")
+		listenErr = server.ListenAndServeTLS("", "")
 	} else {
 		logger.Printf("go-httpbin listening on http://%s", listenAddr)
-		server.ListenAndServe()
+		listenErr = server.ListenAndServe()
+	}
+	if listenErr != nil {
+		logger.Fatalf("Failed to listen: %s", listenErr)
 	}
 }

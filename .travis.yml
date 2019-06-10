@@ -4,6 +4,7 @@ go:
   - '1.9'
   - '1.10'
   - '1.11'
+go_import_path: github.com/mccutchen/go-httpbin
 script:
   - make lint
   - make test
