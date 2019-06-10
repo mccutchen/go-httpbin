@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -2155,6 +2157,37 @@ func TestXML(t *testing.T) {
 
 	assertContentType(t, w, "application/xml")
 	assertBodyContains(t, w, `<?xml version='1.0' encoding='us-ascii'?>`)
+}
+
+func isValidUUIDv4(uuid string) error {
+	if len(uuid) != 36 {
+		return fmt.Errorf("uuid length: %d != 36", len(uuid))
+	}
+	r := regexp.MustCompile("^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[8|9|a|b][a-f0-9]{3}-[a-f0-9]{12}$")
+	if !r.MatchString(uuid) {
+		return errors.New("Failed to match against uuidv4 regex")
+	}
+	return nil
+}
+
+func TestUUID(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/uuid", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+
+	// Test response unmarshalling
+	var resp *uuidResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	// Test if the value is an actual UUID
+	if err := isValidUUIDv4(resp.UUID); err != nil {
+		t.Fatalf("Invalid uuid %s: %s", resp.UUID, err)
+	}
 }
 
 func TestNotImplemented(t *testing.T) {

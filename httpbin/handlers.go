@@ -895,3 +895,16 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	})
 	writeJSON(w, resp, http.StatusOK)
 }
+
+// UUID responds with a generated UUID
+func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
+	u, err := uuidv4()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate uuid: %s", err), http.StatusInternalServerError)
+		return
+	}
+	resp, _ := json.Marshal(&uuidResponse{
+		UUID: u,
+	})
+	writeJSON(w, resp, http.StatusOK)
+}
