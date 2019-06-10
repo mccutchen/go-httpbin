@@ -9,7 +9,7 @@ TEST_ARGS := -race
 
 build: dist/go-httpbin
 
-dist/go-httpbin: $(GENERATED_ASSETS_PATH) cmd/go-httpbin/*.go httpbin/*.go
+dist/go-httpbin: $(GENERATED_ASSETS_PATH) cmd/go-httpbin/*.go httpbin/*.go go.mod
 	mkdir -p dist
 	go build -o dist/go-httpbin ./cmd/go-httpbin
 
@@ -55,4 +55,4 @@ $(GOLINT):
 	go get -u golang.org/x/lint/golint
 
 $(GOBINDATA):
-	go get -u github.com/kevinburke/go-bindata/...
+	cd /tmp && go get -u github.com/kevinburke/go-bindata/...
