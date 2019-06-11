@@ -1,0 +1,11 @@
+---
+runtime: go112
+
+main: ./cmd/go_httpbin
+
+# redirect everything to https
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
+    redirect_http_response_code: 301

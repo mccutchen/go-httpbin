@@ -1,8 +1,0 @@
-{
-    "name": "go-httpbin",
-    "profile": "up",
-    "hooks": {
-        "build": "GOOS=linux GOARCH=amd64 make && mv dist/go-httpbin server",
-        "clean": "rm -f server"
-    }
-}
