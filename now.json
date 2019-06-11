@@ -1,8 +1,0 @@
-{
-    "name": "go-httpbin",
-    "type": "docker",
-    "public": true,
-    "alias": [
-        "httpbingo.org"
-    ]
-}
