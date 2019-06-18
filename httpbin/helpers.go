@@ -3,6 +3,7 @@ package httpbin
 import (
 	"bytes"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,9 @@ import (
 	"sync"
 	"time"
 )
+
+// Base64MaxLen - Maximum input length for Base64 functions
+const Base64MaxLen = 2000
 
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
@@ -242,4 +246,62 @@ func uuidv4() (string, error) {
 	buff[8] = (buff[8] & 0x3f) | 0x80 // Variant 10
 	uuid := fmt.Sprintf("%x-%x-%x-%x-%x", buff[0:4], buff[4:6], buff[6:8], buff[8:10], buff[10:])
 	return uuid, nil
+}
+
+// base64Helper - describes the base64 operation (encode|decode) and input data
+type base64Helper struct {
+	operation string
+	data      string
+}
+
+// newbase64Helper - create a new base64Helper struct
+// Supports the following URL paths
+// - /base64/input_str
+// - /base64/encode/input_str
+// - /base64/decode/input_str
+func newBase64Helper(path string) (*base64Helper, error) {
+	parts := strings.Split(path, "/")
+
+	if len(parts) != 3 && len(parts) != 4 {
+		return nil, errors.New("Invalid URL")
+	}
+
+	var b base64Helper
+
+	// Validation for - /base64/input_str
+	if len(parts) == 3 {
+		b.operation = "decode"
+		b.data = parts[2]
+	} else {
+		// Validation for
+		// - /base64/encode/input_str
+		// - /base64/encode/input_str
+		b.operation = parts[2]
+		if b.operation != "encode" && b.operation != "decode" {
+			return nil, fmt.Errorf("Invalid operation: %s", b.operation)
+		}
+		b.data = parts[3]
+	}
+	if len(b.data) == 0 {
+		return nil, errors.New("No input data")
+	}
+	if len(b.data) >= Base64MaxLen {
+		return nil, fmt.Errorf("Input length - %d, Cannot handle input >= %d", len(b.data), Base64MaxLen)
+	}
+
+	return &b, nil
+}
+
+// Encode - encode data as base64
+func (b *base64Helper) Encode() ([]byte, error) {
+	buff := make([]byte, base64.StdEncoding.EncodedLen(len(b.data)))
+	base64.StdEncoding.Encode(buff, []byte(b.data))
+	return buff, nil
+}
+
+// Decode - decode data from base64
+func (b *base64Helper) Decode() ([]byte, error) {
+	buff := make([]byte, base64.StdEncoding.DecodedLen(len(b.data)))
+	_, err := base64.StdEncoding.Decode(buff, []byte(b.data))
+	return buff, err
 }
