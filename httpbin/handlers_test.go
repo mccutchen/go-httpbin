@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +26,7 @@ import (
 
 const maxBodySize int64 = 1024 * 1024
 const maxDuration time.Duration = 1 * time.Second
+const alphanumLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var app = New(
 	WithMaxBodySize(maxBodySize),
@@ -61,6 +63,15 @@ func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
 	if want != have {
 		t.Fatalf("expected body = %v, got %v", want, have)
 	}
+}
+
+func randStringBytes(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = alphanumLetters[rand.Intn(len(alphanumLetters))]
+	}
+	return string(b)
 }
 
 func TestIndex(t *testing.T) {
@@ -2187,6 +2198,72 @@ func TestUUID(t *testing.T) {
 	// Test if the value is an actual UUID
 	if err := isValidUUIDv4(resp.UUID); err != nil {
 		t.Fatalf("Invalid uuid %s: %s", resp.UUID, err)
+	}
+}
+
+func TestBase64(t *testing.T) {
+	var okTests = []struct {
+		requestURL string
+		want       string
+	}{
+		{
+			"/base64/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+			"valid_base64_encoded_string",
+		},
+		{
+			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+			"valid_base64_encoded_string",
+		},
+		{
+			"/base64/encode/valid_base64_encoded_string",
+			"dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+		},
+	}
+
+	for _, test := range okTests {
+		t.Run("ok"+test.requestURL, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.requestURL, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusOK)
+			assertBodyEquals(t, w, test.want)
+		})
+	}
+
+	var errorTests = []struct {
+		requestURL           string
+		expectedBodyContains string
+	}{
+		{
+			"/base64/invalid_base64_encoded_string",
+			"decode failed",
+		},
+		{
+			"/base64/decode/invalid_base64_encoded_string",
+			"decode failed",
+		},
+		{
+			"/base64/decode/invalid_base64_encoded_string",
+			"decode failed",
+		},
+		{
+			"/base64/decode/" + randStringBytes(Base64MaxLen+1),
+			"Cannot handle input",
+		},
+		{
+			"/base64/decode/" + randStringBytes(Base64MaxLen+1),
+			"Cannot handle input",
+		},
+	}
+
+	for _, test := range errorTests {
+		t.Run("error"+test.requestURL, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.requestURL, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusBadRequest)
+			assertBodyContains(t, w, test.expectedBodyContains)
+		})
 	}
 }
 

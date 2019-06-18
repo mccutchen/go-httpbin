@@ -896,7 +896,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, resp, http.StatusOK)
 }
 
-// UUID responds with a generated UUID
+// UUID - responds with a generated UUID
 func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
 	u, err := uuidv4()
 	if err != nil {
@@ -907,4 +907,28 @@ func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
 		UUID: u,
 	})
 	writeJSON(w, resp, http.StatusOK)
+}
+
+// Base64 - encodes/decodes input data
+func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
+	b, err := newBase64Helper(r.URL.Path)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s", err), http.StatusBadRequest)
+		return
+	}
+
+	var result []byte
+	var base64Error error
+
+	if b.operation == "decode" {
+		result, base64Error = b.Decode()
+	} else {
+		result, base64Error = b.Encode()
+	}
+
+	if base64Error != nil {
+		http.Error(w, fmt.Sprintf("%s failed: %s", b.operation, base64Error), http.StatusBadRequest)
+		return
+	}
+	writeResponse(w, http.StatusOK, "text/html", result)
 }
