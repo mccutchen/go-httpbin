@@ -2267,6 +2267,15 @@ func TestBase64(t *testing.T) {
 	}
 }
 
+func TestJSON(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/json", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertContentType(t, w, jsonContentType)
+	assertBodyContains(t, w, `Wake up to WonderWidgets!`)
+}
+
 func TestNotImplemented(t *testing.T) {
 	var tests = []struct {
 		url string
