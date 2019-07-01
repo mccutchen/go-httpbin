@@ -67,7 +67,7 @@ run: build
 # =============================================================================
 # docker images
 # =============================================================================
-image: assets cmd/go-httpbin/*.go httpbin/*.go
+image: assets cmd/go_httpbin/*.go httpbin/*.go
 	docker build -t mccutchen/go-httpbin:$(VERSION) .
 
 imagepush: image
