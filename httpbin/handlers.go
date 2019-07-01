@@ -932,3 +932,8 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 	}
 	writeResponse(w, http.StatusOK, "text/html", result)
 }
+
+// JSON - returns a sample json
+func (h *HTTPBin) JSON(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, assets.MustAsset("sample.json"), http.StatusOK)
+}
