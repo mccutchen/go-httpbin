@@ -58,41 +58,41 @@
 <h2 id="ENDPOINTS">ENDPOINTS</h2>
 
 <ul>
-<li><a href="/" data-bare-link="true"><code>/</code></a> This page.</li>
+<li><a href="/"><code>/</code></a> This page.</li>
 <li><a href="/absolute-redirect/6"><code>/absolute-redirect/:n</code></a> 302 Absolute redirects <em>n</em> times.</li>
-<li><a href="/base64/SFRUUEJJTkdP"><code>/base64/:value</code></a> Decodes a Base64 encoded string.</li>
-<li><a href="/base64/decode/SFRUUEJJTkdP"><code>/base64/decode/:value</code></a> Explicit URL for decoding a Base64 encoded string.</li>
-<li><a href="/base64/encode/HTTPBINGO"><code>/base64/encode/:value</code></a> Encodes a string into Base64.</li>
+<li><a href="/base64/aHR0cGJpbmdvLm9yZw=="><code>/base64/:value</code></a> Decodes a Base64 encoded string.</li>
+<li><a href="/base64/decode/aHR0cGJpbmdvLm9yZw=="><code>/base64/decode/:value</code></a> Explicit URL for decoding a Base64 encoded string.</li>
+<li><a href="/base64/encode/httpbingo.org"><code>/base64/encode/:value</code></a> Encodes a string into Base64.</li>
 <li><a href="/basic-auth/user/passwd"><code>/basic-auth/:user/:passwd</code></a> Challenges HTTPBasic Auth.</li>
 <li><a href="/bearer"><code>/bearer</code></a> Checks Bearer token header - returns 401 if not set.</li>
-<li><del><a href="/brotli" data-bare-link="true"><code>/brotli</code></a> Returns brotli-encoded data.</del> <i>Not implemented!</i></li>
+<li><a href="/brotli"><code><del>/brotli</del></code></a> Returns brotli-encoded data.</del> <i>Not implemented!</i></li>
 <li><a href="/bytes/1024"><code>/bytes/:n</code></a> Generates <em>n</em> random bytes of binary data, accepts optional <em>seed</em> integer parameter.</li>
-<li><a href="/cache" data-bare-link="true"><code>/cache</code></a> Returns 200 unless an If-Modified-Since or If-None-Match header is provided, when it returns a 304.</li>
+<li><a href="/cache"><code>/cache</code></a> Returns 200 unless an If-Modified-Since or If-None-Match header is provided, when it returns a 304.</li>
 <li><a href="/cache/60"><code>/cache/:n</code></a> Sets a Cache-Control header for <em>n</em> seconds.</li>
-<li><a href="/cookies" data-bare-link="true"><code>/cookies</code></a> Returns cookie data.</li>
+<li><a href="/cookies"><code>/cookies</code></a> Returns cookie data.</li>
 <li><a href="/cookies/delete?k1=&amp;k2="><code>/cookies/delete?name</code></a> Deletes one or more simple cookies.</li>
 <li><a href="/cookies/set?k1=v1&amp;k2=v2"><code>/cookies/set?name=value</code></a> Sets one or more simple cookies.</li>
-<li><a href="/deflate" data-bare-link="true"><code>/deflate</code></a> Returns deflate-encoded data.</li>
+<li><a href="/deflate"><code>/deflate</code></a> Returns deflate-encoded data.</li>
 <li><a href="/delay/3"><code>/delay/:n</code></a> Delays responding for <em>min(n, 10)</em> seconds.</li>
-<li><a href="/deny" data-bare-link="true"><code>/deny</code></a> Denied by robots.txt file.</li>
+<li><a href="/deny"><code>/deny</code></a> Denied by robots.txt file.</li>
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd/:algorithm</code></a> Challenges HTTP Digest Auth.</li>
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd</code></a> Challenges HTTP Digest Auth.</li>
 <li><a href="/drip?code=200&amp;numbytes=5&amp;duration=5"><code>/drip?numbytes=n&amp;duration=s&amp;delay=s&amp;code=code</code></a> Drips data over a duration after an optional initial delay, then (optionally) returns with the given status code.</li>
 <li><a href="/encoding/utf8"><code>/encoding/utf8</code></a> Returns page containing UTF-8 data.</li>
 <li><a href="/etag/etag"><code>/etag/:etag</code></a> Assumes the resource has the given etag and responds to If-None-Match header with a 200 or 304 and If-Match with a 200 or 412 as appropriate.</li>
-<li><a href="/forms/post" data-bare-link="true"><code>/forms/post</code></a> HTML form that submits to <em>/post</em></li>
-<li><a href="/get" data-bare-link="true"><code>/get</code></a> Returns GET data.</li>
-<li><a href="/gzip" data-bare-link="true"><code>/gzip</code></a> Returns gzip-encoded data.</li>
-<li><a href="/headers" data-bare-link="true"><code>/headers</code></a> Returns header dict.</li>
+<li><a href="/forms/post"><code>/forms/post</code></a> HTML form that submits to <em>/post</em></li>
+<li><a href="/get"><code>/get</code></a> Returns GET data.</li>
+<li><a href="/gzip"><code>/gzip</code></a> Returns gzip-encoded data.</li>
+<li><a href="/headers"><code>/headers</code></a> Returns header dict.</li>
 <li><a href="/hidden-basic-auth/user/passwd"><code>/hidden-basic-auth/:user/:passwd</code></a> 404'd BasicAuth.</li>
-<li><a href="/html" data-bare-link="true"><code>/html</code></a> Renders an HTML Page.</li>
+<li><a href="/html"><code>/html</code></a> Renders an HTML Page.</li>
 <li><a href="/image"><code>/image</code></a> Returns page containing an image based on sent Accept header.</li>
 <li><a href="/image/jpeg"><code>/image/jpeg</code></a> Returns a JPEG image.</li>
 <li><a href="/image/png"><code>/image/png</code></a> Returns a PNG image.</li>
 <li><a href="/image/svg"><code>/image/svg</code></a> Returns a SVG image.</li>
 <li><a href="/image/webp"><code>/image/webp</code></a> Returns a WEBP image.</li>
+<li><a href="/ip"><code>/ip</code></a> Returns Origin IP.</li>
 <li><a href="/json"><code>/json</code></a> Returns JSON.</li>
-<li><a href="/ip" data-bare-link="true"><code>/ip</code></a> Returns Origin IP.</li>
 <li><a href="/links/10"><code>/links/:n</code></a> Returns page containing <em>n</em> HTML links.</li>
 <li><a href="/range/1024"><code>/range/1024?duration=s&amp;chunk_size=code</code></a> Streams <em>n</em> bytes, and allows specifying a <em>Range</em> header to select a subset of the data. Accepts a <em>chunk_size</em> and request <em>duration</em> parameter.</li>
 <li><a href="/redirect-to?status_code=307&amp;url=http%3A%2F%2Fexample.com%2F"><code>/redirect-to?url=foo&status_code=307</code></a> 307 Redirects to the <em>foo</em> URL.</li>
@@ -100,13 +100,13 @@
 <li><a href="/redirect/6"><code>/redirect/:n</code></a> 302 Redirects <em>n</em> times.</li>
 <li><a href="/relative-redirect/6"><code>/relative-redirect/:n</code></a> 302 Relative redirects <em>n</em> times.</li>
 <li><a href="/response-headers?Server=httpbin&amp;Content-Type=text%2Fplain%3B+charset%3DUTF-8"><code>/response-headers?key=val</code></a> Returns given response headers.</li>
-<li><a href="/robots.txt" data-bare-link="true"><code>/robots.txt</code></a> Returns some robots.txt rules.</li>
+<li><a href="/robots.txt"><code>/robots.txt</code></a> Returns some robots.txt rules.</li>
 <li><a href="/status/418"><code>/status/:code</code></a> Returns given HTTP Status code.</li>
 <li><a href="/stream-bytes/1024"><code>/stream-bytes/:n</code></a> Streams <em>n</em> random bytes of binary data, accepts optional <em>seed</em> and <em>chunk_size</em> integer parameters.</li>
 <li><a href="/stream/20"><code>/stream/:n</code></a> Streams <em>min(n, 100)</em> lines.</li>
-<li><a href="/user-agent" data-bare-link="true"><code>/user-agent</code></a> Returns user-agent.</li>
+<li><a href="/user-agent"><code>/user-agent</code></a> Returns user-agent.</li>
 <li><a href="/uuid"><code>/uuid</code></a> Generates a <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">UUIDv4</a> value.</li>
-<li><a href="/xml" data-bare-link="true"><code>/xml</code></a> Returns some XML</li>
+<li><a href="/xml"><code>/xml</code></a> Returns some XML</li>
 </ul>
 
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
