@@ -937,3 +937,19 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) JSON(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, assets.MustAsset("sample.json"), http.StatusOK)
 }
+
+// Bearer - Prompts the user for authorization using bearer authentication.
+func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
+	reqToken := r.Header.Get("Authorization")
+	tokenFields := strings.Fields(reqToken)
+	if len(tokenFields) != 2 || tokenFields[0] != "Bearer" {
+		w.Header().Set("WWW-Authenticate", "Bearer")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	body, _ := json.Marshal(&bearerResponse{
+		Authenticated: true,
+		Token:         tokenFields[1],
+	})
+	writeJSON(w, body, http.StatusOK)
+}
