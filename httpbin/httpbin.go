@@ -80,6 +80,11 @@ type uuidResponse struct {
 	UUID string `json:"uuid"`
 }
 
+type bearerResponse struct {
+	Authenticated bool   `json:"authenticated"`
+	Token         string `json:"token"`
+}
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -126,6 +131,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/basic-auth/", h.BasicAuth)
 	mux.HandleFunc("/hidden-basic-auth/", h.HiddenBasicAuth)
 	mux.HandleFunc("/digest-auth/", h.DigestAuth)
+	mux.HandleFunc("/bearer", h.Bearer)
 
 	mux.HandleFunc("/deflate", h.Deflate)
 	mux.HandleFunc("/gzip", h.Gzip)

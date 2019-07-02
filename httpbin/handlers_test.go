@@ -2276,6 +2276,70 @@ func TestJSON(t *testing.T) {
 	assertBodyContains(t, w, `Wake up to WonderWidgets!`)
 }
 
+func TestBearer(t *testing.T) {
+	requestURL := "/bearer"
+
+	t.Run("valid_token", func(t *testing.T) {
+		token := "valid_token"
+		r, _ := http.NewRequest("GET", requestURL, nil)
+		r.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		assertStatusCode(t, w, http.StatusOK)
+
+		var resp *bearerResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		if err != nil {
+			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+		}
+
+		if resp.Authenticated != true {
+			t.Fatalf("expected response key %s=%#v, got %#v",
+				"Authenticated", true, resp.Authenticated)
+		}
+		if resp.Token != token {
+			t.Fatalf("expected response key %s=%#v, got %#v",
+				"token", token, resp.Authenticated)
+		}
+	})
+
+	var errorTests = []struct {
+		authorizationHeader string
+	}{
+		{
+			"",
+		},
+		{
+			"Bearer",
+		},
+		{
+			"Bearer x y",
+		},
+		{
+			"bearer x",
+		},
+		{
+			"Bearer1 x",
+		},
+		{
+			"xBearer x",
+		},
+	}
+	for _, test := range errorTests {
+		t.Run("error"+test.authorizationHeader, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", requestURL, nil)
+			if test.authorizationHeader != "" {
+				r.Header.Set("Authorization", test.authorizationHeader)
+			}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertHeader(t, w, "WWW-Authenticate", "Bearer")
+			assertStatusCode(t, w, http.StatusUnauthorized)
+		})
+	}
+}
+
 func TestNotImplemented(t *testing.T) {
 	var tests = []struct {
 		url string
