@@ -88,7 +88,7 @@ func TestSlowResponse(t *testing.T) {
 ## Installation
 
 ```
-go get github.com/mccutchen/go-httpbin/...
+go get github.com/mccutchen/go-httpbin/cmd/go-httpbin
 ```
 
 

@@ -10,14 +10,16 @@ BIN_DIR   := $(GOPATH)/bin
 GOLINT    := $(BIN_DIR)/golint
 GOBINDATA := $(BIN_DIR)/go-bindata
 
+GO_SOURCES = $(wildcard **/*.go)
+
 # =============================================================================
 # build
 # =============================================================================
 build: dist/go-httpbin
 
-dist/go-httpbin: assets cmd/go_httpbin/*.go httpbin/*.go go.mod
+dist/go-httpbin: assets $(GO_SOURCES)
 	mkdir -p dist
-	go build -o dist/go-httpbin ./cmd/go_httpbin
+	go build -o dist/go-httpbin ./cmd/go-httpbin
 
 assets: $(GENERATED_ASSETS_PATH)
 
@@ -67,7 +69,7 @@ run: build
 # =============================================================================
 # docker images
 # =============================================================================
-image: assets cmd/go_httpbin/*.go httpbin/*.go
+image: build
 	docker build -t mccutchen/go-httpbin:$(VERSION) .
 
 imagepush: image
