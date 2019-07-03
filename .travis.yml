@@ -5,9 +5,26 @@ go:
   - '1.10'
   - '1.11'
   - '1.12'
-go_import_path: github.com/mccutchen/go-httpbin
+
 script:
   - make lint
-  - make test
+  - make testci
+
+after_success:
+  # Upload test coverage results to codecov.io
+  # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
+  - bash <(curl -s https://codecov.io/bash)
+
+# With this filter, we aim to restrict Travis's "Build Pushes" feature to build
+# only pushes to master, while allowing the "Build Pull Requests" to build all
+# incoming pull requests without redundant double-builds.
+#
+# This is confusing on Travis's end; this captures the exact problem we're
+# trying to solve:
+# https://stackoverflow.com/a/31882307
+branches:
+  only:
+    - master
+
 notifications:
   email: false

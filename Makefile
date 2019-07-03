@@ -1,8 +1,19 @@
-.PHONY: clean deploy deps image imagepush lint run stagedeploy test testcover
+.PHONY: clean deploy deps image imagepush lint run stagedeploy test testci testcover
 
-GCLOUD_PROJECT ?= httpbingo
-TEST_ARGS      ?= -race
+# The version that will be used in docker tags (e.g. to push a
+# go-httpbin:latest image use `make imagepush VERSION=latest)`
 VERSION        ?= $(shell git rev-parse --short HEAD)
+
+# Override this to deploy to a different App Engine project
+GCLOUD_PROJECT ?= httpbingo
+
+# Built binaries will be placed here
+DIST_PATH  	  ?= dist
+
+# Default flags used by the test, testci, testcover targets
+COVERAGE_PATH ?= coverage.txt
+COVERAGE_ARGS ?= -covermode=atomic -coverprofile=$(COVERAGE_PATH)
+TEST_ARGS     ?= -race
 
 GENERATED_ASSETS_PATH := httpbin/assets/assets.go
 
@@ -15,16 +26,16 @@ GO_SOURCES = $(wildcard **/*.go)
 # =============================================================================
 # build
 # =============================================================================
-build: dist/go-httpbin
+build: $(DIST_PATH)/go-httpbin
 
-dist/go-httpbin: assets $(GO_SOURCES)
-	mkdir -p dist
-	go build -o dist/go-httpbin ./cmd/go-httpbin
+$(DIST_PATH)/go-httpbin: assets $(GO_SOURCES)
+	mkdir -p $(DIST_PATH)
+	go build -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 
 assets: $(GENERATED_ASSETS_PATH)
 
 clean:
-	rm -r dist
+	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
 
 $(GENERATED_ASSETS_PATH): $(GOBINDATA) static/*
 	$(GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
@@ -42,10 +53,14 @@ $(GENERATED_ASSETS_PATH): $(GOBINDATA) static/*
 test:
 	go test $(TEST_ARGS) ./...
 
-testcover:
-	mkdir -p dist
-	go test $(TEST_ARGS) -coverprofile=dist/coverage.out github.com/mccutchen/go-httpbin/httpbin
-	go tool cover -html=dist/coverage.out
+# Test command to run for continuous integration, which includes code coverage
+# based on codecov.io's documentation:
+# https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
+testci:
+	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
+
+testcover: testci
+	go tool cover -html=$(COVERAGE_PATH)
 
 lint: $(GOLINT)
 	test -z "$$(gofmt -d -s -e .)" || (gofmt -d -s -e . ; exit 1)
@@ -63,7 +78,7 @@ stagedeploy: build
 	gcloud app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
 
 run: build
-	./dist/go-httpbin
+	$(DIST_PATH)/go-httpbin
 
 
 # =============================================================================
