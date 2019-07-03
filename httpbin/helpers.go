@@ -236,16 +236,15 @@ func sha1hash(input string) string {
 	return fmt.Sprintf("%x", h.Sum([]byte(input)))
 }
 
-func uuidv4() (string, error) {
+func uuidv4() string {
 	buff := make([]byte, 16)
 	_, err := rand.Read(buff[:])
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 	buff[6] = (buff[6] & 0x0f) | 0x40 // Version 4
 	buff[8] = (buff[8] & 0x3f) | 0x80 // Variant 10
-	uuid := fmt.Sprintf("%x-%x-%x-%x-%x", buff[0:4], buff[4:6], buff[6:8], buff[8:10], buff[10:])
-	return uuid, nil
+	return fmt.Sprintf("%x-%x-%x-%x-%x", buff[0:4], buff[4:6], buff[6:8], buff[8:10], buff[10:])
 }
 
 // base64Helper - describes the base64 operation (encode|decode) and input data
