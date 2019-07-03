@@ -54,7 +54,7 @@ func assertContentType(t *testing.T, w *httptest.ResponseRecorder, contentType s
 
 func assertBodyContains(t *testing.T, w *httptest.ResponseRecorder, needle string) {
 	if !strings.Contains(w.Body.String(), needle) {
-		t.Fatalf("expected string %v in body", needle)
+		t.Fatalf("expected string %q in body %q", needle, w.Body.String())
 	}
 }
 
@@ -2253,6 +2253,22 @@ func TestBase64(t *testing.T) {
 		{
 			"/base64/decode/" + randStringBytes(Base64MaxLen+1),
 			"Cannot handle input",
+		},
+		{
+			"/base64/",
+			"No input data",
+		},
+		{
+			"/base64/decode/",
+			"No input data",
+		},
+		{
+			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n/extra",
+			"Invalid URL",
+		},
+		{
+			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+			"Invalid operation: unknown",
 		},
 	}
 
