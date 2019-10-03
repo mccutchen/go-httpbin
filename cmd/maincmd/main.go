@@ -2,7 +2,6 @@ package maincmd
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -78,6 +77,16 @@ func Main() {
 		httpsKeyFile = os.Getenv("HTTPS_KEY_FILE")
 	}
 
+	var serveTLS bool
+	if httpsCertFile != "" || httpsKeyFile != "" {
+		serveTLS = true
+		if httpsCertFile == "" || httpsKeyFile == "" {
+			fmt.Fprintf(os.Stderr, "Error: https cert and key must both be provided\n\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+	}
+
 	logger := log.New(os.Stderr, "", 0)
 
 	// A hacky log helper function to ensure that shutdown messages are
@@ -128,16 +137,9 @@ func Main() {
 	}()
 
 	var listenErr error
-	if httpsCertFile != "" && httpsKeyFile != "" {
-		cert, err := tls.LoadX509KeyPair(httpsCertFile, httpsKeyFile)
-		if err != nil {
-			logger.Fatalf("failed to generate https key pair: %s", err)
-		}
-		server.TLSConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		}
+	if serveTLS {
 		serverLog("go-httpbin listening on https://%s", listenAddr)
-		listenErr = server.ListenAndServeTLS("", "")
+		listenErr = server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
 	} else {
 		serverLog("go-httpbin listening on http://%s", listenAddr)
 		listenErr = server.ListenAndServe()
