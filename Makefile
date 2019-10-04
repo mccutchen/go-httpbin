@@ -4,8 +4,9 @@
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
 VERSION        ?= $(shell git rev-parse --short HEAD)
 
-# Override this to deploy to a different App Engine project
+# Override these values to deploy to a different App Engine project
 GCLOUD_PROJECT ?= httpbingo
+GCLOUD_ACCOUNT ?= mccutchen@gmail.com
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -72,10 +73,10 @@ lint: $(GOLINT)
 # deploy & run locally
 # =============================================================================
 deploy: build
-	gcloud app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
+	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
 
 stagedeploy: build
-	gcloud app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
 
 run: build
 	$(DIST_PATH)/go-httpbin
