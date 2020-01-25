@@ -692,12 +692,11 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	if numBytes < 1 {
 		numBytes = 1
 	} else if (numBytes > h.MaxBodySize) && !streaming {
-		fmt.Println("body is too big {}", numBytes)
+		// fmt.Println("body is too big {}", numBytes)
 		numBytes = h.MaxBodySize
 	}
 
-	var chunkSize int64
-	var write func([]byte)
+	var chunkSize int64 = numBytes
 
 	if streaming {
 		if r.URL.Query().Get("chunk_size") != "" {
@@ -712,21 +711,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 				chunkSize = h.MaxBodySize
 			}
 		} else {
-			chunkSize = 10 * 1024
-		}
-
-		write = func() func(chunk []byte) {
-			f := w.(http.Flusher)
-			return func(chunk []byte) {
-				w.Write(chunk)
-				f.Flush()
-			}
-		}()
-	} else {
-		chunkSize = numBytes
-		write = func(chunk []byte) {
-			w.Header().Set("Content-Length", strconv.Itoa(len(chunk)))
-			w.Write(chunk)
+			chunkSize = 10 * 1024 // todo: move this in a parameter/const
 		}
 	}
 
@@ -746,6 +731,8 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	rng := rand.New(src)
 
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", strconv.FormatInt(numBytes,10))
+
 	w.WriteHeader(http.StatusOK)
 
 	// prepare a buffer of chunkSize bytes
@@ -755,16 +742,19 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 		chunk = append(chunk, byte(rng.Intn(256)))
 	}
 	
+	f := w.(http.Flusher)
 	// send the buffer as many times as needed
 	var num_chunk = numBytes / chunkSize
 	for i = 0; i < num_chunk; i++ {
-		write(chunk)
+		w.Write(chunk)
+		f.Flush()		
 	}
 
-	// send the modulo is any
+	// send the modulo is any (or full body if not streaming)
 	if (numBytes % chunkSize > 0) {
 		//fmt.Println(numBytes % chunkSize)
-		write(chunk[:numBytes % chunkSize])
+		w.Write(chunk[:numBytes % chunkSize])
+		f.Flush()
 	}
 	chunk = nil
 }
