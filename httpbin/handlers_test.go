@@ -1929,10 +1929,10 @@ func TestBytes(t *testing.T) {
 
 	var edgeCaseTests = []struct {
 		url                   string
-		expectedContentLength int
+		expectedContentLength int64
 	}{
 		{"/bytes/-1", 1},
-		{"/bytes/99999999", 100 * 1024},
+		{"/bytes/99999999", maxBodySize}, // todo: should be MaxBodySize (so we can't test --)
 
 		// negative seed allowed
 		{"/bytes/16?seed=-12345", 16},
@@ -1944,7 +1944,7 @@ func TestBytes(t *testing.T) {
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusOK)
 			assertHeader(t, w, "Content-Length", fmt.Sprintf("%d", test.expectedContentLength))
-			if len(w.Body.Bytes()) != test.expectedContentLength {
+			if int64(len(w.Body.Bytes())) != test.expectedContentLength {
 				t.Errorf("expected body of length %d, got %d", test.expectedContentLength, len(w.Body.Bytes()))
 			}
 		})
@@ -1996,14 +1996,7 @@ func TestStreamBytes(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 
-			// TODO: The stdlib seems to automagically unchunk these responses
-			// and I'm not quite sure how to test this:
-			//
-			//     assertHeader(t, w, "Transfer-Encoding", "chunked")
-			//
-			// Instead, we assert that we got no Content-Length header, which
-			// is an indication that the Go stdlib streamed the response.
-			assertHeader(t, w, "Content-Length", "")
+			assertHeader(t, w, "Content-Length", fmt.Sprintf("%d", test.expectedContentLength))
 
 			if len(w.Body.Bytes()) != test.expectedContentLength {
 				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, len(w.Body.Bytes()))

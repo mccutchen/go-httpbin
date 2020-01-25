@@ -705,6 +705,9 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			if (chunkSize < 1) {
+				chunkSize = 1 
+			}
 			// todo- for now we limit chunkSize to maxBodySize. do we a new cmd line parameter for max chunk size ?
 			if (chunkSize > h.MaxBodySize) {
 				//fmt.Println("chunk is too big {}", chunkSize)
@@ -714,6 +717,9 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 			chunkSize = 10 * 1024 // todo: move this in a parameter/const
 		}
 	}
+
+	// fmt.Println("numBytes {}", numBytes)
+	// fmt.Println("chunkSize {}", chunkSize)
 
 	var seed int64
 	rawSeed := r.URL.Query().Get("seed")
@@ -745,14 +751,15 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	f := w.(http.Flusher)
 	// send the buffer as many times as needed
 	var num_chunk = numBytes / chunkSize
+	// fmt.Println("num_chunk :", num_chunk)
 	for i = 0; i < num_chunk; i++ {
 		w.Write(chunk)
 		f.Flush()		
 	}
 
-	// send the modulo is any (or full body if not streaming)
+	// send the modulo is any 
+	// fmt.Println("modulo :", numBytes % chunkSize)
 	if (numBytes % chunkSize > 0) {
-		//fmt.Println(numBytes % chunkSize)
 		w.Write(chunk[:numBytes % chunkSize])
 		f.Flush()
 	}
