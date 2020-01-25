@@ -750,9 +750,9 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	
 	f := w.(http.Flusher)
 	// send the buffer as many times as needed
-	var num_chunk = numBytes / chunkSize
-	// fmt.Println("num_chunk :", num_chunk)
-	for i = 0; i < num_chunk; i++ {
+	var numChunk = numBytes / chunkSize
+	// fmt.Println("numChunk :", numChunk)
+	for i = 0; i < numChunk; i++ {
 		w.Write(chunk)
 		f.Flush()		
 	}
