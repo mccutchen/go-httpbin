@@ -683,7 +683,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 		return
 	}
 
-	numBytes, err := strconv.ParseInt(parts[2], 10, 64);
+	numBytes, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -705,11 +705,11 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			if (chunkSize < 1) {
-				chunkSize = 1 
+			if chunkSize < 1 {
+				chunkSize = 1
 			}
 			// todo- for now we limit chunkSize to maxBodySize. do we a new cmd line parameter for max chunk size ?
-			if (chunkSize > h.MaxBodySize) {
+			if chunkSize > h.MaxBodySize {
 				//fmt.Println("chunk is too big {}", chunkSize)
 				chunkSize = h.MaxBodySize
 			}
@@ -737,7 +737,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	rng := rand.New(src)
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", strconv.FormatInt(numBytes,10))
+	w.Header().Set("Content-Length", strconv.FormatInt(numBytes, 10))
 
 	w.WriteHeader(http.StatusOK)
 
@@ -747,20 +747,20 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	for i = 0; i < chunkSize; i++ {
 		chunk = append(chunk, byte(rng.Intn(256)))
 	}
-	
+
 	f := w.(http.Flusher)
 	// send the buffer as many times as needed
 	var numChunk = numBytes / chunkSize
 	// fmt.Println("numChunk :", numChunk)
 	for i = 0; i < numChunk; i++ {
 		w.Write(chunk)
-		f.Flush()		
+		f.Flush()
 	}
 
-	// send the modulo is any 
+	// send the modulo is any
 	// fmt.Println("modulo :", numBytes % chunkSize)
-	if (numBytes % chunkSize > 0) {
-		w.Write(chunk[:numBytes % chunkSize])
+	if numBytes%chunkSize > 0 {
+		w.Write(chunk[:numBytes%chunkSize])
 		f.Flush()
 	}
 	chunk = nil
