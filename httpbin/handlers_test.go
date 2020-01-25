@@ -1989,6 +1989,9 @@ func TestStreamBytes(t *testing.T) {
 
 		// as is negative chunk size
 		{"/stream-bytes/256?chunk_size=-10", 256},
+
+		// way too large chunk size is okay
+		{fmt.Sprintf("/stream-bytes/256?chunk_size=%d", maxBodySize+20), 256},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
