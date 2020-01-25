@@ -664,26 +664,26 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 
 // Bytes returns N random bytes generated with an optional seed
 func (h *HTTPBin) Bytes(w http.ResponseWriter, r *http.Request) {
-	handleBytes(w, r, false)
+	h.handleBytes(w, r, false)
 }
 
 // StreamBytes streams N random bytes generated with an optional seed in chunks
 // of a given size.
 func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
-	handleBytes(w, r, true)
+	h.handleBytes(w, r, true)
 }
 
 // handleBytes consolidates the logic for validating input params of the Bytes
 // and StreamBytes endpoints and knows how to write the response in chunks if
 // streaming is true.
-func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
+func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
-	numBytes, err := strconv.Atoi(parts[2])
+	numBytes, err := strconv.ParseInt(parts[2], 10, 64);
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -691,19 +691,25 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 
 	if numBytes < 1 {
 		numBytes = 1
-	} else if numBytes > 100*1024 {
-		numBytes = 100 * 1024
+	} else if (numBytes > h.MaxBodySize) && !streaming {
+		fmt.Println("body is too big {}", numBytes)
+		numBytes = h.MaxBodySize
 	}
 
-	var chunkSize int
+	var chunkSize int64
 	var write func([]byte)
 
 	if streaming {
 		if r.URL.Query().Get("chunk_size") != "" {
-			chunkSize, err = strconv.Atoi(r.URL.Query().Get("chunk_size"))
+			chunkSize, err = strconv.ParseInt(r.URL.Query().Get("chunk_size"), 10, 64)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
+			}
+			// todo- for now we limit chunkSize to maxBodySize. do we a new cmd line parameter for max chunk size ?
+			if (chunkSize > h.MaxBodySize) {
+				//fmt.Println("chunk is too big {}", chunkSize)
+				chunkSize = h.MaxBodySize
 			}
 		} else {
 			chunkSize = 10 * 1024
@@ -742,17 +748,25 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
 
+	// prepare a buffer of chunkSize bytes
+	var i int64
 	var chunk []byte
-	for i := 0; i < numBytes; i++ {
+	for i = 0; i < chunkSize; i++ {
 		chunk = append(chunk, byte(rng.Intn(256)))
-		if len(chunk) == chunkSize {
-			write(chunk)
-			chunk = nil
-		}
 	}
-	if len(chunk) > 0 {
+	
+	// send the buffer as many times as needed
+	var num_chunk = numBytes / chunkSize
+	for i = 0; i < num_chunk; i++ {
 		write(chunk)
 	}
+
+	// send the modulo is any
+	if (numBytes % chunkSize > 0) {
+		//fmt.Println(numBytes % chunkSize)
+		write(chunk[:numBytes % chunkSize])
+	}
+	chunk = nil
 }
 
 // Links redirects to the first page in a series of N links
