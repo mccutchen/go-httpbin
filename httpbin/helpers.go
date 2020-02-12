@@ -120,7 +120,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	case strings.HasPrefix(ct, "multipart/form-data"):
 		// The memory limit here only restricts how many parts will be kept in
 		// memory before overflowing to disk:
-		// http://localhost:8080/pkg/net/http/#Request.ParseMultipartForm
+		// https://golang.org/pkg/net/http/#Request.ParseMultipartForm
 		if err := r.ParseMultipartForm(1024); err != nil {
 			return err
 		}
