@@ -33,9 +33,12 @@ build: $(DIST_PATH)/go-httpbin
 
 $(DIST_PATH)/go-httpbin: assets $(GO_SOURCES)
 	mkdir -p $(DIST_PATH)
-	go build -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 
 assets: $(GENERATED_ASSETS_PATH)
+
+buildtests:
+	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
@@ -88,7 +91,7 @@ run: build
 # =============================================================================
 # docker images
 # =============================================================================
-image: build
+image:
 	docker build -t mccutchen/go-httpbin:$(VERSION) .
 
 imagepush: image
