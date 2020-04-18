@@ -127,7 +127,7 @@ func observe(o Observer, h http.Handler) http.Handler {
 			Method:   r.Method,
 			URI:      r.URL.RequestURI(),
 			Size:     mw.Size(),
-			Duration: time.Now().Sub(t),
+			Duration: time.Since(t),
 		})
 	})
 }

@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -31,7 +30,7 @@ const alphanumLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012
 var app = New(
 	WithMaxBodySize(maxBodySize),
 	WithMaxDuration(maxDuration),
-	WithObserver(StdLogObserver(log.New(os.Stderr, "", 0))),
+	WithObserver(StdLogObserver(log.New(ioutil.Discard, "", 0))),
 )
 
 var handler = app.Handler()
@@ -216,7 +215,7 @@ func TestHEAD(t *testing.T) {
 	assertStatusCode(t, w, 200)
 	assertBodyEquals(t, w, "")
 
-	contentLengthStr := w.HeaderMap.Get("Content-Length")
+	contentLengthStr := w.Header().Get("Content-Length")
 	if contentLengthStr == "" {
 		t.Fatalf("missing Content-Length header in response")
 	}
@@ -772,7 +771,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 	assertContentType(t, w, jsonContentType)
 
 	for k, expectedValues := range headers {
-		values, ok := w.HeaderMap[k]
+		values, ok := w.Header()[k]
 		if !ok {
 			t.Fatalf("expected header %s in response headers", k)
 		}
@@ -1021,7 +1020,7 @@ func TestDeleteCookies(t *testing.T) {
 
 	for _, c := range w.Result().Cookies() {
 		if c.Name == toDelete {
-			if time.Now().Sub(c.Expires) < (24*365-1)*time.Hour {
+			if time.Since(c.Expires) < (24*365-1)*time.Hour {
 				t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
 			}
 		}
@@ -1248,7 +1247,7 @@ func TestGzip(t *testing.T) {
 	assertHeader(t, w, "Content-Encoding", "gzip")
 	assertStatusCode(t, w, http.StatusOK)
 
-	zippedContentLengthStr := w.HeaderMap.Get("Content-Length")
+	zippedContentLengthStr := w.Header().Get("Content-Length")
 	if zippedContentLengthStr == "" {
 		t.Fatalf("missing Content-Length header in response")
 	}
@@ -1292,7 +1291,7 @@ func TestDeflate(t *testing.T) {
 	assertHeader(t, w, "Content-Encoding", "deflate")
 	assertStatusCode(t, w, http.StatusOK)
 
-	contentLengthHeader := w.HeaderMap.Get("Content-Length")
+	contentLengthHeader := w.Header().Get("Content-Length")
 	if contentLengthHeader == "" {
 		t.Fatalf("missing Content-Length header in response")
 	}
@@ -1415,7 +1414,7 @@ func TestDelay(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 
-			elapsed := time.Now().Sub(start)
+			elapsed := time.Since(start)
 
 			assertStatusCode(t, w, http.StatusOK)
 			assertHeader(t, w, "Content-Type", jsonContentType)
@@ -1515,7 +1514,7 @@ func TestDrip(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 
-			elapsed := time.Now().Sub(start)
+			elapsed := time.Since(start)
 
 			assertHeader(t, w, "Content-Type", "application/octet-stream")
 			assertStatusCode(t, w, test.code)
@@ -1676,7 +1675,7 @@ func TestRange(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
-		t.Logf("headers = %v", w.HeaderMap)
+		t.Logf("headers = %v", w.Header())
 		assertStatusCode(t, w, http.StatusPartialContent)
 		assertHeader(t, w, "ETag", "range26")
 		assertHeader(t, w, "Content-Length", "5")
@@ -2256,19 +2255,19 @@ func TestBase64(t *testing.T) {
 		},
 		{
 			"/base64/",
-			"No input data",
+			"no input data",
 		},
 		{
 			"/base64/decode/",
-			"No input data",
+			"no input data",
 		},
 		{
 			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n/extra",
-			"Invalid URL",
+			"invalid URL",
 		},
 		{
 			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
-			"Invalid operation: unknown",
+			"invalid operation: unknown",
 		},
 	}
 

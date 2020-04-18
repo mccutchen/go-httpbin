@@ -16,13 +16,15 @@ COVERAGE_PATH ?= coverage.txt
 COVERAGE_ARGS ?= -covermode=atomic -coverprofile=$(COVERAGE_PATH)
 TEST_ARGS     ?= -race
 
-GENERATED_ASSETS_PATH := httpbin/assets/assets.go
-
-BIN_DIR   := $(GOPATH)/bin
-GOLINT    := $(BIN_DIR)/golint
-GOBINDATA := $(BIN_DIR)/go-bindata
+# Tool dependencies
+TOOL_BIN_DIR     ?= $(shell go env GOPATH)/bin
+TOOL_GOBINDATA   := $(TOOL_BIN_DIR)/go-bindata
+TOOL_GOLINT      := $(TOOL_BIN_DIR)/golint
+TOOL_STATICCHECK := $(TOOL_BIN_DIR)/staticcheck
 
 GO_SOURCES = $(wildcard **/*.go)
+
+GENERATED_ASSETS_PATH := httpbin/assets/assets.go
 
 # =============================================================================
 # build
@@ -38,8 +40,8 @@ assets: $(GENERATED_ASSETS_PATH)
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
 
-$(GENERATED_ASSETS_PATH): $(GOBINDATA) static/*
-	$(GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
+$(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
+	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
 	# reformat generated code
 	gofmt -s -w $(GENERATED_ASSETS_PATH)
 	# dumb hack to make generate code lint correctly
@@ -63,10 +65,11 @@ testci:
 testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
 
-lint: $(GOLINT)
-	test -z "$$(gofmt -d -s -e .)" || (gofmt -d -s -e . ; exit 1)
-	$(GOLINT) -set_exit_status ./...
+lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
+	test -z "$$(gofmt -d -s -e .)" || (echo "Error: gofmt failed"; gofmt -d -s -e . ; exit 1)
 	go vet ./...
+	$(TOOL_GOLINT) -set_exit_status ./...
+	$(TOOL_STATICCHECK) ./...
 
 
 # =============================================================================
@@ -94,18 +97,16 @@ imagepush: image
 
 # =============================================================================
 # dependencies
+#
+# Deps are installed outside of working dir to avoid polluting go modules
 # =============================================================================
-deps: $(GOLINT) $(GOBINDATA)
+deps: $(TOOL_GOBINDATA) $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 
-# Can't install from working dir because of go mod issues:
-#
-#     go get -u github.com/kevinburke/go-bindata/...
-#     go: finding github.com/kevinburke/go-bindata/... latest
-#     go get github.com/kevinburke/go-bindata/...: no matching versions for query "latest"
-#
-# So we get out of the go modules path to install.
-$(GOBINDATA):
+$(TOOL_GOBINDATA):
 	cd /tmp && go get -u github.com/kevinburke/go-bindata/...
 
-$(GOLINT):
-	go get -u golang.org/x/lint/golint
+$(TOOL_GOLINT):
+	cd /tmp && go get -u golang.org/x/lint/golint
+
+$(TOOL_STATICCHECK):
+	cd /tmp && go get -u honnef.co/go/tools/cmd/staticcheck

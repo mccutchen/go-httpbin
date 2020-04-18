@@ -262,7 +262,7 @@ func newBase64Helper(path string) (*base64Helper, error) {
 	parts := strings.Split(path, "/")
 
 	if len(parts) != 3 && len(parts) != 4 {
-		return nil, errors.New("Invalid URL")
+		return nil, errors.New("invalid URL")
 	}
 
 	var b base64Helper
@@ -277,15 +277,15 @@ func newBase64Helper(path string) (*base64Helper, error) {
 		// - /base64/encode/input_str
 		b.operation = parts[2]
 		if b.operation != "encode" && b.operation != "decode" {
-			return nil, fmt.Errorf("Invalid operation: %s", b.operation)
+			return nil, fmt.Errorf("invalid operation: %s", b.operation)
 		}
 		b.data = parts[3]
 	}
 	if len(b.data) == 0 {
-		return nil, errors.New("No input data")
+		return nil, errors.New("no input data")
 	}
 	if len(b.data) >= Base64MaxLen {
-		return nil, fmt.Errorf("Input length - %d, Cannot handle input >= %d", len(b.data), Base64MaxLen)
+		return nil, fmt.Errorf("input length - %d, Cannot handle input >= %d", len(b.data), Base64MaxLen)
 	}
 
 	return &b, nil

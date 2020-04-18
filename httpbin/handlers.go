@@ -228,7 +228,7 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
 	for k, vs := range args {
 		for _, v := range vs {
-			w.Header().Add(http.CanonicalHeaderKey(k), v)
+			w.Header().Add(k, v)
 		}
 	}
 	body, _ := json.Marshal(args)
