@@ -13,11 +13,6 @@ const (
 	exampleUsername = "Mufasa"
 	examplePassword = "Circle Of Life"
 
-	exampleChallenge string = `Digest realm="testrealm@host.com",
-            qop="auth,auth-int",
-            nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093",
-            opaque="5ccc069c403ebaf9f0171e9517f40e41"`
-
 	exampleAuthorization string = `Digest username="Mufasa",
 			realm="testrealm@host.com",
 			nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093",
