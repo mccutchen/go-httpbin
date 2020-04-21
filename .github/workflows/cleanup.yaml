@@ -29,4 +29,4 @@ jobs:
         echo "::set-output name=version::pr${pr_number}"
 
     - name: Remove deployment
-      run: gcloud app gcloud app versions delete --project="${{ secrets.GCP_PROJECT_ID }}" "${{ steps.deployment_params.outputs.version }}"
+      run: gcloud app versions delete --project="${{ secrets.GCP_PROJECT_ID }}" "${{ steps.deployment_params.outputs.version }}"
