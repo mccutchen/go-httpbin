@@ -6,9 +6,9 @@ COPY Makefile .
 RUN make deps
 
 COPY . .
-RUN make
+RUN make build buildtests
 
 FROM gcr.io/distroless/base
-COPY --from=0 /go/src/github.com/mccutchen/go-httpbin/dist/go-httpbin /bin/go-httpbin
+COPY --from=0 /go/src/github.com/mccutchen/go-httpbin/dist/go-httpbin* /bin/
 EXPOSE 8080
 CMD ["/bin/go-httpbin"]
