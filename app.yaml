@@ -1,5 +1,5 @@
 ---
-runtime: go112
+runtime: go113
 
 main: ./cmd/go_httpbin
 
