@@ -1,4 +1,4 @@
-.PHONY: clean deploy deps image imagepush lint run stagedeploy test testci testcover
+.PHONY: clean deploy deps gcloud-auth image imagepush lint run stagedeploy test testci testcover
 
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
@@ -7,6 +7,9 @@ VERSION        ?= $(shell git rev-parse --short HEAD)
 # Override these values to deploy to a different App Engine project
 GCLOUD_PROJECT ?= httpbingo
 GCLOUD_ACCOUNT ?= mccutchen@gmail.com
+
+# Run gcloud in a container to avoid needing to install the SDK locally
+GCLOUD_COMMAND ?= docker run --rm -ti --workdir /code -v $$PWD:/code -v $$HOME/.config/gcloud:/root/.config/gcloud google/cloud-sdk gcloud
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -78,11 +81,14 @@ lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 # =============================================================================
 # deploy & run locally
 # =============================================================================
-deploy: build
-	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
+deploy: build gcloud-auth
+	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
 
-stagedeploy: build
-	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+stagedeploy: build gcloud-auth
+	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+
+gcloud-auth:
+	@$(GCLOUD_COMMAND) auth list | grep '^\*' | grep -q $(GCLOUD_ACCOUNT) || $(GCLOUD_COMMAND) auth login $(GCLOUD_ACCOUNT)
 
 run: build
 	$(DIST_PATH)/go-httpbin
