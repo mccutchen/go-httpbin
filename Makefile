@@ -1,4 +1,4 @@
-.PHONY: clean deploy deps image imagepush lint run stagedeploy test testci testcover
+.PHONY: clean deploy deps gcloud-auth image imagepush lint run stagedeploy test testci testcover
 
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
@@ -7,6 +7,9 @@ VERSION        ?= $(shell git rev-parse --short HEAD)
 # Override these values to deploy to a different App Engine project
 GCLOUD_PROJECT ?= httpbingo
 GCLOUD_ACCOUNT ?= mccutchen@gmail.com
+
+# Run gcloud in a container to avoid needing to install the SDK locally
+GCLOUD_COMMAND ?= ./bin/gcloud
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -44,7 +47,7 @@ clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
 
 $(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
-	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
+	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static -modtime=1601471052 static
 	# reformat generated code
 	gofmt -s -w $(GENERATED_ASSETS_PATH)
 	# dumb hack to make generate code lint correctly
@@ -59,11 +62,13 @@ $(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
 test:
 	go test $(TEST_ARGS) ./...
 
+
 # Test command to run for continuous integration, which includes code coverage
 # based on codecov.io's documentation:
 # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
-testci:
+testci: build
 	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
+	git diff --exit-code
 
 testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
@@ -78,11 +83,14 @@ lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 # =============================================================================
 # deploy & run locally
 # =============================================================================
-deploy: build
-	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
+deploy: build gcloud-auth
+	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
 
-stagedeploy: build
-	gcloud --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+stagedeploy: build gcloud-auth
+	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+
+gcloud-auth:
+	@$(GCLOUD_COMMAND) auth list | grep '^\*' | grep -q $(GCLOUD_ACCOUNT) || $(GCLOUD_COMMAND) auth login $(GCLOUD_ACCOUNT)
 
 run: build
 	$(DIST_PATH)/go-httpbin
