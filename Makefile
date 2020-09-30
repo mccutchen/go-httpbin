@@ -47,7 +47,7 @@ clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
 
 $(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
-	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static static
+	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static -modtime=1601471052 static
 	# reformat generated code
 	gofmt -s -w $(GENERATED_ASSETS_PATH)
 	# dumb hack to make generate code lint correctly
