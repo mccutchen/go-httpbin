@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# A wrapper that executes the gcloud CLI in a docker container, to avoid
+# requiring a local installation.
+#
+# Adapted from this helpful blog post:
+# https://blog.scottlowe.org/2018/09/13/running-gcloud-cli-in-a-docker-container/
+
+exec docker run \
+    --rm \
+    -ti \
+    --workdir /code \
+    -v $PWD:/code \
+    -v $HOME/.config/gcloud:/root/.config/gcloud \
+    google/cloud-sdk gcloud $*

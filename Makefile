@@ -9,7 +9,7 @@ GCLOUD_PROJECT ?= httpbingo
 GCLOUD_ACCOUNT ?= mccutchen@gmail.com
 
 # Run gcloud in a container to avoid needing to install the SDK locally
-GCLOUD_COMMAND ?= docker run --rm -ti --workdir /code -v $$PWD:/code -v $$HOME/.config/gcloud:/root/.config/gcloud google/cloud-sdk gcloud
+GCLOUD_COMMAND ?= ./bin/gcloud
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
