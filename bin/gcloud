@@ -6,10 +6,12 @@
 # Adapted from this helpful blog post:
 # https://blog.scottlowe.org/2018/09/13/running-gcloud-cli-in-a-docker-container/
 
+GCLOUD_SDK_TAG="312.0.0"
+
 exec docker run \
-    --rm \
-    -ti \
+    --rm -it \
     --workdir /code \
     -v $PWD:/code \
     -v $HOME/.config/gcloud:/root/.config/gcloud \
-    google/cloud-sdk gcloud $*
+    google/cloud-sdk:$GCLOUD_SDK_TAG \
+    gcloud $*
