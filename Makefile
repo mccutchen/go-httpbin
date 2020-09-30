@@ -2,14 +2,23 @@
 
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
-VERSION        ?= $(shell git rev-parse --short HEAD)
+VERSION ?= $(shell git rev-parse --short HEAD)
 
-# Override these values to deploy to a different App Engine project
+# Override these values to deploy to a different Cloud Run project
 GCLOUD_PROJECT ?= httpbingo
 GCLOUD_ACCOUNT ?= mccutchen@gmail.com
+GCLOUD_REGION  ?= us-central1
+
+# The version tag for the Cloud Run deployment (override this to adjust
+# pre-production URLs)
+GCLOUD_TAG ?= "v-$(VERSION)"
 
 # Run gcloud in a container to avoid needing to install the SDK locally
 GCLOUD_COMMAND ?= ./bin/gcloud
+
+# We push docker images to both docker hub and gcr.io
+DOCKER_TAG_DOCKERHUB ?= mccutchen/go-httpbin:$(VERSION)
+DOCKER_TAG_GCLOUD    ?= gcr.io/$(GCLOUD_PROJECT)/go-httpbin:$(VERSION)
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -81,29 +90,52 @@ lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 
 
 # =============================================================================
-# deploy & run locally
+# run locally
 # =============================================================================
-deploy: build gcloud-auth
-	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --promote
+run: build
+	$(DIST_PATH)/go-httpbin
 
-stagedeploy: build gcloud-auth
-	$(GCLOUD_COMMAND) --account=$(GCLOUD_ACCOUNT) app deploy --quiet --project=$(GCLOUD_PROJECT) --version=$(VERSION) --no-promote
+
+# =============================================================================
+# deploy to google cloud run
+# =============================================================================
+deploy: gcloud-auth imagepush
+	$(GCLOUD_COMMAND) beta run deploy \
+		$(GCLOUD_PROJECT) \
+		--image=$(DOCKER_TAG_GCLOUD) \
+		--revision-suffix=$(VERSION) \
+		--tag=$(GCLOUD_TAG) \
+		--project=$(GCLOUD_PROJECT) \
+		--region=$(GCLOUD_REGION) \
+		--allow-unauthenticated \
+		--platform=managed
+
+stagedeploy: gcloud-auth imagepush
+	$(GCLOUD_COMMAND) beta run deploy \
+		$(GCLOUD_PROJECT) \
+		--image=$(DOCKER_TAG_GCLOUD) \
+		--revision-suffix=$(VERSION) \
+		--tag=$(GCLOUD_TAG) \
+		--project=$(GCLOUD_PROJECT) \
+		--region=$(GCLOUD_REGION) \
+		--allow-unauthenticated \
+		--platform=managed \
+		--no-traffic
 
 gcloud-auth:
 	@$(GCLOUD_COMMAND) auth list | grep '^\*' | grep -q $(GCLOUD_ACCOUNT) || $(GCLOUD_COMMAND) auth login $(GCLOUD_ACCOUNT)
-
-run: build
-	$(DIST_PATH)/go-httpbin
+	@$(GCLOUD_COMMAND) auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
 
 
 # =============================================================================
 # docker images
 # =============================================================================
 image:
-	docker build -t mccutchen/go-httpbin:$(VERSION) .
+	docker build -t $(DOCKER_TAG_DOCKERHUB) -t $(DOCKER_TAG_GCLOUD) .
 
 imagepush: image
-	docker push mccutchen/go-httpbin:$(VERSION)
+	docker push $(DOCKER_TAG_GCLOUD)
+	docker push $(DOCKER_TAG_GCLOUD)
 
 
 # =============================================================================
