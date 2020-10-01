@@ -95,6 +95,9 @@ gcloud-auth:
 run: build
 	$(DIST_PATH)/go-httpbin
 
+watch: $(TOOL_REFLEX)
+	reflex -s -r '\.(go|html)$$' make run
+
 
 # =============================================================================
 # docker images
@@ -111,13 +114,14 @@ imagepush: image
 #
 # Deps are installed outside of working dir to avoid polluting go modules
 # =============================================================================
-deps: $(TOOL_GOBINDATA) $(TOOL_GOLINT) $(TOOL_STATICCHECK)
-
 $(TOOL_GOBINDATA):
 	cd /tmp && go get -u github.com/kevinburke/go-bindata/...
 
 $(TOOL_GOLINT):
 	cd /tmp && go get -u golang.org/x/lint/golint
+
+$(TOOL_REFLEX):
+	cd /tmp && go get -u github.com/cespare/reflex
 
 $(TOOL_STATICCHECK):
 	cd /tmp && go get -u honnef.co/go/tools/cmd/staticcheck
