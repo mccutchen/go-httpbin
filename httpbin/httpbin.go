@@ -96,6 +96,24 @@ type HTTPBin struct {
 
 	// Observer called with the result of each handled request
 	Observer Observer
+
+	// Default parameter values
+	DefaultParams DefaultParams
+}
+
+// DefaultParams defines default parameter values
+type DefaultParams struct {
+	DripDuration time.Duration
+	DripDelay    time.Duration
+	DripNumBytes int64
+}
+
+// DefaultDefaultParams defines the DefaultParams that are used by default. In
+// general, these should match the original httpbin.org's defaults.
+var DefaultDefaultParams = DefaultParams{
+	DripDuration: 2 * time.Second,
+	DripDelay:    2 * time.Second,
+	DripNumBytes: 10,
 }
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
@@ -197,8 +215,9 @@ func (h *HTTPBin) Handler() http.Handler {
 // New creates a new HTTPBin instance
 func New(opts ...OptionFunc) *HTTPBin {
 	h := &HTTPBin{
-		MaxBodySize: DefaultMaxBodySize,
-		MaxDuration: DefaultMaxDuration,
+		MaxBodySize:   DefaultMaxBodySize,
+		MaxDuration:   DefaultMaxDuration,
+		DefaultParams: DefaultDefaultParams,
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -209,6 +228,13 @@ func New(opts ...OptionFunc) *HTTPBin {
 // OptionFunc uses the "functional options" pattern to customize an HTTPBin
 // instance
 type OptionFunc func(*HTTPBin)
+
+// WithDefaultParams sets the default params handlers will use
+func WithDefaultParams(defaultParams DefaultParams) OptionFunc {
+	return func(h *HTTPBin) {
+		h.DefaultParams = defaultParams
+	}
+}
 
 // WithMaxBodySize sets the maximum amount of memory
 func WithMaxBodySize(m int64) OptionFunc {

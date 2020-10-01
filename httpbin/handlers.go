@@ -481,15 +481,16 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	duration := time.Duration(0)
-	delay := time.Duration(0)
-	numbytes := int64(10)
-	code := http.StatusOK
+	var (
+		duration = h.DefaultParams.DripDuration
+		delay    = h.DefaultParams.DripDelay
+		numBytes = h.DefaultParams.DripNumBytes
+		code     = http.StatusOK
 
-	var err error
+		err error
+	)
 
-	userDuration := q.Get("duration")
-	if userDuration != "" {
+	if userDuration := q.Get("duration"); userDuration != "" {
 		duration, err = parseBoundedDuration(userDuration, 0, h.MaxDuration)
 		if err != nil {
 			http.Error(w, "Invalid duration", http.StatusBadRequest)
@@ -497,8 +498,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userDelay := q.Get("delay")
-	if userDelay != "" {
+	if userDelay := q.Get("delay"); userDelay != "" {
 		delay, err = parseBoundedDuration(userDelay, 0, h.MaxDuration)
 		if err != nil {
 			http.Error(w, "Invalid delay", http.StatusBadRequest)
@@ -506,17 +506,15 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userNumBytes := q.Get("numbytes")
-	if userNumBytes != "" {
-		numbytes, err = strconv.ParseInt(userNumBytes, 10, 64)
-		if err != nil || numbytes <= 0 || numbytes > h.MaxBodySize {
+	if userNumBytes := q.Get("numbytes"); userNumBytes != "" {
+		numBytes, err = strconv.ParseInt(userNumBytes, 10, 64)
+		if err != nil || numBytes <= 0 || numBytes > h.MaxBodySize {
 			http.Error(w, "Invalid numbytes", http.StatusBadRequest)
 			return
 		}
 	}
 
-	userCode := q.Get("code")
-	if userCode != "" {
+	if userCode := q.Get("code"); userCode != "" {
 		code, err = strconv.Atoi(userCode)
 		if err != nil || code < 100 || code >= 600 {
 			http.Error(w, "Invalid code", http.StatusBadRequest)
@@ -529,7 +527,13 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pause := duration / time.Duration(numbytes)
+	pause := duration / time.Duration(numBytes)
+	flusher := w.(http.Flusher)
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
+	w.WriteHeader(code)
+	flusher.Flush()
 
 	select {
 	case <-r.Context().Done():
@@ -537,13 +541,9 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(delay):
 	}
 
-	w.WriteHeader(code)
-	w.Header().Set("Content-Type", "application/octet-stream")
-
-	f := w.(http.Flusher)
-	for i := int64(0); i < numbytes; i++ {
+	for i := int64(0); i < numBytes; i++ {
 		w.Write([]byte("*"))
-		f.Flush()
+		flusher.Flush()
 
 		select {
 		case <-r.Context().Done():
