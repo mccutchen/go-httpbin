@@ -1627,6 +1627,29 @@ func TestDrip(t *testing.T) {
 			assertStatusCode(t, w, test.code)
 		})
 	}
+
+	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
+		srv := httptest.NewServer(handler)
+		defer srv.Close()
+
+		resp, err := http.Head(srv.URL + "/drip?duration=900ms&delay=100ms")
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("error reading response body: %s", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected HTTP 200 OK rsponse, got %d", resp.StatusCode)
+		}
+		if bodySize := len(body); bodySize > 0 {
+			t.Fatalf("expected empty body from HEAD request, bot: %s", string(body))
+		}
+	})
 }
 
 func TestRange(t *testing.T) {
