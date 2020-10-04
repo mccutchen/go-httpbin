@@ -61,7 +61,7 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 // headResponseWriter implements http.ResponseWriter in order to discard the
 // body of the response
 type headResponseWriter struct {
-	http.ResponseWriter
+	*metaResponseWriter
 }
 
 func (hw *headResponseWriter) Write(b []byte) (int, error) {
@@ -72,7 +72,7 @@ func (hw *headResponseWriter) Write(b []byte) (int, error) {
 func autohead(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
-			w = &headResponseWriter{w}
+			w = &headResponseWriter{&metaResponseWriter{w: w}}
 		}
 		h.ServeHTTP(w, r)
 	})
