@@ -27,7 +27,14 @@ const maxBodySize int64 = 1024 * 1024
 const maxDuration time.Duration = 1 * time.Second
 const alphanumLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+var testDefaultParams = DefaultParams{
+	DripDelay:    0,
+	DripDuration: 100 * time.Millisecond,
+	DripNumBytes: 10,
+}
+
 var app = New(
+	WithDefaultParams(testDefaultParams),
 	WithMaxBodySize(maxBodySize),
 	WithMaxDuration(maxDuration),
 	WithObserver(StdLogObserver(log.New(ioutil.Discard, "", 0))),
@@ -1507,7 +1514,6 @@ func TestDrip(t *testing.T) {
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			url := "/drip?" + test.params.Encode()
-
 			start := time.Now()
 
 			r, _ := http.NewRequest("GET", url, nil)
@@ -1516,8 +1522,9 @@ func TestDrip(t *testing.T) {
 
 			elapsed := time.Since(start)
 
-			assertHeader(t, w, "Content-Type", "application/octet-stream")
 			assertStatusCode(t, w, test.code)
+			assertHeader(t, w, "Content-Type", "application/octet-stream")
+			assertHeader(t, w, "Content-Length", strconv.Itoa(test.numbytes))
 			if len(w.Body.Bytes()) != test.numbytes {
 				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(w.Body.Bytes()))
 			}
@@ -1532,13 +1539,29 @@ func TestDrip(t *testing.T) {
 		srv := httptest.NewServer(handler)
 		defer srv.Close()
 
+		// For this test, we expect the client to time out and cancel the
+		// request after 10ms.  The handler should immediately write a 200 OK
+		// status before the client timeout, preventing a client error, but it
+		// will wait 500ms to write anything to the response body.
+		//
+		// So, we're testing that a) the client got an immediate 200 OK but
+		// that b) the response body was empty.
 		client := http.Client{
 			Timeout: time.Duration(10 * time.Millisecond),
 		}
 		resp, err := client.Get(srv.URL + "/drip?duration=500ms&delay=500ms")
-		if err == nil {
-			body, _ := ioutil.ReadAll(resp.Body)
-			t.Fatalf("expected timeout error, got %d %s", resp.StatusCode, body)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("error reading response body: %s", err)
+		}
+
+		if len(body) != 0 {
+			t.Fatalf("expected client timeout before body was written, got body %q", string(body))
 		}
 	})
 
