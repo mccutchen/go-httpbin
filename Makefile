@@ -95,11 +95,21 @@ lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 run: build
 	$(DIST_PATH)/go-httpbin
 
+watch: $(TOOL_REFLEX)
+	reflex -s -r '\.(go|html)$$' make run
+
+
+# =============================================================================
+# deploy to fly.io
+# =============================================================================
+deploy:
+	flyctl deploy --strategy=rolling
+
 
 # =============================================================================
 # deploy to google cloud run
 # =============================================================================
-deploy: gcloud-auth imagepush
+deploy-cloud-run: gcloud-auth imagepush
 	$(GCLOUD_COMMAND) beta run deploy \
 		$(GCLOUD_PROJECT) \
 		--image=$(DOCKER_TAG_GCLOUD) \
@@ -109,8 +119,9 @@ deploy: gcloud-auth imagepush
 		--region=$(GCLOUD_REGION) \
 		--allow-unauthenticated \
 		--platform=managed
+	$(GCLOUD_COMMAND) run services update-traffic --to-latest
 
-stagedeploy: gcloud-auth imagepush
+stagedeploy-cloud-run: gcloud-auth imagepush
 	$(GCLOUD_COMMAND) beta run deploy \
 		$(GCLOUD_PROJECT) \
 		--image=$(DOCKER_TAG_GCLOUD) \
@@ -125,9 +136,6 @@ stagedeploy: gcloud-auth imagepush
 gcloud-auth:
 	@$(GCLOUD_COMMAND) auth list | grep '^\*' | grep -q $(GCLOUD_ACCOUNT) || $(GCLOUD_COMMAND) auth login $(GCLOUD_ACCOUNT)
 	@$(GCLOUD_COMMAND) auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
-
-watch: $(TOOL_REFLEX)
-	reflex -s -r '\.(go|html)$$' make run
 
 
 # =============================================================================
