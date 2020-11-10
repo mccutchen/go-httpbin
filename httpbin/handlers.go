@@ -172,12 +172,26 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		"accept":  acceptedMediaTypes,
 	})
 
+	http308body := []byte(`<!doctype html>
+<head>
+<title>Permanent Redirect</title>
+</head>
+<body>Permanently redirected to <a href="/image/jpeg">/image/jpeg</a>
+</body>
+</html>`)
+
 	specialCases := map[int]*statusCase{
 		301: redirectHeaders,
 		302: redirectHeaders,
 		303: redirectHeaders,
 		305: redirectHeaders,
 		307: redirectHeaders,
+		308: {
+			body: http308body,
+			headers: map[string]string{
+				"Location": "/image/jpeg",
+			},
+		},
 		401: {
 			headers: map[string]string{
 				"WWW-Authenticate": `Basic realm="Fake Realm"`,
