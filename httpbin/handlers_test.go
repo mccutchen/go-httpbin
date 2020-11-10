@@ -708,8 +708,26 @@ func TestStatus(t *testing.T) {
 		body    string
 	}{
 		{200, nil, ""},
+		{300, map[string]string{"Location": "/image/jpeg"}, `<!doctype html>
+<head>
+<title>Multiple Choices</title>
+</head>
+<body>
+<ul>
+<li><a href="/image/jpeg">/image/jpeg</a></li>
+<li><a href="/image/png">/image/png</a></li>
+<li><a href="/image/svg">/image/svg</a></li>
+</body>
+</html>`},
 		{301, redirectHeaders, ""},
 		{302, redirectHeaders, ""},
+		{308, map[string]string{"Location": "/image/jpeg"}, `<!doctype html>
+<head>
+<title>Permanent Redirect</title>
+</head>
+<body>Permanently redirected to <a href="/image/jpeg">/image/jpeg</a>
+</body>
+</html>`},
 		{401, unauthorizedHeaders, ""},
 		{418, nil, "I'm a teapot!"},
 	}
