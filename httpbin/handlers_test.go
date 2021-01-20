@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1466,6 +1467,19 @@ func TestDelay(t *testing.T) {
 		_, err := client.Get(srv.URL + "/delay/1")
 		if err == nil {
 			t.Fatal("expected timeout error")
+		}
+	})
+
+	t.Run("cancelation causes 499", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+
+		r, _ := http.NewRequestWithContext(ctx, "GET", "/delay/1s", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		if w.Code != 499 {
+			t.Errorf("expected 499 response, got %d", w.Code)
 		}
 	})
 
