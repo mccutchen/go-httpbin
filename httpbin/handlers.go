@@ -502,6 +502,7 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-r.Context().Done():
+		w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
 		return
 	case <-time.After(delay):
 	}
