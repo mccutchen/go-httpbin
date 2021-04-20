@@ -776,6 +776,67 @@ func TestStatus(t *testing.T) {
 	}
 }
 
+func TestUnstable(t *testing.T) {
+	t.Run("ok_no_seed", func(t *testing.T) {
+		r, _ := http.NewRequest("GET", "/unstable", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != 200 && w.Code != 500 {
+			t.Fatalf("expected status code 200 or 500, got %d", w.Code)
+		}
+	})
+
+	// rand.NewSource(1234567890).Float64() => 0.08
+	var tests = []struct {
+		url    string
+		status int
+	}{
+		{"/unstable?seed=1234567890", 500},
+		{"/unstable?seed=1234567890&failureRate=0.07", 200},
+	}
+	for _, test := range tests {
+		t.Run("ok_"+test.url, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, test.status)
+		})
+	}
+
+	var edgeCaseTests = []string{
+		// strange but valid seed
+		"/unstable?seed=-12345",
+	}
+	for _, test := range edgeCaseTests {
+		t.Run("bad"+test, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			if w.Code != 200 && w.Code != 500 {
+				t.Fatalf("expected status code 200 or 500, got %d", w.Code)
+			}
+		})
+	}
+
+	var badTests = []string{
+		// bad failureRate
+		"/unstable?failureRate=foo",
+		"/unstable?failureRate=-1",
+		"/unstable?failureRate=1.23",
+		// bad seed
+		"/unstable?seed=3.14",
+		"/unstable?seed=foo",
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", test, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			assertStatusCode(t, w, http.StatusBadRequest)
+		})
+	}
+}
+
 func TestResponseHeaders__OK(t *testing.T) {
 	headers := map[string][]string{
 		"Foo": {"foo"},

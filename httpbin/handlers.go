@@ -255,6 +255,40 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Unstable - returns 500, sometimes
+func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	// rng/seed
+	rng, err := parseSeed(r.URL.Query().Get("seed"))
+	if err != nil {
+		http.Error(w, "invalid seed", http.StatusBadRequest)
+		return
+	}
+
+	// failureRate
+	var failureRate float64
+	rawFailureRate := r.URL.Query().Get("failureRate")
+	if rawFailureRate != "" {
+		var err error
+		failureRate, err = strconv.ParseFloat(rawFailureRate, 64)
+		if err != nil || failureRate < 0 || failureRate > 1 {
+			http.Error(w, "invalid failureRate", http.StatusBadRequest)
+			return
+		}
+	} else {
+		failureRate = 0.5
+	}
+
+	var status int
+	if rng.Float64() < failureRate {
+		status = http.StatusInternalServerError
+	} else {
+		status = http.StatusOK
+	}
+	w.WriteHeader(status)
+}
+
 // ResponseHeaders responds with a map of header values
 func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
@@ -757,20 +791,12 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		}
 	}
 
-	var seed int64
-	rawSeed := r.URL.Query().Get("seed")
-	if rawSeed != "" {
-		seed, err = strconv.ParseInt(rawSeed, 10, 64)
-		if err != nil {
-			http.Error(w, "invalid seed", http.StatusBadRequest)
-			return
-		}
-	} else {
-		seed = time.Now().Unix()
+	// rng/seed
+	rng, err := parseSeed(r.URL.Query().Get("seed"))
+	if err != nil {
+		http.Error(w, "invalid seed", http.StatusBadRequest)
+		return
 	}
-
-	src := rand.NewSource(seed)
-	rng := rand.New(src)
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
@@ -980,4 +1006,22 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 		Token:         tokenFields[1],
 	})
 	writeJSON(w, body, http.StatusOK)
+}
+
+// Returns a new rand.Rand from the given seed string.
+func parseSeed(rawSeed string) (*rand.Rand, error) {
+	var seed int64
+	if rawSeed != "" {
+		var err error
+		seed, err = strconv.ParseInt(rawSeed, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		seed = time.Now().Unix()
+	}
+
+	src := rand.NewSource(seed)
+	rng := rand.New(src)
+	return rng, nil
 }
