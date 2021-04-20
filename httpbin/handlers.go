@@ -270,7 +270,6 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 	var failureRate float64
 	rawFailureRate := r.URL.Query().Get("failureRate")
 	if rawFailureRate != "" {
-		var err error
 		failureRate, err = strconv.ParseFloat(rawFailureRate, 64)
 		if err != nil || failureRate < 0 || failureRate > 1 {
 			http.Error(w, "invalid failureRate", http.StatusBadRequest)
