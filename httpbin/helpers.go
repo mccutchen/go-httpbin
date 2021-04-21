@@ -176,7 +176,7 @@ func parseSeed(rawSeed string) (*rand.Rand, error) {
 			return nil, err
 		}
 	} else {
-		seed = time.Now().Unix()
+		seed = time.Now().UnixNano()
 	}
 
 	src := rand.NewSource(seed)
