@@ -166,6 +166,24 @@ func parseBoundedDuration(input string, min, max time.Duration) (time.Duration, 
 	return d, err
 }
 
+// Returns a new rand.Rand from the given seed string.
+func parseSeed(rawSeed string) (*rand.Rand, error) {
+	var seed int64
+	if rawSeed != "" {
+		var err error
+		seed, err = strconv.ParseInt(rawSeed, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		seed = time.Now().Unix()
+	}
+
+	src := rand.NewSource(seed)
+	rng := rand.New(src)
+	return rng, nil
+}
+
 // syntheticByteStream implements the ReadSeeker interface to allow reading
 // arbitrary subsets of bytes up to a maximum size given a function for
 // generating the byte at a given offset.

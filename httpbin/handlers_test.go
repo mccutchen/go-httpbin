@@ -792,7 +792,7 @@ func TestUnstable(t *testing.T) {
 		status int
 	}{
 		{"/unstable?seed=1234567890", 500},
-		{"/unstable?seed=1234567890&failureRate=0.07", 200},
+		{"/unstable?seed=1234567890&failure_rate=0.07", 200},
 	}
 	for _, test := range tests {
 		t.Run("ok_"+test.url, func(t *testing.T) {
@@ -819,10 +819,10 @@ func TestUnstable(t *testing.T) {
 	}
 
 	var badTests = []string{
-		// bad failureRate
-		"/unstable?failureRate=foo",
-		"/unstable?failureRate=-1",
-		"/unstable?failureRate=1.23",
+		// bad failure_rate
+		"/unstable?failure_rate=foo",
+		"/unstable?failure_rate=-1",
+		"/unstable?failure_rate=1.23",
 		// bad seed
 		"/unstable?seed=3.14",
 		"/unstable?seed=foo",
