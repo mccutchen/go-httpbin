@@ -136,6 +136,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/response-headers", h.ResponseHeaders)
 
 	mux.HandleFunc("/status/", h.Status)
+	mux.HandleFunc("/unstable", h.Unstable)
 
 	mux.HandleFunc("/redirect/", h.Redirect)
 	mux.HandleFunc("/relative-redirect/", h.RelativeRedirect)
