@@ -29,11 +29,14 @@ jobs:
     - name: Build
       run: make build
 
+    - name: Build docker image
+      run: make image
+
     - name: Lint
       run: make lint
 
     - name: Test
-      run: git show && make testci
+      run: git show --stat && make testci
 
     - name: Code coverage
       uses: codecov/codecov-action@v1
