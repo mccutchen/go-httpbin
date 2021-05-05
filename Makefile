@@ -57,6 +57,7 @@ clean:
 
 $(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
 	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static -modtime=1601471052 static
+	sed -i.bak '1s|^|// +build !go1.16\n|' $(GENERATED_ASSETS_PATH)
 	# reformat generated code
 	gofmt -s -w $(GENERATED_ASSETS_PATH)
 	# dumb hack to make generate code lint correctly
