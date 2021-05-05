@@ -32,9 +32,6 @@ jobs:
     - name: Build docker image
       run: make image
 
-    - name: Lint
-      run: make lint
-
     - name: Test
       run: git show --stat && make testci
 

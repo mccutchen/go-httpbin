@@ -1,0 +1,6 @@
+run:
+  modules-download-mode: readonly
+
+linters:
+  disable:
+  - errcheck
