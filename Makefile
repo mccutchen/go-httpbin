@@ -142,7 +142,7 @@ gcloud-auth:
 # docker images
 # =============================================================================
 image:
-	docker build -t $(DOCKER_TAG_DOCKERHUB) .
+	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_TAG_DOCKERHUB) .
 
 imagepush: image
 	docker push $(DOCKER_TAG_DOCKERHUB)
