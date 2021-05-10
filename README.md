@@ -53,7 +53,7 @@ $ docker run -P mccutchen/go-httpbin
 $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
 ```
 
-The `github.com/mccutchen/go-httpbin/httpbin` package can also be used as a
+The `github.com/mccutchen/go-httpbin/httpbin/v2` package can also be used as a
 library for testing an applications interactions with an upstream HTTP service,
 like so:
 
@@ -66,18 +66,18 @@ import (
     "testing"
     "time"
 
-    "github.com/mccutchen/go-httpbin/httpbin"
+    httpbin "github.com/mccutchen/go-httpbin/httpbin/v2"
 )
 
 func TestSlowResponse(t *testing.T) {
-    svc := httpbin.New()
-    srv := httptest.NewServer(svc.Handler())
-    defer srv.Close()
+    app := httpbin.New()
+    testServer := httptest.NewServer(app.Handler())
+    defer testServer.Close()
 
     client := http.Client{
         Timeout: time.Duration(1 * time.Second),
     }
-    _, err := client.Get(srv.URL + "/delay/10")
+    _, err := client.Get(testServer.URL + "/delay/10")
     if err == nil {
         t.Fatal("expected timeout error")
     }
@@ -88,7 +88,7 @@ func TestSlowResponse(t *testing.T) {
 ## Installation
 
 ```
-go get github.com/mccutchen/go-httpbin/cmd/go-httpbin
+go install github.com/mccutchen/go-httpbin/cmd/go-httpbin
 ```
 
 
