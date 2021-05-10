@@ -3,7 +3,7 @@
 A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 [httpbin][httpbin-org] service, with zero dependencies outside the go stdlib.
 
-[![GoDoc](https://godoc.org/github.com/mccutchen/go-httpbin?status.svg)](https://godoc.org/github.com/mccutchen/go-httpbin)
+[![GoDoc](https://godoc.org/github.com/mccutchen/go-httpbin?status.svg)](https://pkg.go.dev/github.com/mccutchen/go-httpbin)
 [![Build Status](https://travis-ci.org/mccutchen/go-httpbin.svg?branch=master)](http://travis-ci.org/mccutchen/go-httpbin)
 [![Coverage](https://codecov.io/gh/mccutchen/go-httpbin/branch/master/graph/badge.svg)](https://codecov.io/gh/mccutchen/go-httpbin)
 
@@ -14,38 +14,38 @@ Run as a standalone binary, configured by command line flags or environment
 variables:
 
 ```
-$ go-httpbin -help
+$ go-httpbin --help
 Usage of go-httpbin:
   -host string
       Host to listen on (default "0.0.0.0")
-  -port int
-        Port to listen on (default 8080)
   -https-cert-file string
-         HTTPS certificate file
+      HTTPS Server certificate file
   -https-key-file string
-         HTTPS private key file
+      HTTPS Server private key file
   -max-body-size int
-        Maximum size of request or response, in bytes (default 1048576)
+      Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
-        Maximum duration a response may take (default 10s)
+      Maximum duration a response may take (default 10s)
+  -port int
+      Port to listen on (default 8080)
+```
 
 Examples:
-  # Run http server
-  $ go-httpbin -host 127.0.0.1 -port 8081
 
-  # Run https server
+```bash
+# Run http server
+$ go-httpbin -host 127.0.0.1 -port 8081
 
-  # Generate .crt and .key files
-  $ openssl genrsa -out server.key 2048
-  $ openssl ecparam -genkey -name secp384r1 -out server.key
-  $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
-
-  $ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
+# Run https server
+$ openssl genrsa -out server.key 2048
+$ openssl ecparam -genkey -name secp384r1 -out server.key
+$ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+$ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
 ```
 
 Docker images are published to [Docker Hub][docker-hub]:
 
-```
+```bash
 # Run http server
 $ docker run -P mccutchen/go-httpbin
 
@@ -53,7 +53,7 @@ $ docker run -P mccutchen/go-httpbin
 $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
 ```
 
-The `github.com/mccutchen/go-httpbin/httpbin` package can also be used as a
+The `github.com/mccutchen/go-httpbin/httpbin/v2` package can also be used as a
 library for testing an applications interactions with an upstream HTTP service,
 like so:
 
@@ -61,34 +61,44 @@ like so:
 package httpbin_test
 
 import (
-    "net/http"
-    "net/http/httptest"
-    "testing"
-    "time"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
 
-    "github.com/mccutchen/go-httpbin/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/httpbin"
 )
 
 func TestSlowResponse(t *testing.T) {
-    svc := httpbin.New()
-    srv := httptest.NewServer(svc.Handler())
-    defer srv.Close()
+	app := httpbin.New()
+	testServer := httptest.NewServer(app.Handler())
+	defer testServer.Close()
 
-    client := http.Client{
-        Timeout: time.Duration(1 * time.Second),
-    }
-    _, err := client.Get(srv.URL + "/delay/10")
-    if err == nil {
-        t.Fatal("expected timeout error")
-    }
+	client := http.Client{
+		Timeout: time.Duration(1 * time.Second),
+	}
+
+	_, err := client.Get(testServer.URL + "/delay/10")
+	if !os.IsTimeout(err) {
+		t.Fatalf("expected timeout error, got %s", err)
+	}
 }
 ```
 
 
 ## Installation
 
+To add go-httpbin to an existing golang project:
+
 ```
-go get github.com/mccutchen/go-httpbin/cmd/go-httpbin
+go get -u github.com/mccutchen/go-httpbin/v2
+```
+
+To install the `go-httpbin` binary:
+
+```
+go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin
 ```
 
 
