@@ -14,38 +14,39 @@ Run as a standalone binary, configured by command line flags or environment
 variables:
 
 ```
-$ go-httpbin -help
+go-httpbin --help
 Usage of go-httpbin:
   -host string
       Host to listen on (default "0.0.0.0")
-  -port int
-        Port to listen on (default 8080)
   -https-cert-file string
-         HTTPS certificate file
+      HTTPS Server certificate file
   -https-key-file string
-         HTTPS private key file
+      HTTPS Server private key file
   -max-body-size int
-        Maximum size of request or response, in bytes (default 1048576)
+      Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
-        Maximum duration a response may take (default 10s)
+      Maximum duration a response may take (default 10s)
+  -port int
+      Port to listen on (default 8080)
+```
 
 Examples:
-  # Run http server
-  $ go-httpbin -host 127.0.0.1 -port 8081
 
-  # Run https server
+```bash
+# Run http server
+$ go-httpbin -host 127.0.0.1 -port 8081
 
-  # Generate .crt and .key files
-  $ openssl genrsa -out server.key 2048
-  $ openssl ecparam -genkey -name secp384r1 -out server.key
-  $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+# Run https server
+$ openssl genrsa -out server.key 2048
+$ openssl ecparam -genkey -name secp384r1 -out server.key
+$ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 
-  $ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
+$ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
 ```
 
 Docker images are published to [Docker Hub][docker-hub]:
 
-```
+```bash
 # Run http server
 $ docker run -P mccutchen/go-httpbin
 
@@ -87,8 +88,16 @@ func TestSlowResponse(t *testing.T) {
 
 ## Installation
 
+To add go-httpbin to an existing golang project:
+
 ```
-go install github.com/mccutchen/go-httpbin/cmd/go-httpbin
+go get -u github.com/mccutchen/go-httpbin/v2
+```
+
+To install the `go-httpbin` binary:
+
+```
+go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin
 ```
 
 
