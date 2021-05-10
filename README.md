@@ -14,7 +14,7 @@ Run as a standalone binary, configured by command line flags or environment
 variables:
 
 ```
-go-httpbin --help
+$ go-httpbin --help
 Usage of go-httpbin:
   -host string
       Host to listen on (default "0.0.0.0")
