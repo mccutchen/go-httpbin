@@ -117,7 +117,7 @@ var DefaultDefaultParams = DefaultParams{
 }
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
-func (h *HTTPBin) Handler() http.Handler {
+func (h *HTTPBin) Handler(opts ...OptionHandler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", methods(h.Index, "GET"))
@@ -200,6 +200,11 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/stream-bytes", http.NotFound)
 	mux.HandleFunc("/links", http.NotFound)
 
+	// Apply custom handlers last so we can panic on occupied endpoints
+	for _, opt := range opts {
+		opt(mux)
+	}
+
 	// Apply global middleware
 	var handler http.Handler
 	handler = mux
@@ -255,5 +260,22 @@ func WithMaxDuration(d time.Duration) OptionFunc {
 func WithObserver(o Observer) OptionFunc {
 	return func(h *HTTPBin) {
 		h.Observer = o
+	}
+}
+
+// OptionHandler allows custom endpoints to be defined using the *HTTPBin.Handler(opts...) method
+type OptionHandler func(*http.ServeMux)
+
+// HandleFunc registers a custom handler function for an unoccupied HTTPBin endpoint
+func HandleFunc(endpoint string, h http.HandlerFunc) OptionHandler {
+	return func(m *http.ServeMux) {
+		m.HandleFunc(endpoint, h)
+	}
+}
+
+// HandleFuncWithMethod registers a custom handler function with an explicit HTTP method
+func HandleFuncWithMethod(endpoint, method string, h http.HandlerFunc) OptionHandler {
+	return func(m *http.ServeMux) {
+		m.HandleFunc(endpoint, methods(h, method))
 	}
 }
