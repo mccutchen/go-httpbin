@@ -267,15 +267,14 @@ func WithObserver(o Observer) OptionFunc {
 type OptionHandler func(*http.ServeMux)
 
 // HandleFunc registers a custom handler function for an unoccupied HTTPBin endpoint
-func HandleFunc(endpoint string, h http.HandlerFunc) OptionHandler {
+func HandleFunc(endpoint string, h http.HandlerFunc, allowedMethods ...string) OptionHandler {
+	if len(allowedMethods) > 0 {
+		return func(m *http.ServeMux) {
+			m.HandleFunc(endpoint, methods(h, allowedMethods...))
+		}
+	}
+
 	return func(m *http.ServeMux) {
 		m.HandleFunc(endpoint, h)
-	}
-}
-
-// HandleFuncWithMethod registers a custom handler function with an explicit HTTP method
-func HandleFuncWithMethod(endpoint, method string, h http.HandlerFunc) OptionHandler {
-	return func(m *http.ServeMux) {
-		m.HandleFunc(endpoint, methods(h, method))
 	}
 }
