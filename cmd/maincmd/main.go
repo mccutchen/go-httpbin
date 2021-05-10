@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	httpbin "github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/httpbin"
 )
 
 const defaultHost = "0.0.0.0"
