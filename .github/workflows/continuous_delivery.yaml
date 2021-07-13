@@ -87,6 +87,7 @@ jobs:
       with:
         args: "deploy --strategy rolling"
       env:
+        DOCKER_BUILDKIT: 1
         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     - name: Notify finish
