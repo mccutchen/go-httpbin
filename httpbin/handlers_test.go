@@ -216,24 +216,47 @@ func TestGet(t *testing.T) {
 }
 
 func TestHEAD(t *testing.T) {
-	r, _ := http.NewRequest("HEAD", "/", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	testCases := []struct {
+		verb     string
+		path     string
+		wantCode int
+	}{
+		{"HEAD", "/", http.StatusOK},
+		{"HEAD", "/get", http.StatusOK},
+		{"HEAD", "/head", http.StatusOK},
+		{"HEAD", "/post", http.StatusMethodNotAllowed},
+		{"GET", "/head", http.StatusMethodNotAllowed},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s %s", tc.verb, tc.path), func(t *testing.T) {
+			r, _ := http.NewRequest(tc.verb, tc.path, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
 
-	assertStatusCode(t, w, 200)
-	assertBodyEquals(t, w, "")
+			assertStatusCode(t, w, tc.wantCode)
 
-	contentLengthStr := w.Header().Get("Content-Length")
-	if contentLengthStr == "" {
-		t.Fatalf("missing Content-Length header in response")
+			// we only do further validation when we get an OK response
+			if tc.wantCode != http.StatusOK {
+				return
+			}
+
+			assertStatusCode(t, w, http.StatusOK)
+			assertBodyEquals(t, w, "")
+
+			contentLengthStr := w.Header().Get("Content-Length")
+			if contentLengthStr == "" {
+				t.Fatalf("missing Content-Length header in response")
+			}
+			contentLength, err := strconv.Atoi(contentLengthStr)
+			if err != nil {
+				t.Fatalf("error converting Content-Lengh %v to integer: %s", contentLengthStr, err)
+			}
+			if contentLength <= 0 {
+				t.Fatalf("Content-Lengh %v should be greater than 0", contentLengthStr)
+			}
+		})
 	}
-	contentLength, err := strconv.Atoi(contentLengthStr)
-	if err != nil {
-		t.Fatalf("error converting Content-Lengh %v to integer: %s", contentLengthStr, err)
-	}
-	if contentLength <= 0 {
-		t.Fatalf("Content-Lengh %v should be greater than 0", contentLengthStr)
-	}
+
 }
 
 func TestCORS(t *testing.T) {
