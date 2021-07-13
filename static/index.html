@@ -74,6 +74,7 @@
 <li><a href="/cookies/set?k1=v1&amp;k2=v2"><code>/cookies/set?name=value</code></a> Sets one or more simple cookies.</li>
 <li><a href="/deflate"><code>/deflate</code></a> Returns deflate-encoded data.</li>
 <li><a href="/delay/3"><code>/delay/:n</code></a> Delays responding for <em>min(n, 10)</em> seconds.</li>
+<li><code>/delete</code> Returns request data.  Allows only <code>DELETE</code> requests.</li>
 <li><a href="/deny"><code>/deny</code></a> Denied by robots.txt file.</li>
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd/:algorithm</code></a> Challenges HTTP Digest Auth.</li>
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd</code></a> Challenges HTTP Digest Auth.</li>
@@ -83,7 +84,8 @@
 <li><a href="/forms/post"><code>/forms/post</code></a> HTML form that submits to <em>/post</em></li>
 <li><a href="/get"><code>/get</code></a> Returns GET data.</li>
 <li><a href="/gzip"><code>/gzip</code></a> Returns gzip-encoded data.</li>
-<li><a href="/headers"><code>/headers</code></a> Returns header dict.</li>
+<li><code>/head</code> Returns response headers.  Allows only <code>HEAD</code> requests.</li>
+<li><a href="/headers"><code>/headers</code></a> Returns request header dict.</li>
 <li><a href="/hidden-basic-auth/user/passwd"><code>/hidden-basic-auth/:user/:passwd</code></a> 404'd BasicAuth.</li>
 <li><a href="/html"><code>/html</code></a> Renders an HTML Page.</li>
 <li><a href="/image"><code>/image</code></a> Returns page containing an image based on sent Accept header.</li>
@@ -94,6 +96,9 @@
 <li><a href="/ip"><code>/ip</code></a> Returns Origin IP.</li>
 <li><a href="/json"><code>/json</code></a> Returns JSON.</li>
 <li><a href="/links/10"><code>/links/:n</code></a> Returns page containing <em>n</em> HTML links.</li>
+<li><code>/patch</code> Returns request data.  Allows only <code>PATCH</code> requests.</li>
+<li><code>/post</code> Returns request data.  Allows only <code>POST</code> requests.</li>
+<li><code>/put</code> Returns request data.  Allows only <code>PUT</code> requests.</li>
 <li><a href="/range/1024"><code>/range/1024?duration=s&amp;chunk_size=code</code></a> Streams <em>n</em> bytes, and allows specifying a <em>Range</em> header to select a subset of the data. Accepts a <em>chunk_size</em> and request <em>duration</em> parameter.</li>
 <li><a href="/redirect-to?status_code=307&amp;url=http%3A%2F%2Fexample.com%2F"><code>/redirect-to?url=foo&status_code=307</code></a> 307 Redirects to the <em>foo</em> URL.</li>
 <li><a href="/redirect-to?url=http%3A%2F%2Fexample.com%2F"><code>/redirect-to?url=foo</code></a> 302 Redirects to the <em>foo</em> URL.</li>
