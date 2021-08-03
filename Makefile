@@ -142,10 +142,13 @@ gcloud-auth:
 # docker images
 # =============================================================================
 image:
-	docker buildx build --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG_DOCKERHUB) .
+	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_TAG_DOCKERHUB) .
 
 imagepush:
+	docker buildx create --name httpbin
+	docker buildx use httpbin
 	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG_DOCKERHUB) .
+	docker buildx rm httpbin
 
 
 # =============================================================================
