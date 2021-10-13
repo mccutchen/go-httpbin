@@ -3,6 +3,7 @@ package httpbin
 import (
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -103,6 +104,9 @@ type HTTPBin struct {
 
 	// Default parameter values
 	DefaultParams DefaultParams
+
+	// Name of the host we are running on
+	HostnameStr string
 }
 
 // DefaultParams defines default parameter values
@@ -229,6 +233,12 @@ func New(opts ...OptionFunc) *HTTPBin {
 	for _, opt := range opts {
 		opt(h)
 	}
+	// set the hostname string in the struct
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "invalid-host"
+	}
+	h.HostnameStr = hostname
 	return h
 }
 

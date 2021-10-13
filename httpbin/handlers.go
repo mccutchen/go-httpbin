@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -128,13 +127,8 @@ func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		http.Error(w, "Error:"+err.Error(), http.StatusInternalServerError)
-		return
-	}
 	body, _ := json.Marshal(&hostnameResponse{
-		Hostname: hostname,
+		Hostname: h.HostnameStr,
 	})
 	writeJSON(w, body, http.StatusOK)
 }

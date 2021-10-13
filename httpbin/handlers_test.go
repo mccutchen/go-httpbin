@@ -389,7 +389,7 @@ func TestHostname(t *testing.T) {
 	}
 
 	if len(resp.Hostname) == 0 {
-		t.Fatalf("expected none-empty hostname: %q", resp.Hostname)
+		t.Fatalf("expected non-empty hostname: %q", resp.Hostname)
 	}
 }
 
