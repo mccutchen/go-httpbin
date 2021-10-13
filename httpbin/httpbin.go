@@ -236,7 +236,7 @@ func New(opts ...OptionFunc) *HTTPBin {
 	// set the hostname string in the struct
 	hostname, err := os.Hostname()
 	if err != nil {
-		hostname = "invalid-host"
+		hostname = "unknown"
 	}
 	h.HostnameStr = hostname
 	return h
