@@ -23,6 +23,10 @@ type ipResponse struct {
 	Origin string `json:"origin"`
 }
 
+type hostnameResponse struct {
+	Hostname string `json:"hostname"`
+}
+
 type userAgentResponse struct {
 	UserAgent string `json:"user-agent"`
 }
@@ -132,6 +136,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/put", methods(h.RequestWithBody, "PUT"))
 
 	mux.HandleFunc("/ip", h.IP)
+	mux.HandleFunc("/hostname", h.Hostname)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/headers", h.Headers)
 	mux.HandleFunc("/response-headers", h.ResponseHeaders)

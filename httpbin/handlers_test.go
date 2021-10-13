@@ -375,6 +375,24 @@ func TestIP(t *testing.T) {
 	}
 }
 
+func TestHostname(t *testing.T) {
+	// this cannot be really tested, except to verify that the call returns some hostname and not a HTTP error
+	r, _ := http.NewRequest("GET", "/hostname", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	assertStatusCode(t, w, http.StatusOK)
+
+	var resp *hostnameResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+	}
+
+	if len(resp.Hostname) == 0 {
+		t.Fatalf("expected none-empty hostname: %q", resp.Hostname)
+	}
+}
+
 func TestUserAgent(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/user-agent", nil)
 	r.Header.Set("User-Agent", "test")

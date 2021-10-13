@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -122,6 +123,18 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(&ipResponse{
 		Origin: getOrigin(r),
+	})
+	writeJSON(w, body, http.StatusOK)
+}
+
+func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		http.Error(w, "Error:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	body, _ := json.Marshal(&hostnameResponse{
+		Hostname: hostname,
 	})
 	writeJSON(w, body, http.StatusOK)
 }
