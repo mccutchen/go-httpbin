@@ -126,6 +126,7 @@ func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, body, http.StatusOK)
 }
 
+// Hostname returns the name of the host this program is running on
 func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(&hostnameResponse{
 		Hostname: h.HostnameStr,
