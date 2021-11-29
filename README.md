@@ -4,7 +4,7 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 [httpbin][httpbin-org] service, with zero dependencies outside the go stdlib.
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/mccutchen/go-httpbin/v2)](https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2)
-[![Build Status](https://travis-ci.org/mccutchen/go-httpbin.svg?branch=main)](http://travis-ci.org/mccutchen/go-httpbin)
+[![Build status](https://github.com/mccutchen/go-httpbin/actions/workflows/continuous_delivery.yaml/badge.svg)](https://github.com/mccutchen/go-httpbin/actions/workflows/continuous_delivery.yaml)
 [![Coverage](https://codecov.io/gh/mccutchen/go-httpbin/branch/main/graph/badge.svg)](https://codecov.io/gh/mccutchen/go-httpbin)
 
 
