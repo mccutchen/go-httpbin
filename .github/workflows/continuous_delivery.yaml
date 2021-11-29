@@ -2,16 +2,16 @@
 # autonomous deploys to production on merge.
 name: CD
 
-# Translated: "Execute this workflow on pushes to master OR on pull requests
-# opened against master"
+# Translated: "Execute this workflow on pushes to main OR on pull requests
+# opened against main"
 #
 # See this question and answer for what we're solving here:
 # https://github.community/t5/GitHub-Actions/How-to-trigger-an-action-on-push-or-pull-request-but-not-both/m-p/36155#M2460
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   test:
@@ -67,7 +67,7 @@ jobs:
 
   production_deploy:
     name: Production Deploy
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [test]
     steps:
