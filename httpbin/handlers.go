@@ -982,7 +982,7 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("%s failed: %s", b.operation, base64Error), http.StatusBadRequest)
 		return
 	}
-	writeResponse(w, http.StatusOK, "text/html", result)
+	writeResponse(w, http.StatusOK, "text/plain", result)
 }
 
 // JSON - returns a sample json
