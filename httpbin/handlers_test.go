@@ -2425,6 +2425,7 @@ func TestBase64(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusOK)
+			assertContentType(t, w, "text/plain")
 			assertBodyEquals(t, w, test.want)
 		})
 	}
