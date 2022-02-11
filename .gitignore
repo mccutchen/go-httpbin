@@ -25,3 +25,4 @@ _testmain.go
 
 dist/*
 coverage.txt
+.idea
