@@ -16,20 +16,22 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	myhttp "github.com/mccutchen/go-httpbin/v2/internal/net/http"
 )
 
 // Base64MaxLen - Maximum input length for Base64 functions
 const Base64MaxLen = 2000
 
-// requestHeaders takes in incoming request and returns an http.Header map
+// requestHeaders takes in incoming request and returns an myhttp.Header map
 // suitable for inclusion in our response data structures.
 //
 // This is necessary to ensure that the incoming Host header is included,
 // because golang only exposes that header on the http.Request struct itself.
-func getRequestHeaders(r *http.Request) http.Header {
+func getRequestHeaders(r *http.Request) myhttp.Header {
 	h := r.Header
 	h.Set("Host", r.Host)
-	return h
+	return myhttp.Header(h)
 }
 
 func getOrigin(r *http.Request) string {

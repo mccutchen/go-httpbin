@@ -13,6 +13,7 @@ import (
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/assets"
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
+	myurl "github.com/mccutchen/go-httpbin/v2/internal/url"
 )
 
 var acceptedMediaTypes = []string{
@@ -50,7 +51,7 @@ func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
 // Get handles HTTP GET requests
 func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 	resp := &getResponse{
-		Args:    r.URL.Query(),
+		Args:    myurl.Values(r.URL.Query()),
 		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
@@ -62,7 +63,7 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 // RequestWithBody handles POST, PUT, and PATCH requests
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
-		Args:    r.URL.Query(),
+		Args:    myurl.Values(r.URL.Query()),
 		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
@@ -501,7 +502,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := &streamResponse{
-		Args:    r.URL.Query(),
+		Args:    myurl.Values(r.URL.Query()),
 		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),
@@ -715,7 +716,7 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	// TODO: This mostly duplicates the work of Get() above, should this be
 	// pulled into a little helper?
 	resp := &getResponse{
-		Args:    r.URL.Query(),
+		Args:    myurl.Values(r.URL.Query()),
 		Headers: getRequestHeaders(r),
 		Origin:  getOrigin(r),
 		URL:     getURL(r).String(),

@@ -15,13 +15,15 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	myhttp "github.com/mccutchen/go-httpbin/v2/internal/net/http"
+	myurl "github.com/mccutchen/go-httpbin/v2/internal/url"
 )
 
 const maxBodySize int64 = 1024 * 1024
@@ -117,7 +119,7 @@ func TestUTF8(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	makeGetRequest := func(params *url.Values, headers *http.Header, expectedStatus int) (*getResponse, *httptest.ResponseRecorder) {
+	makeGetRequest := func(params *myurl.Values, headers *myhttp.Header, expectedStatus int) (*getResponse, *httptest.ResponseRecorder) {
 		urlStr := "/get"
 		if params != nil {
 			urlStr = fmt.Sprintf("%s?%s", urlStr, params.Encode())
@@ -175,7 +177,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("with_query_params", func(t *testing.T) {
-		params := &url.Values{}
+		params := &myurl.Values{}
 		params.Set("foo", "foo")
 		params.Add("bar", "bar1")
 		params.Add("bar", "bar2")
@@ -205,7 +207,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, test := range protoTests {
 		t.Run(test.key, func(t *testing.T) {
-			headers := &http.Header{}
+			headers := &myhttp.Header{}
 			headers.Set(test.key, test.value)
 			resp, _ := makeGetRequest(nil, headers, http.StatusOK)
 			if !strings.HasPrefix(resp.URL, "https://") {
@@ -475,7 +477,7 @@ func TestPost__EmptyBody(t *testing.T) {
 }
 
 func TestPost__FormEncodedBody(t *testing.T) {
-	params := url.Values{}
+	params := myurl.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
 	params.Add("bar", "bar2")
@@ -512,7 +514,7 @@ func TestPost__FormEncodedBody(t *testing.T) {
 }
 
 func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
-	params := url.Values{}
+	params := myurl.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
 	params.Add("bar", "bar2")
@@ -683,7 +685,7 @@ func TestPost__BodyTooBig(t *testing.T) {
 }
 
 func TestPost__QueryParams(t *testing.T) {
-	params := url.Values{}
+	params := myurl.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
 	params.Add("bar", "bar2")
@@ -711,12 +713,12 @@ func TestPost__QueryParams(t *testing.T) {
 }
 
 func TestPost__QueryParamsAndBody(t *testing.T) {
-	args := url.Values{}
+	args := myurl.Values{}
 	args.Set("query1", "foo")
 	args.Add("query2", "bar1")
 	args.Add("query2", "bar2")
 
-	form := url.Values{}
+	form := myurl.Values{}
 	form.Set("form1", "foo")
 	form.Add("form2", "bar1")
 	form.Add("form2", "bar2")
@@ -904,7 +906,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 		"Bar": {"bar1, bar2"},
 	}
 
-	params := url.Values{}
+	params := myurl.Values{}
 	for k, vs := range headers {
 		for _, v := range vs {
 			params.Add(k, v)
@@ -928,7 +930,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 		}
 	}
 
-	resp := &http.Header{}
+	resp := &myhttp.Header{}
 	err := json.Unmarshal(w.Body.Bytes(), resp)
 	if err != nil {
 		t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
@@ -948,7 +950,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 func TestResponseHeaders__OverrideContentType(t *testing.T) {
 	contentType := "text/test"
 
-	params := url.Values{}
+	params := myurl.Values{}
 	params.Set("Content-Type", contentType)
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/response-headers?%s", params.Encode()), nil)
@@ -1120,7 +1122,7 @@ func TestSetCookies(t *testing.T) {
 		"k2": "v2",
 	}
 
-	params := &url.Values{}
+	params := &myurl.Values{}
 	for k, v := range cookies {
 		params.Set(k, v)
 	}
@@ -1150,7 +1152,7 @@ func TestDeleteCookies(t *testing.T) {
 	}
 
 	toDelete := "k2"
-	params := &url.Values{}
+	params := &myurl.Values{}
 	params.Set(toDelete, "")
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/cookies/delete?%s", params.Encode()), nil)
@@ -1632,38 +1634,38 @@ func TestDelay(t *testing.T) {
 
 func TestDrip(t *testing.T) {
 	var okTests = []struct {
-		params   *url.Values
+		params   *myurl.Values
 		duration time.Duration
 		numbytes int
 		code     int
 	}{
 		// there are useful defaults for all values
-		{&url.Values{}, 0, 10, http.StatusOK},
+		{&myurl.Values{}, 0, 10, http.StatusOK},
 
 		// go-style durations are accepted
-		{&url.Values{"duration": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
-		{&url.Values{"duration": {"0h"}}, 0, 10, http.StatusOK},
-		{&url.Values{"delay": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
-		{&url.Values{"delay": {"0h"}}, 0, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"0h"}}, 0, 10, http.StatusOK},
+		{&myurl.Values{"delay": {"5ms"}}, 5 * time.Millisecond, 10, http.StatusOK},
+		{&myurl.Values{"delay": {"0h"}}, 0, 10, http.StatusOK},
 
 		// or floating point seconds
-		{&url.Values{"duration": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
-		{&url.Values{"duration": {"0"}}, 0, 10, http.StatusOK},
-		{&url.Values{"duration": {"1"}}, 1 * time.Second, 10, http.StatusOK},
-		{&url.Values{"delay": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
-		{&url.Values{"delay": {"0"}}, 0, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"0"}}, 0, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"1"}}, 1 * time.Second, 10, http.StatusOK},
+		{&myurl.Values{"delay": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{&myurl.Values{"delay": {"0"}}, 0, 10, http.StatusOK},
 
-		{&url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
-		{&url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize)}}, 0, int(maxBodySize), http.StatusOK},
+		{&myurl.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
+		{&myurl.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
+		{&myurl.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize)}}, 0, int(maxBodySize), http.StatusOK},
 
-		{&url.Values{"code": {"100"}}, 0, 10, 100},
-		{&url.Values{"code": {"404"}}, 0, 10, 404},
-		{&url.Values{"code": {"599"}}, 0, 10, 599},
-		{&url.Values{"code": {"567"}}, 0, 10, 567},
+		{&myurl.Values{"code": {"100"}}, 0, 10, 100},
+		{&myurl.Values{"code": {"404"}}, 0, 10, 404},
+		{&myurl.Values{"code": {"599"}}, 0, 10, 599},
+		{&myurl.Values{"code": {"567"}}, 0, 10, 567},
 
-		{&url.Values{"duration": {"750ms"}, "delay": {"250ms"}}, 1 * time.Second, 10, http.StatusOK},
-		{&url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"750ms"}, "delay": {"250ms"}}, 1 * time.Second, 10, http.StatusOK},
+		{&myurl.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
 	}
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
@@ -1742,34 +1744,34 @@ func TestDrip(t *testing.T) {
 	})
 
 	var badTests = []struct {
-		params *url.Values
+		params *myurl.Values
 		code   int
 	}{
-		{&url.Values{"duration": {"1m"}}, http.StatusBadRequest},
-		{&url.Values{"duration": {"-1ms"}}, http.StatusBadRequest},
-		{&url.Values{"duration": {"1001"}}, http.StatusBadRequest},
-		{&url.Values{"duration": {"-1"}}, http.StatusBadRequest},
-		{&url.Values{"duration": {"foo"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"1m"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"-1ms"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"1001"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"-1"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"foo"}}, http.StatusBadRequest},
 
-		{&url.Values{"delay": {"1m"}}, http.StatusBadRequest},
-		{&url.Values{"delay": {"-1ms"}}, http.StatusBadRequest},
-		{&url.Values{"delay": {"1001"}}, http.StatusBadRequest},
-		{&url.Values{"delay": {"-1"}}, http.StatusBadRequest},
-		{&url.Values{"delay": {"foo"}}, http.StatusBadRequest},
+		{&myurl.Values{"delay": {"1m"}}, http.StatusBadRequest},
+		{&myurl.Values{"delay": {"-1ms"}}, http.StatusBadRequest},
+		{&myurl.Values{"delay": {"1001"}}, http.StatusBadRequest},
+		{&myurl.Values{"delay": {"-1"}}, http.StatusBadRequest},
+		{&myurl.Values{"delay": {"foo"}}, http.StatusBadRequest},
 
-		{&url.Values{"numbytes": {"foo"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
-		{&url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize+1)}}, http.StatusBadRequest},
+		{&myurl.Values{"numbytes": {"foo"}}, http.StatusBadRequest},
+		{&myurl.Values{"numbytes": {"0"}}, http.StatusBadRequest},
+		{&myurl.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
+		{&myurl.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
+		{&myurl.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize+1)}}, http.StatusBadRequest},
 
-		{&url.Values{"code": {"foo"}}, http.StatusBadRequest},
-		{&url.Values{"code": {"-1"}}, http.StatusBadRequest},
-		{&url.Values{"code": {"25"}}, http.StatusBadRequest},
-		{&url.Values{"code": {"600"}}, http.StatusBadRequest},
+		{&myurl.Values{"code": {"foo"}}, http.StatusBadRequest},
+		{&myurl.Values{"code": {"-1"}}, http.StatusBadRequest},
+		{&myurl.Values{"code": {"25"}}, http.StatusBadRequest},
+		{&myurl.Values{"code": {"600"}}, http.StatusBadRequest},
 
 		// request would take too long
-		{&url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
+		{&myurl.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
 	}
 	for _, test := range badTests {
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
