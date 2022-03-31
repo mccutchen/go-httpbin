@@ -78,7 +78,7 @@ jobs:
 
     - name: Notify start
       id: deployment
-      uses: bobheadxi/deployments@v0.6.1
+      uses: bobheadxi/deployments@v1
       with:
         step: start
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -91,7 +91,7 @@ jobs:
         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     - name: Notify finish
-      uses: bobheadxi/deployments@v0.6.1
+      uses: bobheadxi/deployments@v1
       with:
         step: finish
         deployment_id: ${{ steps.deployment.outputs.deployment_id }}
