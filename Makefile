@@ -157,13 +157,13 @@ imagepush:
 # Deps are installed outside of working dir to avoid polluting go modules
 # =============================================================================
 $(TOOL_GOBINDATA):
-	cd /tmp && go get -u github.com/kevinburke/go-bindata/...
+	go install github.com/kevinburke/go-bindata/go-bindata@v3.23.0
 
 $(TOOL_GOLINT):
-	cd /tmp && go get -u golang.org/x/lint/golint
+	go install golang.org/x/lint/golint@latest
 
 $(TOOL_REFLEX):
-	cd /tmp && go get -u github.com/cespare/reflex
+	go install github.com/cespare/reflex@0.3.1
 
 $(TOOL_STATICCHECK):
-	cd /tmp && go get -u honnef.co/go/tools/cmd/staticcheck
+	go install honnef.co/go/tools/cmd/staticcheck@v0.3.0
