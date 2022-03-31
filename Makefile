@@ -30,39 +30,26 @@ TEST_ARGS     ?= -race
 
 # Tool dependencies
 TOOL_BIN_DIR     ?= $(shell go env GOPATH)/bin
-TOOL_GOBINDATA   := $(TOOL_BIN_DIR)/go-bindata
 TOOL_GOLINT      := $(TOOL_BIN_DIR)/golint
 TOOL_STATICCHECK := $(TOOL_BIN_DIR)/staticcheck
 
 GO_SOURCES = $(wildcard **/*.go)
 
-GENERATED_ASSETS_PATH := httpbin/assets/assets.go
 
 # =============================================================================
 # build
 # =============================================================================
 build: $(DIST_PATH)/go-httpbin
 
-$(DIST_PATH)/go-httpbin: assets $(GO_SOURCES)
+$(DIST_PATH)/go-httpbin: $(GO_SOURCES)
 	mkdir -p $(DIST_PATH)
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
-
-assets: $(GENERATED_ASSETS_PATH)
 
 buildtests:
 	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
-
-$(GENERATED_ASSETS_PATH): $(TOOL_GOBINDATA) static/*
-	$(TOOL_GOBINDATA) -o $(GENERATED_ASSETS_PATH) -pkg=assets -prefix=static -modtime=1601471052 static
-	# reformat generated code
-	gofmt -s -w $(GENERATED_ASSETS_PATH)
-	# dumb hack to make generate code lint correctly
-	sed -i.bak 's/Html/HTML/g' $(GENERATED_ASSETS_PATH)
-	sed -i.bak 's/Xml/XML/g' $(GENERATED_ASSETS_PATH)
-	rm $(GENERATED_ASSETS_PATH).bak
 
 
 # =============================================================================
@@ -156,9 +143,6 @@ imagepush:
 #
 # Deps are installed outside of working dir to avoid polluting go modules
 # =============================================================================
-$(TOOL_GOBINDATA):
-	go install github.com/kevinburke/go-bindata/go-bindata@v3.23.0
-
 $(TOOL_GOLINT):
 	go install golang.org/x/lint/golint@latest
 

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mccutchen/go-httpbin/v2/httpbin/assets"
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
 )
 
@@ -34,17 +33,17 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
-	writeHTML(w, assets.MustAsset("index.html"), http.StatusOK)
+	writeHTML(w, mustStaticAsset("index.html"), http.StatusOK)
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, assets.MustAsset("forms-post.html"), http.StatusOK)
+	writeHTML(w, mustStaticAsset("forms-post.html"), http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test
 func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, assets.MustAsset("utf8.html"), http.StatusOK)
+	writeHTML(w, mustStaticAsset("utf8.html"), http.StatusOK)
 }
 
 // Get handles HTTP GET requests
@@ -652,7 +651,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 
 // HTML renders a basic HTML page
 func (h *HTTPBin) HTML(w http.ResponseWriter, r *http.Request) {
-	writeHTML(w, assets.MustAsset("moby.html"), http.StatusOK)
+	writeHTML(w, mustStaticAsset("moby.html"), http.StatusOK)
 }
 
 // Robots renders a basic robots.txt file
@@ -887,7 +886,7 @@ func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
 // doImage responds with a specific kind of image, if there is an image asset
 // of the given kind.
 func doImage(w http.ResponseWriter, kind string) {
-	img, err := assets.Asset("image." + kind)
+	img, err := staticAsset("image." + kind)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 	}
@@ -900,7 +899,7 @@ func doImage(w http.ResponseWriter, kind string) {
 
 // XML responds with an XML document
 func (h *HTTPBin) XML(w http.ResponseWriter, r *http.Request) {
-	writeResponse(w, http.StatusOK, "application/xml", assets.MustAsset("sample.xml"))
+	writeResponse(w, http.StatusOK, "application/xml", mustStaticAsset("sample.xml"))
 }
 
 // DigestAuth handles a simple implementation of HTTP Digest Authentication,
@@ -987,7 +986,7 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 
 // JSON - returns a sample json
 func (h *HTTPBin) JSON(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, assets.MustAsset("sample.json"), http.StatusOK)
+	writeJSON(w, mustStaticAsset("sample.json"), http.StatusOK)
 }
 
 // Bearer - Prompts the user for authorization using bearer authentication.
