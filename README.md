@@ -54,8 +54,8 @@ $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server
 ```
 
 The `github.com/mccutchen/go-httpbin/httpbin/v2` package can also be used as a
-library for testing an applications interactions with an upstream HTTP service,
-like so:
+library for testing an application's interactions with an upstream HTTP
+service, like so:
 
 ```go
 package httpbin_test
@@ -85,6 +85,17 @@ func TestSlowResponse(t *testing.T) {
 	}
 }
 ```
+
+
+## Custom instrumentation
+
+If you're running go-httpbin in your own infrastructure and would like custom
+instrumentation (metrics, structured logging, request tracing, etc), you'll
+need to wrap this package in your own code and use the included
+[Observer][observer] mechanism to instrument requests as necessary.
+
+See [examples/custom-instrumentation][custom-instrumentation] for an example
+that instruments every request using DataDog.
 
 
 ## Installation
@@ -147,3 +158,5 @@ make imagepush
 [httpbin-repo]: https://github.com/kennethreitz/httpbin
 [ahmet]: https://github.com/ahmetb/go-httpbin
 [docker-hub]: https://hub.docker.com/r/mccutchen/go-httpbin/
+[observer]: https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2/httpbin#Observer
+[custom-instrumentation]: ./examples/custom-instrumentation/
