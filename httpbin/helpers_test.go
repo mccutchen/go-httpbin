@@ -3,6 +3,7 @@ package httpbin
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -33,7 +34,7 @@ func assertError(t *testing.T, got, expected error) {
 }
 
 func TestParseDuration(t *testing.T) {
-	var okTests = []struct {
+	okTests := []struct {
 		input    string
 		expected time.Duration
 	}{
@@ -61,7 +62,7 @@ func TestParseDuration(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		input string
 	}{
 		{"foo"},
@@ -153,4 +154,52 @@ func TestSyntheticByteStream(t *testing.T) {
 			t.Errorf("Expected \"Seek: invalid offset\", got %#v", err.Error())
 		}
 	})
+}
+
+func Test_getClientIP(t *testing.T) {
+	makeHeaders := func(m map[string]string) http.Header {
+		h := make(http.Header, len(m))
+		for k, v := range m {
+			h.Set(k, v)
+		}
+		return h
+	}
+
+	tests := map[string]struct {
+		given *http.Request
+		want  string
+	}{
+		"custom platform headers take precedence": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"Fly-Client-IP":   "9.9.9.9",
+					"X-Forwarded-For": "1.1.1.1,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "9.9.9.9",
+		},
+		"x-forwarded-for is parsed": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"X-Forwarded-For": "1.1.1.1,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "1.1.1.1",
+		},
+		"remoteaddr is fallback": {
+			given: &http.Request{
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "0.0.0.0",
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := getClientIP(tt.given); got != tt.want {
+				t.Errorf("getClientIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

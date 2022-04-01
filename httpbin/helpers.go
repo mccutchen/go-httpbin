@@ -32,13 +32,23 @@ func getRequestHeaders(r *http.Request) http.Header {
 	return h
 }
 
-func getOrigin(r *http.Request) string {
-	forwardedFor := r.Header.Get("X-Forwarded-For")
-	if forwardedFor == "" {
-		return r.RemoteAddr
+// getClientIP tries to get a reasonable value for the IP address of the
+// client making the request. Note that this value will likely be trivial to
+// spoof, so do not rely on it for security purposes.
+func getClientIP(r *http.Request) string {
+	// Special case some hosting platforms that provide the value directly.
+	if clientIP := r.Header.Get("Fly-Client-IP"); clientIP != "" {
+		return clientIP
 	}
-	// take the first entry in a comma-separated list of IP addrs
-	return strings.TrimSpace(strings.SplitN(forwardedFor, ",", 2)[0])
+
+	// Try to pull a reasonable value from the X-Forwarded-For header, if
+	// present, by taking the first entry in a comma-separated list of IPs.
+	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
+		return strings.TrimSpace(strings.SplitN(forwardedFor, ",", 2)[0])
+	}
+
+	// Finally, fall back on the actual remote addr from the request.
+	return r.RemoteAddr
 }
 
 func getURL(r *http.Request) *url.URL {

@@ -51,7 +51,7 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 	resp := &getResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
-		Origin:  getOrigin(r),
+		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
 	body, _ := json.Marshal(resp)
@@ -63,7 +63,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
-		Origin:  getOrigin(r),
+		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
 
@@ -81,7 +81,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 	resp := &gzipResponse{
 		Headers: getRequestHeaders(r),
-		Origin:  getOrigin(r),
+		Origin:  getClientIP(r),
 		Gzipped: true,
 	}
 	body, _ := json.Marshal(resp)
@@ -101,7 +101,7 @@ func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 	resp := &deflateResponse{
 		Headers:  getRequestHeaders(r),
-		Origin:   getOrigin(r),
+		Origin:   getClientIP(r),
 		Deflated: true,
 	}
 	body, _ := json.Marshal(resp)
@@ -120,7 +120,7 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 // IP echoes the IP address of the incoming request
 func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(&ipResponse{
-		Origin: getOrigin(r),
+		Origin: getClientIP(r),
 	})
 	writeJSON(w, body, http.StatusOK)
 }
@@ -502,7 +502,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	resp := &streamResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
-		Origin:  getOrigin(r),
+		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
 
@@ -716,7 +716,7 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	resp := &getResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
-		Origin:  getOrigin(r),
+		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
 	body, _ := json.Marshal(resp)
