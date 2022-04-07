@@ -1,24 +1,7 @@
-.PHONY: clean deploy deps gcloud-auth image imagepush lint run stagedeploy test testci testcover
-
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
-VERSION ?= $(shell git rev-parse --short HEAD)
-
-# Override these values to deploy to a different Cloud Run project
-GCLOUD_PROJECT ?= httpbingo
-GCLOUD_ACCOUNT ?= mccutchen@gmail.com
-GCLOUD_REGION  ?= us-central1
-
-# The version tag for the Cloud Run deployment (override this to adjust
-# pre-production URLs)
-GCLOUD_TAG ?= "v-$(VERSION)"
-
-# Run gcloud in a container to avoid needing to install the SDK locally
-GCLOUD_COMMAND ?= ./bin/gcloud
-
-# We push docker images to both docker hub and gcr.io
-DOCKER_TAG_DOCKERHUB ?= mccutchen/go-httpbin:$(VERSION)
-DOCKER_TAG_GCLOUD    ?= gcr.io/$(GCLOUD_PROJECT)/go-httpbin:$(VERSION)
+VERSION    ?= $(shell git rev-parse --short HEAD)
+DOCKER_TAG ?= mccutchen/go-httpbin:$(VERSION)
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -41,15 +24,18 @@ GO_SOURCES = $(wildcard **/*.go)
 # =============================================================================
 build: $(DIST_PATH)/go-httpbin
 
+buildtests: $(DIST_PATH)/go-httpbin.test
+
 $(DIST_PATH)/go-httpbin: $(GO_SOURCES)
 	mkdir -p $(DIST_PATH)
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 
-buildtests:
+$(DIST_PATH)/go-httpbin.test: $(GO_SOURCES)
 	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
+.PHONY: clean
 
 
 # =============================================================================
@@ -57,6 +43,7 @@ clean:
 # =============================================================================
 test:
 	go test $(TEST_ARGS) ./...
+.PHONY: test
 
 
 # Test command to run for continuous integration, which includes code coverage
@@ -65,15 +52,18 @@ test:
 testci: build
 	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 	git diff --exit-code
+.PHONY: testci
 
 testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
+.PHONY: testcover
 
 lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 	test -z "$$(gofmt -d -s -e .)" || (echo "Error: gofmt failed"; gofmt -d -s -e . ; exit 1)
 	go vet ./...
 	$(TOOL_GOLINT) -set_exit_status ./...
 	$(TOOL_STATICCHECK) ./...
+.PHONY: lint
 
 
 # =============================================================================
@@ -81,61 +71,26 @@ lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
 # =============================================================================
 run: build
 	$(DIST_PATH)/go-httpbin
+.PHONY: run
 
 watch: $(TOOL_REFLEX)
 	reflex -s -r '\.(go|html)$$' make run
-
-
-# =============================================================================
-# deploy to fly.io
-# =============================================================================
-deploy:
-	flyctl deploy --strategy=rolling
-
-
-# =============================================================================
-# deploy to google cloud run
-# =============================================================================
-deploy-cloud-run: gcloud-auth imagepush
-	$(GCLOUD_COMMAND) beta run deploy \
-		$(GCLOUD_PROJECT) \
-		--image=$(DOCKER_TAG_GCLOUD) \
-		--revision-suffix=$(VERSION) \
-		--tag=$(GCLOUD_TAG) \
-		--project=$(GCLOUD_PROJECT) \
-		--region=$(GCLOUD_REGION) \
-		--allow-unauthenticated \
-		--platform=managed
-	$(GCLOUD_COMMAND) run services update-traffic --to-latest
-
-stagedeploy-cloud-run: gcloud-auth imagepush
-	$(GCLOUD_COMMAND) beta run deploy \
-		$(GCLOUD_PROJECT) \
-		--image=$(DOCKER_TAG_GCLOUD) \
-		--revision-suffix=$(VERSION) \
-		--tag=$(GCLOUD_TAG) \
-		--project=$(GCLOUD_PROJECT) \
-		--region=$(GCLOUD_REGION) \
-		--allow-unauthenticated \
-		--platform=managed \
-		--no-traffic
-
-gcloud-auth:
-	@$(GCLOUD_COMMAND) auth list | grep '^\*' | grep -q $(GCLOUD_ACCOUNT) || $(GCLOUD_COMMAND) auth login $(GCLOUD_ACCOUNT)
-	@$(GCLOUD_COMMAND) auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
+.PHONY: watch
 
 
 # =============================================================================
 # docker images
 # =============================================================================
 image:
-	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_TAG_DOCKERHUB) .
+	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_TAG) .
+.PHONY: image
 
 imagepush:
 	docker buildx create --name httpbin
 	docker buildx use httpbin
-	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG_DOCKERHUB) .
+	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG) .
 	docker buildx rm httpbin
+.PHONY: imagepush
 
 
 # =============================================================================
