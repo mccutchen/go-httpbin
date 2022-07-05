@@ -6,29 +6,34 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 [![GoDoc](https://pkg.go.dev/badge/github.com/mccutchen/go-httpbin/v2)](https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2)
 [![Build status](https://github.com/mccutchen/go-httpbin/actions/workflows/test.yaml/badge.svg)](https://github.com/mccutchen/go-httpbin/actions/workflows/test.yaml)
 [![Coverage](https://codecov.io/gh/mccutchen/go-httpbin/branch/main/graph/badge.svg)](https://codecov.io/gh/mccutchen/go-httpbin)
+[![Docker Pulls](https://badgen.net/docker/pulls/mccutchen/go-httpbin?icon=docker&label=pulls)](https://hub.docker.com/r/mccutchen/go-httpbin/)
 
 
 ## Usage
 
-Run as a standalone binary, configured by command line flags or environment
-variables:
 
-```
-$ go-httpbin --help
-Usage of go-httpbin:
-  -host string
-      Host to listen on (default "0.0.0.0")
-  -https-cert-file string
-      HTTPS Server certificate file
-  -https-key-file string
-      HTTPS Server private key file
-  -max-body-size int
-      Maximum size of request or response, in bytes (default 1048576)
-  -max-duration duration
-      Maximum duration a response may take (default 10s)
-  -port int
-      Port to listen on (default 8080)
-```
+### Configuration
+
+go-httpbin can be configured via either command line arguments or environment
+variables (or a combination of the two):
+
+| Argument| Env var | Documentation | Default |
+| - | - | - | - |
+| `-host` | `HOST` | Host to listen on | "0.0.0.0" |
+| `-https-cert-file` | `HTTPS_CERT_FILE` | HTTPS Server certificate file | |
+| `-https-key-file` | `HTTPS_KEY_FILE` | HTTPS Server private key file | |
+| `-max-body-size` | `MAX_BODY_SIZE` | Maximum size of request or response, in bytes | 1048576 |
+| `-max-duration` | `MAX_DURATION` | Maximum duration a response may take | 10s |
+| `-port` | `PORT` | Port to listen on | 8080 |
+| `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
+
+**Note:** Command line arguments take precedence over environment variables.
+
+
+### Standalone binary
+
+Follow the [Installation](#installation) instructions to install go-httpbin as
+a standalone binary. (This currently requires a working Go runtime.)
 
 Examples:
 
@@ -43,6 +48,8 @@ $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 $ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
 ```
 
+### Docker
+
 Docker images are published to [Docker Hub][docker-hub]:
 
 ```bash
@@ -52,6 +59,8 @@ $ docker run -P mccutchen/go-httpbin
 # Run https server
 $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
 ```
+
+### Unit testing helper library
 
 The `github.com/mccutchen/go-httpbin/httpbin/v2` package can also be used as a
 library for testing an application's interactions with an upstream HTTP

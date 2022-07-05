@@ -2571,3 +2571,49 @@ func TestNotImplemented(t *testing.T) {
 		})
 	}
 }
+
+func TestHostname(t *testing.T) {
+	t.Parallel()
+
+	loadResponse := func(t *testing.T, bodyBytes []byte) hostnameResponse {
+		var resp hostnameResponse
+		err := json.Unmarshal(bodyBytes, &resp)
+		if err != nil {
+			t.Fatalf("failed to unmarshal body %q from JSON: %s", string(bodyBytes), err)
+		}
+		return resp
+	}
+
+	t.Run("default hostname", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			handler = New().Handler()
+			r, _    = http.NewRequest("GET", "/hostname", nil)
+			w       = httptest.NewRecorder()
+		)
+		handler.ServeHTTP(w, r)
+		assertStatusCode(t, w, http.StatusOK)
+		resp := loadResponse(t, w.Body.Bytes())
+		if resp.Hostname != DefaultHostname {
+			t.Errorf("expected hostname %q, got %q", DefaultHostname, resp.Hostname)
+		}
+	})
+
+	t.Run("real hostname", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			realHostname = "real-hostname"
+			handler      = New(WithHostname(realHostname)).Handler()
+			r, _         = http.NewRequest("GET", "/hostname", nil)
+			w            = httptest.NewRecorder()
+		)
+		handler.ServeHTTP(w, r)
+		assertStatusCode(t, w, http.StatusOK)
+		resp := loadResponse(t, w.Body.Bytes())
+		if resp.Hostname != realHostname {
+			t.Errorf("expected hostname %q, got %q", realHostname, resp.Hostname)
+		}
+	})
+}

@@ -22,12 +22,13 @@ const (
 )
 
 var (
-	host          string
-	port          int
-	maxBodySize   int64
-	maxDuration   time.Duration
-	httpsCertFile string
-	httpsKeyFile  string
+	host            string
+	port            int
+	maxBodySize     int64
+	maxDuration     time.Duration
+	httpsCertFile   string
+	httpsKeyFile    string
+	useRealHostname bool
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 	flag.StringVar(&httpsKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
+	flag.BoolVar(&useRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
 	flag.Parse()
 
 	// Command line flags take precedence over environment vars, so we only
@@ -88,6 +90,13 @@ func main() {
 		}
 	}
 
+	// useRealHostname will be true if either the `-use-real-hostname`
+	// arg is given on the command line or if the USE_REAL_HOSTNAME env var
+	// is one of "1" or "true".
+	if useRealHostnameEnv := os.Getenv("USE_REAL_HOSTNAME"); useRealHostnameEnv == "1" || useRealHostnameEnv == "true" {
+		useRealHostname = true
+	}
+
 	logger := log.New(os.Stderr, "", 0)
 
 	// A hacky log helper function to ensure that shutdown messages are
@@ -101,11 +110,20 @@ func main() {
 		logger.Printf(logFmt, time.Now().Format(dateFmt), fmt.Sprintf(msg, args...))
 	}
 
-	h := httpbin.New(
+	opts := []httpbin.OptionFunc{
 		httpbin.WithMaxBodySize(maxBodySize),
 		httpbin.WithMaxDuration(maxDuration),
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
-	)
+	}
+	if useRealHostname {
+		hostname, err := os.Hostname()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: use-real-hostname=true but hostname lookup failed: %s\n", err)
+			os.Exit(1)
+		}
+		opts = append(opts, httpbin.WithHostname(hostname))
+	}
+	h := httpbin.New(opts...)
 
 	listenAddr := net.JoinHostPort(host, strconv.Itoa(port))
 

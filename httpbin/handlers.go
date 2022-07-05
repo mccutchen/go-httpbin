@@ -1004,3 +1004,11 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 	})
 	writeJSON(w, body, http.StatusOK)
 }
+
+// Hostname - returns the hostname.
+func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
+	body, _ := json.Marshal(hostnameResponse{
+		Hostname: h.hostname,
+	})
+	writeJSON(w, body, http.StatusOK)
+}
