@@ -16,7 +16,7 @@ TOOL_BIN_DIR     ?= $(shell go env GOPATH)/bin
 TOOL_GOLINT      := $(TOOL_BIN_DIR)/golint
 TOOL_STATICCHECK := $(TOOL_BIN_DIR)/staticcheck
 
-GO_SOURCES = $(wildcard **/*.go)
+GO_SOURCES = $(shell find . -name *.go)
 
 
 # =============================================================================

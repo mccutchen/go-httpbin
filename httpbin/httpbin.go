@@ -10,6 +10,7 @@ import (
 const (
 	DefaultMaxBodySize int64 = 1024 * 1024
 	DefaultMaxDuration       = 10 * time.Second
+	DefaultHostname          = "go-httpbin"
 )
 
 const (
@@ -87,6 +88,10 @@ type bearerResponse struct {
 	Token         string `json:"token"`
 }
 
+type hostnameResponse struct {
+	Hostname string `json:"hostname"`
+}
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -101,6 +106,9 @@ type HTTPBin struct {
 
 	// Default parameter values
 	DefaultParams DefaultParams
+
+	// The hostname to expose via /hostname.
+	hostname string
 }
 
 // DefaultParams defines default parameter values
@@ -137,6 +145,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/headers", h.Headers)
 	mux.HandleFunc("/response-headers", h.ResponseHeaders)
+	mux.HandleFunc("/hostname", h.Hostname)
 
 	mux.HandleFunc("/status/", h.Status)
 	mux.HandleFunc("/unstable", h.Unstable)
@@ -222,6 +231,7 @@ func New(opts ...OptionFunc) *HTTPBin {
 		MaxBodySize:   DefaultMaxBodySize,
 		MaxDuration:   DefaultMaxDuration,
 		DefaultParams: DefaultDefaultParams,
+		hostname:      DefaultHostname,
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -251,6 +261,13 @@ func WithMaxBodySize(m int64) OptionFunc {
 func WithMaxDuration(d time.Duration) OptionFunc {
 	return func(h *HTTPBin) {
 		h.MaxDuration = d
+	}
+}
+
+// WithHostname sets the hostname to return via the /hostname endpoint.
+func WithHostname(s string) OptionFunc {
+	return func(h *HTTPBin) {
+		h.hostname = s
 	}
 }
 
