@@ -605,8 +605,9 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(delay):
 	}
 
+	b := []byte{'*'}
 	for i := int64(0); i < numBytes; i++ {
-		w.Write([]byte("*"))
+		w.Write(b)
 		flusher.Flush()
 
 		select {
