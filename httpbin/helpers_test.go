@@ -51,7 +51,9 @@ func TestParseDuration(t *testing.T) {
 		{"-2.5", -2500 * time.Millisecond},
 	}
 	for _, test := range okTests {
+		test := test
 		t.Run(fmt.Sprintf("ok/%s", test.input), func(t *testing.T) {
+			t.Parallel()
 			result, err := parseDuration(test.input)
 			if err != nil {
 				t.Fatalf("unexpected error parsing duration %v: %s", test.input, err)
@@ -72,7 +74,9 @@ func TestParseDuration(t *testing.T) {
 		{"0xFF"},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.input), func(t *testing.T) {
+			t.Parallel()
 			_, err := parseDuration(test.input)
 			if err == nil {
 				t.Fatalf("expected error parsing %v", test.input)
@@ -82,11 +86,13 @@ func TestParseDuration(t *testing.T) {
 }
 
 func TestSyntheticByteStream(t *testing.T) {
+	t.Parallel()
 	factory := func(offset int64) byte {
 		return byte(offset)
 	}
 
 	t.Run("read", func(t *testing.T) {
+		t.Parallel()
 		s := newSyntheticByteStream(10, factory)
 
 		// read first half
@@ -112,6 +118,7 @@ func TestSyntheticByteStream(t *testing.T) {
 	})
 
 	t.Run("read into too-large buffer", func(t *testing.T) {
+		t.Parallel()
 		s := newSyntheticByteStream(5, factory)
 		p := make([]byte, 10)
 		count, err := s.Read(p)
@@ -121,6 +128,7 @@ func TestSyntheticByteStream(t *testing.T) {
 	})
 
 	t.Run("seek", func(t *testing.T) {
+		t.Parallel()
 		s := newSyntheticByteStream(100, factory)
 
 		p := make([]byte, 5)
@@ -157,6 +165,8 @@ func TestSyntheticByteStream(t *testing.T) {
 }
 
 func Test_getClientIP(t *testing.T) {
+	t.Parallel()
+
 	makeHeaders := func(m map[string]string) http.Header {
 		h := make(http.Header, len(m))
 		for k, v := range m {
@@ -165,7 +175,7 @@ func Test_getClientIP(t *testing.T) {
 		return h
 	}
 
-	tests := map[string]struct {
+	testCases := map[string]struct {
 		given *http.Request
 		want  string
 	}{
@@ -195,10 +205,12 @@ func Test_getClientIP(t *testing.T) {
 			want: "0.0.0.0",
 		},
 	}
-	for name, tt := range tests {
+	for name, tc := range testCases {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
-			if got := getClientIP(tt.given); got != tt.want {
-				t.Errorf("getClientIP() = %v, want %v", got, tt.want)
+			t.Parallel()
+			if got := getClientIP(tc.given); got != tc.want {
+				t.Errorf("getClientIP() = %v, want %v", got, tc.want)
 			}
 		})
 	}

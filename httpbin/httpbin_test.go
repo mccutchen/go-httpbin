@@ -9,6 +9,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	h := New()
 	if h.MaxBodySize != DefaultMaxBodySize {
 		t.Fatalf("expected default MaxBodySize == %d, got %#v", DefaultMaxBodySize, h.MaxBodySize)
@@ -22,6 +23,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewOptions(t *testing.T) {
+	t.Parallel()
 	maxDuration := 1 * time.Second
 	maxBodySize := int64(1024)
 	observer := func(_ Result) {}
@@ -44,6 +46,7 @@ func TestNewOptions(t *testing.T) {
 }
 
 func TestNewObserver(t *testing.T) {
+	t.Parallel()
 	expectedStatus := http.StatusTeapot
 
 	observed := false

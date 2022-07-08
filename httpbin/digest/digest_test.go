@@ -40,7 +40,9 @@ func buildRequest(method, uri, authHeader string) *http.Request {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	t.Run("missing authorization", func(t *testing.T) {
+		t.Parallel()
 		req := buildRequest("GET", "/dir/index.html", "")
 		if Check(req, exampleUsername, examplePassword) != false {
 			t.Error("Missing Authorization header should fail")
@@ -48,6 +50,7 @@ func TestCheck(t *testing.T) {
 	})
 
 	t.Run("wrong username", func(t *testing.T) {
+		t.Parallel()
 		req := buildRequest("GET", "/dir/index.html", exampleAuthorization)
 		if Check(req, "Simba", examplePassword) != false {
 			t.Error("Incorrect username should fail")
@@ -55,6 +58,7 @@ func TestCheck(t *testing.T) {
 	})
 
 	t.Run("wrong password", func(t *testing.T) {
+		t.Parallel()
 		req := buildRequest("GET", "/dir/index.html", exampleAuthorization)
 		if Check(req, examplePassword, "foobar") != false {
 			t.Error("Incorrect password should fail")
@@ -62,6 +66,7 @@ func TestCheck(t *testing.T) {
 	})
 
 	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
 		req := buildRequest("GET", "/dir/index.html", exampleAuthorization)
 		if Check(req, exampleUsername, examplePassword) != true {
 			t.Error("Correct credentials should pass")
@@ -70,7 +75,8 @@ func TestCheck(t *testing.T) {
 }
 
 func TestChallenge(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		realm             string
 		expectedRealm     string
 		algorithm         digestAlgorithm
@@ -91,6 +97,7 @@ func TestChallenge(t *testing.T) {
 }
 
 func TestResponse(t *testing.T) {
+	t.Parallel()
 	auth := parseAuthorizationHeader(exampleAuthorization)
 	expected := auth.response
 	got := response(auth, examplePassword, "GET", "/dir/index.html")
@@ -98,7 +105,8 @@ func TestResponse(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		algorithm digestAlgorithm
 		data      []byte
 		expected  string
@@ -110,7 +118,9 @@ func TestHash(t *testing.T) {
 		{digestAlgorithm(10), []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("hash/%v", test.algorithm), func(t *testing.T) {
+			t.Parallel()
 			result := hash(test.data, test.algorithm)
 			assertStringEquals(t, test.expected, result)
 		})
@@ -118,6 +128,7 @@ func TestHash(t *testing.T) {
 }
 
 func TestCompare(t *testing.T) {
+	t.Parallel()
 	if compare("foo", "bar") != false {
 		t.Error("Expected foo != bar")
 	}
@@ -128,7 +139,8 @@ func TestCompare(t *testing.T) {
 }
 
 func TestParseDictHeader(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		input    string
 		expected map[string]string
 	}{
@@ -168,7 +180,9 @@ func TestParseDictHeader(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
+			t.Parallel()
 			results := parseDictHeader(test.input)
 			if !reflect.DeepEqual(test.expected, results) {
 				t.Errorf("expected %#v, got %#v", test.expected, results)
@@ -178,7 +192,8 @@ func TestParseDictHeader(t *testing.T) {
 }
 
 func TestParseAuthorizationHeader(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		input    string
 		expected *authorization
 	}{
@@ -257,7 +272,9 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	}
 
 	for i, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
 			got := parseAuthorizationHeader(test.input)
 			if !reflect.DeepEqual(test.expected, got) {
 				t.Errorf("expected %#v, got %#v", test.expected, got)

@@ -24,9 +24,11 @@ import (
 	"time"
 )
 
-const maxBodySize int64 = 1024 * 1024
-const maxDuration time.Duration = 1 * time.Second
-const alphanumLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const (
+	maxBodySize     int64         = 1024
+	maxDuration     time.Duration = 1 * time.Second
+	alphanumLetters               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
 
 var testDefaultParams = DefaultParams{
 	DripDelay:    0,
@@ -82,6 +84,7 @@ func randStringBytes(n int) string {
 }
 
 func TestIndex(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -92,6 +95,7 @@ func TestIndex(t *testing.T) {
 }
 
 func TestIndex__NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/foo", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -99,6 +103,7 @@ func TestIndex__NotFound(t *testing.T) {
 }
 
 func TestFormsPost(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/forms/post", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -108,6 +113,7 @@ func TestFormsPost(t *testing.T) {
 }
 
 func TestUTF8(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/encoding/utf8", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -117,6 +123,7 @@ func TestUTF8(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
+	t.Parallel()
 	makeGetRequest := func(params *url.Values, headers *http.Header, expectedStatus int) (*getResponse, *httptest.ResponseRecorder) {
 		urlStr := "/get"
 		if params != nil {
@@ -148,6 +155,7 @@ func TestGet(t *testing.T) {
 	}
 
 	t.Run("basic", func(t *testing.T) {
+		t.Parallel()
 		resp, _ := makeGetRequest(nil, nil, http.StatusOK)
 
 		if resp.Args.Encode() != "" {
@@ -160,7 +168,7 @@ func TestGet(t *testing.T) {
 			t.Fatalf("unexpected url: %#v", resp.URL)
 		}
 
-		var headerTests = []struct {
+		headerTests := []struct {
 			key      string
 			expected string
 		}{
@@ -175,6 +183,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("with_query_params", func(t *testing.T) {
+		t.Parallel()
 		params := &url.Values{}
 		params.Set("foo", "foo")
 		params.Add("bar", "bar1")
@@ -187,6 +196,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("only_allows_gets", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("POST", "/get", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -195,7 +205,7 @@ func TestGet(t *testing.T) {
 		assertContentType(t, w, "text/plain; charset=utf-8")
 	})
 
-	var protoTests = []struct {
+	protoTests := []struct {
 		key   string
 		value string
 	}{
@@ -204,7 +214,9 @@ func TestGet(t *testing.T) {
 		{"X-Forwarded-Ssl", "on"},
 	}
 	for _, test := range protoTests {
+		test := test
 		t.Run(test.key, func(t *testing.T) {
+			t.Parallel()
 			headers := &http.Header{}
 			headers.Set(test.key, test.value)
 			resp, _ := makeGetRequest(nil, headers, http.StatusOK)
@@ -216,6 +228,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestHEAD(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		verb     string
 		path     string
@@ -228,7 +241,9 @@ func TestHEAD(t *testing.T) {
 		{"GET", "/head", http.StatusMethodNotAllowed},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("%s %s", tc.verb, tc.path), func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest(tc.verb, tc.path, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -256,11 +271,12 @@ func TestHEAD(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestCORS(t *testing.T) {
+	t.Parallel()
 	t.Run("CORS/no_request_origin", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/get", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -268,6 +284,7 @@ func TestCORS(t *testing.T) {
 	})
 
 	t.Run("CORS/with_request_origin", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/get", nil)
 		r.Header.Set("Origin", "origin")
 		w := httptest.NewRecorder()
@@ -276,13 +293,14 @@ func TestCORS(t *testing.T) {
 	})
 
 	t.Run("CORS/options_request", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("OPTIONS", "/get", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, 200)
 
-		var headerTests = []struct {
+		headerTests := []struct {
 			key      string
 			expected string
 		}{
@@ -298,6 +316,7 @@ func TestCORS(t *testing.T) {
 	})
 
 	t.Run("CORS/allow_headers", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("OPTIONS", "/get", nil)
 		r.Header.Set("Access-Control-Request-Headers", "X-Test-Header")
 		w := httptest.NewRecorder()
@@ -305,7 +324,7 @@ func TestCORS(t *testing.T) {
 
 		assertStatusCode(t, w, 200)
 
-		var headerTests = []struct {
+		headerTests := []struct {
 			key      string
 			expected string
 		}{
@@ -319,7 +338,6 @@ func TestCORS(t *testing.T) {
 
 func TestIP(t *testing.T) {
 	t.Parallel()
-
 	testCases := map[string]struct {
 		remoteAddr string
 		headers    map[string]string
@@ -350,7 +368,6 @@ func TestIP(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-
 			r, _ := http.NewRequest("GET", "/ip", nil)
 			r.RemoteAddr = tc.remoteAddr
 			for k, v := range tc.headers {
@@ -376,6 +393,7 @@ func TestIP(t *testing.T) {
 }
 
 func TestUserAgent(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/user-agent", nil)
 	r.Header.Set("User-Agent", "test")
 	w := httptest.NewRecorder()
@@ -396,6 +414,7 @@ func TestUserAgent(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/headers", nil)
 	r.Host = "test-host"
 	r.Header.Set("User-Agent", "test")
@@ -433,7 +452,8 @@ func TestHeaders(t *testing.T) {
 }
 
 func TestPost__EmptyBody(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		contentType string
 	}{
 		{""},
@@ -442,7 +462,9 @@ func TestPost__EmptyBody(t *testing.T) {
 		{"multipart/form-data; foo"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run("content type/"+test.contentType, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("POST", "/post", nil)
 			r.Header.Set("Content-Type", test.contentType)
 			w := httptest.NewRecorder()
@@ -475,6 +497,7 @@ func TestPost__EmptyBody(t *testing.T) {
 }
 
 func TestPost__FormEncodedBody(t *testing.T) {
+	t.Parallel()
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
@@ -512,6 +535,7 @@ func TestPost__FormEncodedBody(t *testing.T) {
 }
 
 func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
+	t.Parallel()
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
@@ -542,6 +566,7 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 }
 
 func TestPost__MultiPartBody(t *testing.T) {
+	t.Parallel()
 	params := map[string][]string{
 		"foo": {"foo"},
 		"bar": {"bar1", "bar2"},
@@ -596,6 +621,7 @@ func TestPost__MultiPartBody(t *testing.T) {
 }
 
 func TestPost__InvalidFormEncodedBody(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("POST", "/post", strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -604,6 +630,7 @@ func TestPost__InvalidFormEncodedBody(t *testing.T) {
 }
 
 func TestPost__InvalidMultiPartBody(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("POST", "/post", strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "multipart/form-data; etc")
 	w := httptest.NewRecorder()
@@ -612,6 +639,7 @@ func TestPost__InvalidMultiPartBody(t *testing.T) {
 }
 
 func TestPost__JSON(t *testing.T) {
+	t.Parallel()
 	type testInput struct {
 		Foo  string
 		Bar  int
@@ -665,6 +693,7 @@ func TestPost__JSON(t *testing.T) {
 }
 
 func TestPost__InvalidJSON(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader([]byte("foo")))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
@@ -673,6 +702,7 @@ func TestPost__InvalidJSON(t *testing.T) {
 }
 
 func TestPost__BodyTooBig(t *testing.T) {
+	t.Parallel()
 	body := make([]byte, maxBodySize+1)
 
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
@@ -683,6 +713,7 @@ func TestPost__BodyTooBig(t *testing.T) {
 }
 
 func TestPost__QueryParams(t *testing.T) {
+	t.Parallel()
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
@@ -711,6 +742,7 @@ func TestPost__QueryParams(t *testing.T) {
 }
 
 func TestPost__QueryParamsAndBody(t *testing.T) {
+	t.Parallel()
 	args := url.Values{}
 	args.Set("query1", "foo")
 	args.Add("query2", "bar1")
@@ -758,13 +790,14 @@ func TestPost__QueryParamsAndBody(t *testing.T) {
 
 // TODO: implement and test more complex /status endpoint
 func TestStatus(t *testing.T) {
+	t.Parallel()
 	redirectHeaders := map[string]string{
 		"Location": "/redirect/1",
 	}
 	unauthorizedHeaders := map[string]string{
 		"WWW-Authenticate": `Basic realm="Fake Realm"`,
 	}
-	var tests = []struct {
+	tests := []struct {
 		code    int
 		headers map[string]string
 		body    string
@@ -795,7 +828,9 @@ func TestStatus(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("ok/status/%d", test.code), func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -816,7 +851,7 @@ func TestStatus(t *testing.T) {
 		})
 	}
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		url    string
 		status int
 	}{
@@ -828,7 +863,9 @@ func TestStatus(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -838,7 +875,9 @@ func TestStatus(t *testing.T) {
 }
 
 func TestUnstable(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_no_seed", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/unstable", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -848,7 +887,7 @@ func TestUnstable(t *testing.T) {
 	})
 
 	// rand.NewSource(1234567890).Float64() => 0.08
-	var tests = []struct {
+	tests := []struct {
 		url    string
 		status int
 	}{
@@ -856,7 +895,9 @@ func TestUnstable(t *testing.T) {
 		{"/unstable?seed=1234567890&failure_rate=0.07", 200},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run("ok_"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -864,12 +905,14 @@ func TestUnstable(t *testing.T) {
 		})
 	}
 
-	var edgeCaseTests = []string{
+	edgeCaseTests := []string{
 		// strange but valid seed
 		"/unstable?seed=-12345",
 	}
 	for _, test := range edgeCaseTests {
+		test := test
 		t.Run("bad"+test, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -879,7 +922,7 @@ func TestUnstable(t *testing.T) {
 		})
 	}
 
-	var badTests = []string{
+	badTests := []string{
 		// bad failure_rate
 		"/unstable?failure_rate=foo",
 		"/unstable?failure_rate=-1",
@@ -889,7 +932,9 @@ func TestUnstable(t *testing.T) {
 		"/unstable?seed=foo",
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -899,6 +944,7 @@ func TestUnstable(t *testing.T) {
 }
 
 func TestResponseHeaders__OK(t *testing.T) {
+	t.Parallel()
 	headers := map[string][]string{
 		"Foo": {"foo"},
 		"Bar": {"bar1, bar2"},
@@ -946,6 +992,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 }
 
 func TestResponseHeaders__OverrideContentType(t *testing.T) {
+	t.Parallel()
 	contentType := "text/test"
 
 	params := url.Values{}
@@ -960,7 +1007,8 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 }
 
 func TestRedirects(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		requestURL       string
 		expectedLocation string
 	}{
@@ -986,7 +1034,9 @@ func TestRedirects(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run("ok"+test.requestURL, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			r.Host = "host"
 			w := httptest.NewRecorder()
@@ -997,7 +1047,7 @@ func TestRedirects(t *testing.T) {
 		})
 	}
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		requestURL     string
 		expectedStatus int
 	}{
@@ -1021,7 +1071,9 @@ func TestRedirects(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.requestURL, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1032,7 +1084,8 @@ func TestRedirects(t *testing.T) {
 }
 
 func TestRedirectTo(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		url              string
 		expectedLocation string
 		expectedStatus   int
@@ -1047,7 +1100,9 @@ func TestRedirectTo(t *testing.T) {
 	}
 
 	for _, test := range okTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1057,7 +1112,7 @@ func TestRedirectTo(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url            string
 		expectedStatus int
 	}{
@@ -1066,7 +1121,9 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1077,6 +1134,7 @@ func TestRedirectTo(t *testing.T) {
 }
 
 func TestCookies(t *testing.T) {
+	t.Parallel()
 	testCookies := func(t *testing.T, cookies cookiesResponse) {
 		r, _ := http.NewRequest("GET", "/cookies", nil)
 		for k, v := range cookies {
@@ -1103,10 +1161,12 @@ func TestCookies(t *testing.T) {
 	}
 
 	t.Run("ok/no cookies", func(t *testing.T) {
+		t.Parallel()
 		testCookies(t, cookiesResponse{})
 	})
 
 	t.Run("ok/cookies", func(t *testing.T) {
+		t.Parallel()
 		testCookies(t, cookiesResponse{
 			"k1": "v1",
 			"k2": "v2",
@@ -1115,6 +1175,7 @@ func TestCookies(t *testing.T) {
 }
 
 func TestSetCookies(t *testing.T) {
+	t.Parallel()
 	cookies := cookiesResponse{
 		"k1": "v1",
 		"k2": "v2",
@@ -1144,6 +1205,7 @@ func TestSetCookies(t *testing.T) {
 }
 
 func TestDeleteCookies(t *testing.T) {
+	t.Parallel()
 	cookies := cookiesResponse{
 		"k1": "v1",
 		"k2": "v2",
@@ -1176,7 +1238,9 @@ func TestDeleteCookies(t *testing.T) {
 }
 
 func TestBasicAuth(t *testing.T) {
+	t.Parallel()
 	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		r.SetBasicAuth("user", "pass")
 		w := httptest.NewRecorder()
@@ -1198,6 +1262,7 @@ func TestBasicAuth(t *testing.T) {
 	})
 
 	t.Run("error/no auth", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -1219,6 +1284,7 @@ func TestBasicAuth(t *testing.T) {
 	})
 
 	t.Run("error/bad auth", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		r.SetBasicAuth("bad", "auth")
 		w := httptest.NewRecorder()
@@ -1240,7 +1306,7 @@ func TestBasicAuth(t *testing.T) {
 		}
 	})
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		url    string
 		status int
 	}{
@@ -1249,7 +1315,9 @@ func TestBasicAuth(t *testing.T) {
 		{"/basic-auth/user/pass/extra", http.StatusNotFound},
 	}
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			r.SetBasicAuth("foo", "bar")
 			w := httptest.NewRecorder()
@@ -1260,7 +1328,9 @@ func TestBasicAuth(t *testing.T) {
 }
 
 func TestHiddenBasicAuth(t *testing.T) {
+	t.Parallel()
 	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		r.SetBasicAuth("user", "pass")
 		w := httptest.NewRecorder()
@@ -1282,6 +1352,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 	})
 
 	t.Run("error/no auth", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -1293,6 +1364,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 	})
 
 	t.Run("error/bad auth", func(t *testing.T) {
+		t.Parallel()
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		r.SetBasicAuth("bad", "auth")
 		w := httptest.NewRecorder()
@@ -1304,7 +1376,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		}
 	})
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		url    string
 		status int
 	}{
@@ -1313,7 +1385,9 @@ func TestHiddenBasicAuth(t *testing.T) {
 		{"/hidden-basic-auth/user/pass/extra", http.StatusNotFound},
 	}
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			r.SetBasicAuth("foo", "bar")
 			w := httptest.NewRecorder()
@@ -1324,7 +1398,8 @@ func TestHiddenBasicAuth(t *testing.T) {
 }
 
 func TestDigestAuth(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		url    string
 		status int
 	}{
@@ -1343,7 +1418,9 @@ func TestDigestAuth(t *testing.T) {
 		{"/digest-auth/auth/user/pass/SHA-512", http.StatusBadRequest},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1352,6 +1429,7 @@ func TestDigestAuth(t *testing.T) {
 	}
 
 	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
 		// Example captured from a successful login in a browser
 		authorization := `Digest username="user",
 			realm="go-httpbin",
@@ -1387,6 +1465,7 @@ func TestDigestAuth(t *testing.T) {
 }
 
 func TestGzip(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/gzip", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -1431,6 +1510,7 @@ func TestGzip(t *testing.T) {
 }
 
 func TestDeflate(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/deflate", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -1474,7 +1554,8 @@ func TestDeflate(t *testing.T) {
 }
 
 func TestStream(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		url           string
 		expectedLines int
 	}{
@@ -1485,7 +1566,9 @@ func TestStream(t *testing.T) {
 		{"/stream/-100", 1},
 	}
 	for _, test := range okTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1520,7 +1603,7 @@ func TestStream(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url  string
 		code int
 	}{
@@ -1531,7 +1614,9 @@ func TestStream(t *testing.T) {
 	}
 
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1541,7 +1626,8 @@ func TestStream(t *testing.T) {
 }
 
 func TestDelay(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		url           string
 		expectedDelay time.Duration
 	}{
@@ -1555,7 +1641,9 @@ func TestDelay(t *testing.T) {
 		{"/delay/1", maxDuration},
 	}
 	for _, test := range okTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			start := time.Now()
 
 			r, _ := http.NewRequest("GET", test.url, nil)
@@ -1580,6 +1668,7 @@ func TestDelay(t *testing.T) {
 	}
 
 	t.Run("handle cancelation", func(t *testing.T) {
+		t.Parallel()
 		srv := httptest.NewServer(handler)
 		defer srv.Close()
 
@@ -1593,6 +1682,7 @@ func TestDelay(t *testing.T) {
 	})
 
 	t.Run("cancelation causes 499", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 		defer cancel()
 
@@ -1605,7 +1695,7 @@ func TestDelay(t *testing.T) {
 		}
 	})
 
-	var badTests = []struct {
+	badTests := []struct {
 		url  string
 		code int
 	}{
@@ -1621,7 +1711,9 @@ func TestDelay(t *testing.T) {
 	}
 
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1631,7 +1723,8 @@ func TestDelay(t *testing.T) {
 }
 
 func TestDrip(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		params   *url.Values
 		duration time.Duration
 		numbytes int
@@ -1662,11 +1755,13 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"code": {"599"}}, 0, 10, 599},
 		{&url.Values{"code": {"567"}}, 0, 10, 567},
 
-		{&url.Values{"duration": {"750ms"}, "delay": {"250ms"}}, 1 * time.Second, 10, http.StatusOK},
+		{&url.Values{"duration": {"250ms"}, "delay": {"250ms"}}, 500 * time.Millisecond, 10, http.StatusOK},
 		{&url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
 	}
 	for _, test := range okTests {
+		test := test
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
+			t.Parallel()
 			url := "/drip?" + test.params.Encode()
 			start := time.Now()
 
@@ -1690,6 +1785,7 @@ func TestDrip(t *testing.T) {
 	}
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
+		t.Parallel()
 		srv := httptest.NewServer(handler)
 		defer srv.Close()
 
@@ -1720,6 +1816,7 @@ func TestDrip(t *testing.T) {
 	})
 
 	t.Run("handle cancelation during drip", func(t *testing.T) {
+		t.Parallel()
 		srv := httptest.NewServer(handler)
 		defer srv.Close()
 
@@ -1741,7 +1838,7 @@ func TestDrip(t *testing.T) {
 		assertBytesEqual(t, body, []byte("**"))
 	})
 
-	var badTests = []struct {
+	badTests := []struct {
 		params *url.Values
 		code   int
 	}{
@@ -1772,7 +1869,9 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
+			t.Parallel()
 			url := "/drip?" + test.params.Encode()
 
 			r, _ := http.NewRequest("GET", url, nil)
@@ -1783,6 +1882,7 @@ func TestDrip(t *testing.T) {
 	}
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
+		t.Parallel()
 		srv := httptest.NewServer(handler)
 		defer srv.Close()
 
@@ -1807,24 +1907,28 @@ func TestDrip(t *testing.T) {
 }
 
 func TestRange(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_no_range", func(t *testing.T) {
-		url := "/range/1234"
+		t.Parallel()
+		wantBytes := maxBodySize - 1
+		url := fmt.Sprintf("/range/%d", wantBytes)
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
-		assertHeader(t, w, "ETag", "range1234")
+		assertHeader(t, w, "ETag", fmt.Sprintf("range%d", wantBytes))
 		assertHeader(t, w, "Accept-Ranges", "bytes")
-		assertHeader(t, w, "Content-Length", "1234")
+		assertHeader(t, w, "Content-Length", strconv.Itoa(int(wantBytes)))
 		assertContentType(t, w, "text/plain; charset=utf-8")
 
-		if len(w.Body.String()) != 1234 {
-			t.Errorf("expected content length 1234, got %d", len(w.Body.String()))
+		if len(w.Body.String()) != int(wantBytes) {
+			t.Errorf("expected content length %d, got %d", wantBytes, len(w.Body.String()))
 		}
 	})
 
 	t.Run("ok_range", func(t *testing.T) {
+		t.Parallel()
 		url := "/range/100"
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=10-24")
@@ -1840,6 +1944,7 @@ func TestRange(t *testing.T) {
 	})
 
 	t.Run("ok_range_first_16_bytes", func(t *testing.T) {
+		t.Parallel()
 		url := "/range/1000"
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=0-15")
@@ -1855,6 +1960,7 @@ func TestRange(t *testing.T) {
 	})
 
 	t.Run("ok_range_open_ended_last_6_bytes", func(t *testing.T) {
+		t.Parallel()
 		url := "/range/26"
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=20-")
@@ -1869,6 +1975,7 @@ func TestRange(t *testing.T) {
 	})
 
 	t.Run("ok_range_suffix", func(t *testing.T) {
+		t.Parallel()
 		url := "/range/26"
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=-5")
@@ -1884,6 +1991,7 @@ func TestRange(t *testing.T) {
 	})
 
 	t.Run("err_range_out_of_bounds", func(t *testing.T) {
+		t.Parallel()
 		url := "/range/26"
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=-5")
@@ -1899,7 +2007,7 @@ func TestRange(t *testing.T) {
 
 	// Note: httpbin rejects these requests with invalid range headers, but the
 	// go stdlib just ignores them.
-	var badRangeTests = []struct {
+	badRangeTests := []struct {
 		url         string
 		rangeHeader string
 	}{
@@ -1908,7 +2016,9 @@ func TestRange(t *testing.T) {
 		{"/range/26", "bytes=0-40"},
 	}
 	for _, test := range badRangeTests {
+		test := test
 		t.Run(fmt.Sprintf("ok_bad_range_header/%s", test.rangeHeader), func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1917,7 +2027,7 @@ func TestRange(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url  string
 		code int
 	}{
@@ -1930,7 +2040,9 @@ func TestRange(t *testing.T) {
 	}
 
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -1940,6 +2052,7 @@ func TestRange(t *testing.T) {
 }
 
 func TestHTML(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/html", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -1949,6 +2062,7 @@ func TestHTML(t *testing.T) {
 }
 
 func TestRobots(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/robots.txt", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -1958,6 +2072,7 @@ func TestRobots(t *testing.T) {
 }
 
 func TestDeny(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/deny", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -1967,7 +2082,9 @@ func TestDeny(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_no_cache", func(t *testing.T) {
+		t.Parallel()
 		url := "/cache"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
@@ -1993,7 +2110,7 @@ func TestCache(t *testing.T) {
 		}
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		headerKey string
 		headerVal string
 	}{
@@ -2001,7 +2118,9 @@ func TestCache(t *testing.T) {
 		{"If-Modified-Since", "my-custom-date"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("ok_cache/%s", test.headerKey), func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", "/cache", nil)
 			r.Header.Add(test.headerKey, test.headerVal)
 			w := httptest.NewRecorder()
@@ -2012,7 +2131,9 @@ func TestCache(t *testing.T) {
 }
 
 func TestCacheControl(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_cache_control", func(t *testing.T) {
+		t.Parallel()
 		url := "/cache/60"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
@@ -2023,7 +2144,7 @@ func TestCacheControl(t *testing.T) {
 		assertHeader(t, w, "Cache-Control", "public, max-age=60")
 	})
 
-	var badTests = []struct {
+	badTests := []struct {
 		url            string
 		expectedStatus int
 	}{
@@ -2032,7 +2153,9 @@ func TestCacheControl(t *testing.T) {
 		{"/cache/3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2042,7 +2165,9 @@ func TestCacheControl(t *testing.T) {
 }
 
 func TestETag(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_no_headers", func(t *testing.T) {
+		t.Parallel()
 		url := "/etag/abc"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
@@ -2051,7 +2176,7 @@ func TestETag(t *testing.T) {
 		assertHeader(t, w, "ETag", `"abc"`)
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		name           string
 		etag           string
 		headerKey      string
@@ -2070,7 +2195,9 @@ func TestETag(t *testing.T) {
 		{"if_match_has_no_match", "abc", "If-Match", `"xxxxxx"`, http.StatusPreconditionFailed},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run("ok_"+test.name, func(t *testing.T) {
+			t.Parallel()
 			url := "/etag/" + test.etag
 			r, _ := http.NewRequest("GET", url, nil)
 			r.Header.Add(test.headerKey, test.headerVal)
@@ -2080,14 +2207,16 @@ func TestETag(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url            string
 		expectedStatus int
 	}{
 		{"/etag/foo/bar", http.StatusNotFound},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2097,7 +2226,9 @@ func TestETag(t *testing.T) {
 }
 
 func TestBytes(t *testing.T) {
+	t.Parallel()
 	t.Run("ok_no_seed", func(t *testing.T) {
+		t.Parallel()
 		url := "/bytes/1024"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
@@ -2111,6 +2242,7 @@ func TestBytes(t *testing.T) {
 	})
 
 	t.Run("ok_seed", func(t *testing.T) {
+		t.Parallel()
 		url := "/bytes/16?seed=1234567890"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
@@ -2126,7 +2258,7 @@ func TestBytes(t *testing.T) {
 		}
 	})
 
-	var edgeCaseTests = []struct {
+	edgeCaseTests := []struct {
 		url                   string
 		expectedContentLength int
 	}{
@@ -2137,7 +2269,9 @@ func TestBytes(t *testing.T) {
 		{"/bytes/16?seed=-12345", 16},
 	}
 	for _, test := range edgeCaseTests {
-		t.Run("bad"+test.url, func(t *testing.T) {
+		test := test
+		t.Run("edge"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2149,7 +2283,7 @@ func TestBytes(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url            string
 		expectedStatus int
 	}{
@@ -2164,7 +2298,9 @@ func TestBytes(t *testing.T) {
 		{"/bytes/16?seed=3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2174,7 +2310,8 @@ func TestBytes(t *testing.T) {
 }
 
 func TestStreamBytes(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		url                   string
 		expectedContentLength int
 	}{
@@ -2190,7 +2327,9 @@ func TestStreamBytes(t *testing.T) {
 		{"/stream-bytes/256?chunk_size=-10", 256},
 	}
 	for _, test := range okTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2210,7 +2349,7 @@ func TestStreamBytes(t *testing.T) {
 		})
 	}
 
-	var badTests = []struct {
+	badTests := []struct {
 		url  string
 		code int
 	}{
@@ -2224,7 +2363,9 @@ func TestStreamBytes(t *testing.T) {
 		{"/stream-bytes/16?chunk_size=3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2234,7 +2375,8 @@ func TestStreamBytes(t *testing.T) {
 }
 
 func TestLinks(t *testing.T) {
-	var redirectTests = []struct {
+	t.Parallel()
+	redirectTests := []struct {
 		url              string
 		expectedLocation string
 	}{
@@ -2243,7 +2385,9 @@ func TestLinks(t *testing.T) {
 	}
 
 	for _, test := range redirectTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2253,7 +2397,7 @@ func TestLinks(t *testing.T) {
 		})
 	}
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		url            string
 		expectedStatus int
 	}{
@@ -2270,7 +2414,9 @@ func TestLinks(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2279,7 +2425,7 @@ func TestLinks(t *testing.T) {
 		})
 	}
 
-	var linksPageTests = []struct {
+	linksPageTests := []struct {
 		url             string
 		expectedContent string
 	}{
@@ -2292,7 +2438,9 @@ func TestLinks(t *testing.T) {
 		{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
 	}
 	for _, test := range linksPageTests {
+		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2305,7 +2453,8 @@ func TestLinks(t *testing.T) {
 }
 
 func TestImage(t *testing.T) {
-	var acceptTests = []struct {
+	t.Parallel()
+	acceptTests := []struct {
 		acceptHeader        string
 		expectedContentType string
 		expectedStatus      int
@@ -2323,7 +2472,9 @@ func TestImage(t *testing.T) {
 	}
 
 	for _, test := range acceptTests {
+		test := test
 		t.Run("ok/accept="+test.acceptHeader, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", "/image", nil)
 			r.Header.Set("Accept", test.acceptHeader)
 			w := httptest.NewRecorder()
@@ -2336,7 +2487,7 @@ func TestImage(t *testing.T) {
 		})
 	}
 
-	var imageTests = []struct {
+	imageTests := []struct {
 		url            string
 		expectedStatus int
 	}{
@@ -2351,7 +2502,9 @@ func TestImage(t *testing.T) {
 	}
 
 	for _, test := range imageTests {
+		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2361,6 +2514,7 @@ func TestImage(t *testing.T) {
 }
 
 func TestXML(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/xml", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -2381,6 +2535,7 @@ func isValidUUIDv4(uuid string) error {
 }
 
 func TestUUID(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/uuid", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -2401,7 +2556,8 @@ func TestUUID(t *testing.T) {
 }
 
 func TestBase64(t *testing.T) {
-	var okTests = []struct {
+	t.Parallel()
+	okTests := []struct {
 		requestURL string
 		want       string
 	}{
@@ -2420,7 +2576,9 @@ func TestBase64(t *testing.T) {
 	}
 
 	for _, test := range okTests {
+		test := test
 		t.Run("ok"+test.requestURL, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2430,7 +2588,7 @@ func TestBase64(t *testing.T) {
 		})
 	}
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		requestURL           string
 		expectedBodyContains string
 	}{
@@ -2473,7 +2631,9 @@ func TestBase64(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.requestURL, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2484,6 +2644,7 @@ func TestBase64(t *testing.T) {
 }
 
 func TestJSON(t *testing.T) {
+	t.Parallel()
 	r, _ := http.NewRequest("GET", "/json", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -2493,9 +2654,11 @@ func TestJSON(t *testing.T) {
 }
 
 func TestBearer(t *testing.T) {
+	t.Parallel()
 	requestURL := "/bearer"
 
 	t.Run("valid_token", func(t *testing.T) {
+		t.Parallel()
 		token := "valid_token"
 		r, _ := http.NewRequest("GET", requestURL, nil)
 		r.Header.Set("Authorization", "Bearer "+token)
@@ -2520,7 +2683,7 @@ func TestBearer(t *testing.T) {
 		}
 	})
 
-	var errorTests = []struct {
+	errorTests := []struct {
 		authorizationHeader string
 	}{
 		{
@@ -2543,7 +2706,9 @@ func TestBearer(t *testing.T) {
 		},
 	}
 	for _, test := range errorTests {
+		test := test
 		t.Run("error"+test.authorizationHeader, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", requestURL, nil)
 			if test.authorizationHeader != "" {
 				r.Header.Set("Authorization", test.authorizationHeader)
@@ -2557,13 +2722,16 @@ func TestBearer(t *testing.T) {
 }
 
 func TestNotImplemented(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		url string
 	}{
 		{"/brotli"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.url, func(t *testing.T) {
+			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -2574,7 +2742,6 @@ func TestNotImplemented(t *testing.T) {
 
 func TestHostname(t *testing.T) {
 	t.Parallel()
-
 	loadResponse := func(t *testing.T, bodyBytes []byte) hostnameResponse {
 		var resp hostnameResponse
 		err := json.Unmarshal(bodyBytes, &resp)
@@ -2586,7 +2753,6 @@ func TestHostname(t *testing.T) {
 
 	t.Run("default hostname", func(t *testing.T) {
 		t.Parallel()
-
 		var (
 			handler = New().Handler()
 			r, _    = http.NewRequest("GET", "/hostname", nil)
@@ -2602,7 +2768,6 @@ func TestHostname(t *testing.T) {
 
 	t.Run("real hostname", func(t *testing.T) {
 		t.Parallel()
-
 		var (
 			realHostname = "real-hostname"
 			handler      = New(WithHostname(realHostname)).Handler()

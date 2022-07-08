@@ -239,10 +239,8 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if specialCase, ok := specialCases[code]; ok {
-		if specialCase.headers != nil {
-			for key, val := range specialCase.headers {
-				w.Header().Set(key, val)
-			}
+		for key, val := range specialCase.headers {
+			w.Header().Set(key, val)
 		}
 		w.WriteHeader(code)
 		if specialCase.body != nil {
@@ -605,8 +603,9 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(delay):
 	}
 
+	b := []byte{'*'}
 	for i := int64(0); i < numBytes; i++ {
-		w.Write([]byte("*"))
+		w.Write(b)
 		flusher.Flush()
 
 		select {
