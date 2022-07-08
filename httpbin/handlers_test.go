@@ -828,6 +828,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("ok/status/%d", test.code), func(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
@@ -894,6 +895,7 @@ func TestUnstable(t *testing.T) {
 		{"/unstable?seed=1234567890&failure_rate=0.07", 200},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run("ok_"+test.url, func(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
@@ -908,6 +910,7 @@ func TestUnstable(t *testing.T) {
 		"/unstable?seed=-12345",
 	}
 	for _, test := range edgeCaseTests {
+		test := test
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)
@@ -929,6 +932,7 @@ func TestUnstable(t *testing.T) {
 		"/unstable?seed=foo",
 	}
 	for _, test := range badTests {
+		test := test
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)

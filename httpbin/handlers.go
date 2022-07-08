@@ -239,10 +239,8 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if specialCase, ok := specialCases[code]; ok {
-		if specialCase.headers != nil {
-			for key, val := range specialCase.headers {
-				w.Header().Set(key, val)
-			}
+		for key, val := range specialCase.headers {
+			w.Header().Set(key, val)
 		}
 		w.WriteHeader(code)
 		if specialCase.body != nil {
