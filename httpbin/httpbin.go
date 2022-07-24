@@ -155,6 +155,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/absolute-redirect/", h.AbsoluteRedirect)
 	mux.HandleFunc("/redirect-to", h.RedirectTo)
 
+	mux.HandleFunc("/anything/", h.RequestWithBody)
+	mux.HandleFunc("/anything", h.RequestWithBody)
+
 	mux.HandleFunc("/cookies", h.Cookies)
 	mux.HandleFunc("/cookies/set", h.SetCookies)
 	mux.HandleFunc("/cookies/delete", h.DeleteCookies)
