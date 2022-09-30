@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
 )
 
 const (
@@ -29,6 +31,10 @@ var (
 	httpsCertFile   string
 	httpsKeyFile    string
 	useRealHostname bool
+
+	identityJson string
+	serviceName  string
+	enableZiti   bool
 )
 
 func main() {
@@ -39,6 +45,10 @@ func main() {
 	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
 	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	flag.BoolVar(&useRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
+
+	flag.BoolVar(&enableZiti, "ziti", false, "Enable the usage of a ziti network")
+	flag.StringVar(&identityJson, "ziti-identity", "", "Path to Ziti Identity json file")
+	flag.StringVar(&serviceName, "ziti-name", "", "Name of the Ziti Service")
 	flag.Parse()
 
 	// Command line flags take precedence over environment vars, so we only
@@ -97,6 +107,30 @@ func main() {
 		useRealHostname = true
 	}
 
+	if zitiEnv := os.Getenv("ENABLE_ZITI"); !enableZiti && (zitiEnv == "1" || zitiEnv == "true") {
+		enableZiti = true
+	}
+
+	if enableZiti {
+		if identityJson == "" && os.Getenv("ZITI_IDENTITY") != "" {
+			identityJson = os.Getenv("ZITI_IDENTITY")
+		}
+		if identityJson == "" {
+			fmt.Fprintf(os.Stderr, "Error: When running a ziti enabled service must have ziti identity provided\n\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		if serviceName == "" && os.Getenv("ZITI_SERVICE_NAME") != "" {
+			serviceName = os.Getenv("ZITI_SERVICE_NAME")
+		}
+		if serviceName == "" {
+			fmt.Fprintf(os.Stderr, "Error: When running a ziti enabled service must have ziti service name provided\n\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+	}
+
 	logger := log.New(os.Stderr, "", 0)
 
 	// A hacky log helper function to ensure that shutdown messages are
@@ -127,8 +161,33 @@ func main() {
 
 	listenAddr := net.JoinHostPort(host, strconv.Itoa(port))
 
+	var listener net.Listener
+
+	if enableZiti {
+		config, err := config.NewFromFile(identityJson)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Unable to parse ziti identity: %v\n\n", err)
+			os.Exit(1)
+		}
+		zitiContext := ziti.NewContextWithConfig(config)
+		if err := zitiContext.Authenticate(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Unable to authenticate ziti: %v\n\n", err)
+			os.Exit(1)
+		}
+
+		listener, err = zitiContext.Listen(serviceName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Unable to listen on ziti network: %v\n\n", err)
+			os.Exit(1)
+		}
+	} else {
+		listener, err = net.Listen("tcp", listenAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Unable to listen on %s: %v\n\n", listenAddr, err)
+			os.Exit(1)
+		}
+	}
 	server := &http.Server{
-		Addr:    listenAddr,
 		Handler: h.Handler(),
 	}
 
@@ -156,14 +215,25 @@ func main() {
 	}()
 
 	var listenErr error
+	getListening := func() string {
+		if enableZiti {
+			return fmt.Sprintf("ziti serviceName=%s", serviceName)
+		}
+		s := "http"
+		if serveTLS {
+			s += "s"
+		}
+		return fmt.Sprintf("%s://%s", s, listenAddr)
+	}
 	if serveTLS {
-		serverLog("go-httpbin listening on https://%s", listenAddr)
-		listenErr = server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
+		serverLog("go-httpbin listening on %s", getListening())
+		listenErr = server.ServeTLS(listener, httpsCertFile, httpsKeyFile)
 	} else {
-		serverLog("go-httpbin listening on http://%s", listenAddr)
-		listenErr = server.ListenAndServe()
+		serverLog("go-httpbin listening on %s", getListening())
+		listenErr = server.Serve(listener)
 	}
 	if listenErr != nil && listenErr != http.ErrServerClosed {
+		serverLog("%T", listenErr)
 		logger.Fatalf("failed to listen: %s", listenErr)
 	}
 

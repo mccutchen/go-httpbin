@@ -26,6 +26,9 @@ variables (or a combination of the two):
 | `-max-duration` | `MAX_DURATION` | Maximum duration a response may take | 10s |
 | `-port` | `PORT` | Port to listen on | 8080 |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
+| `-ziti` | `ENABLE_ZITI` | Enable using a ziti network | false|
+| `-ziti-identity` | `ZITI_IDENTITY` | Ziti identity json file location | - |
+| `-ziti-name` | `ZITI_SERVICE_NAME` | Name of Ziti Service to bind against | - |
 
 **Note:** Command line arguments take precedence over environment variables.
 
@@ -46,6 +49,23 @@ $ openssl genrsa -out server.key 2048
 $ openssl ecparam -genkey -name secp384r1 -out server.key
 $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 $ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
+```
+
+Ziti Enabled Examples
+
+[![Ziti Reference](https://github.com/openziti/ziti)]
+[![Ziti Http Reference](https://github.com/openziti-test-kitchen/go-http)]
+This example assumes you are familiar with spinning up a ziti network and have a network with a service named "httpbin".
+```bash
+# Ensure your ziti network is spun up.
+# Run http server
+$ go-httlpbin -ziti -ziti-identity ${ZITI_IDENTITY} -ziti-name httpbin
+
+#Run https server
+$ openssl genrsa -out server.key 2048
+$ openssl ecparam -genkey -name secp384r1 -out server.key
+$ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+$ go-httpbin -https-cert-file ./server.crt -https-key-file ./server.key -ziti -ziti-identity ${ZITI_IDENTITY} -ziti-name httpbin
 ```
 
 ### Docker
