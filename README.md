@@ -30,8 +30,10 @@ variables (or a combination of the two):
 | `-ziti-identity` | `ZITI_IDENTITY` | Ziti identity json file location | - |
 | `-ziti-name` | `ZITI_SERVICE_NAME` | Name of Ziti Service to bind against | - |
 
-**Note:** Command line arguments take precedence over environment variables.
+**Notes:**
 
+* Command line arguments take precedence over environment variables.
+* As an alternative to supplying `ziti-identity` as a file you may define environment variable `ZITI_IDENTITY_JSON`.
 
 ### Standalone binary
 

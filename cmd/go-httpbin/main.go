@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -32,9 +33,11 @@ var (
 	httpsKeyFile    string
 	useRealHostname bool
 
-	identityJson string
-	serviceName  string
-	enableZiti   bool
+	identityJson      string
+	identityJsonFile  string
+	identityJsonBytes []byte
+	serviceName       string
+	enableZiti        bool
 )
 
 func main() {
@@ -47,7 +50,7 @@ func main() {
 	flag.BoolVar(&useRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
 
 	flag.BoolVar(&enableZiti, "ziti", false, "Enable the usage of a ziti network")
-	flag.StringVar(&identityJson, "ziti-identity", "", "Path to Ziti Identity json file")
+	flag.StringVar(&identityJsonFile, "ziti-identity", "", "Path to Ziti Identity json file")
 	flag.StringVar(&serviceName, "ziti-name", "", "Name of the Ziti Service")
 	flag.Parse()
 
@@ -112,10 +115,18 @@ func main() {
 	}
 
 	if enableZiti {
-		if identityJson == "" && os.Getenv("ZITI_IDENTITY") != "" {
-			identityJson = os.Getenv("ZITI_IDENTITY")
+		if identityJsonFile == "" && os.Getenv("ZITI_IDENTITY") != "" {
+			identityJsonFile = os.Getenv("ZITI_IDENTITY")
+			identityJsonBytes, err = os.ReadFile(identityJsonFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: failed to read identity config JSON from file %s: %s\n", identityJsonFile, err)
+				os.Exit(1)
+			}
+		} else if os.Getenv("ZITI_IDENTITY_JSON") != "" {
+			identityJson = os.Getenv("ZITI_IDENTITY_JSON")
+			identityJsonBytes = []byte(identityJson)
 		}
-		if identityJson == "" {
+		if len(identityJsonBytes) == 0 {
 			fmt.Fprintf(os.Stderr, "Error: When running a ziti enabled service must have ziti identity provided\n\n")
 			flag.Usage()
 			os.Exit(1)
@@ -164,12 +175,13 @@ func main() {
 	var listener net.Listener
 
 	if enableZiti {
-		config, err := config.NewFromFile(identityJson)
+		config := config.Config{}
+		err = json.Unmarshal(identityJsonBytes, &config)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Unable to parse ziti identity: %v\n\n", err)
+			fmt.Fprintf(os.Stderr, "failed to load ziti configuration JSON: %v", err)
 			os.Exit(1)
 		}
-		zitiContext := ziti.NewContextWithConfig(config)
+		zitiContext := ziti.NewContextWithConfig(&config)
 		if err := zitiContext.Authenticate(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Unable to authenticate ziti: %v\n\n", err)
 			os.Exit(1)
