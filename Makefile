@@ -28,10 +28,10 @@ buildtests: $(DIST_PATH)/go-httpbin.test
 
 $(DIST_PATH)/go-httpbin: $(GO_SOURCES)
 	mkdir -p $(DIST_PATH)
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
+	CGO_ENABLED=1 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 
 $(DIST_PATH)/go-httpbin.test: $(GO_SOURCES)
-	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
+	CGO_ENABLED=1 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
