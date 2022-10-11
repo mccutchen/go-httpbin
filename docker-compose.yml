@@ -6,6 +6,4 @@ services:
     environment:
       - ENABLE_ZITI=true
       - ZITI_SERVICE_NAME=${ZITI_SERVICE_NAME:-httpbin}
-      - ZITI_IDENTITY=${ZITI_IDENTITY-/mnt/ziti_id.json}
-    volumes:
-      - .:/mnt
+      - ZITI_IDENTITY_JSON

@@ -77,7 +77,7 @@ Run the included Compose project:
 
 ```bash
 # httpbinz-server1.json exists in the same dir as docker-compose.yml
-ZITI_IDENTITY=/mnt/my-ziti-identity.json \
+ZITI_IDENTITY_JSON="$(< ./my-ziti-identity.json)" \
 ZITI_SERVICE_NAME="my httpbin service" \
     docker compose run httpbin                                      
 ```
@@ -87,9 +87,8 @@ Run without Compose:
 ```bash
 # Run http server with my-ziti-identity.json in current working dir
 docker run \
-    -v "${PWD}":/mnt \
     -e ENABLE_ZITI=true \
-    -e ZITI_IDENTITY=/mnt/my-ziti-identity.json \
+    -e ZITI_IDENTITY_JSON="$(< ./my-ziti-identity.json)" \
     -e ZITI_SERVICE_NAME="my httpbin service" \
     openziti/go-httpbin
 
@@ -98,9 +97,8 @@ docker run \
     -e HTTPS_CERT_FILE='/tmp/server.crt' \
     -e HTTPS_KEY_FILE='/tmp/server.key' \
     -v /tmp:/tmp \
-    -v "${PWD}":/mnt \
     -e ENABLE_ZITI=true \
-    -e ZITI_IDENTITY=/mnt/my-ziti-identity.json \
+    -e ZITI_IDENTITY_JSON="$(< ./my-ziti-identity.json)" \
     -e ZITI_SERVICE_NAME="my httpbin service" \
     openziti/go-httpbin
 ```
