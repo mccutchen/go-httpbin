@@ -1,13 +1,18 @@
 # syntax = docker/dockerfile:1.3
-FROM golang:1.18
+# Golang
+FROM golang:1.19 as build
 
 WORKDIR /go/src/github.com/mccutchen/go-httpbin
 
 COPY . .
+
 RUN --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
     make build buildtests
 
+# distroless
 FROM gcr.io/distroless/base
-COPY --from=0 /go/src/github.com/mccutchen/go-httpbin/dist/go-httpbin* /bin/
+
+COPY --from=build /go/src/github.com/mccutchen/go-httpbin/dist/go-httpbin* /bin/
+
 EXPOSE 8080
-CMD ["/bin/go-httpbin"]
+ENTRYPOINT ["/bin/go-httpbin"]
