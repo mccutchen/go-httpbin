@@ -117,14 +117,16 @@ func main() {
 	if enableZiti {
 		if identityJsonFile == "" && os.Getenv("ZITI_IDENTITY") != "" {
 			identityJsonFile = os.Getenv("ZITI_IDENTITY")
+		}
+		if os.Getenv("ZITI_IDENTITY_JSON") != "" {
+			identityJson = os.Getenv("ZITI_IDENTITY_JSON")
+			identityJsonBytes = []byte(identityJson)
+		} else {
 			identityJsonBytes, err = os.ReadFile(identityJsonFile)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: failed to read identity config JSON from file %s: %s\n", identityJsonFile, err)
 				os.Exit(1)
 			}
-		} else if os.Getenv("ZITI_IDENTITY_JSON") != "" {
-			identityJson = os.Getenv("ZITI_IDENTITY_JSON")
-			identityJsonBytes = []byte(identityJson)
 		}
 		if len(identityJsonBytes) == 0 {
 			fmt.Fprintf(os.Stderr, "Error: When running a ziti enabled service must have ziti identity provided\n\n")

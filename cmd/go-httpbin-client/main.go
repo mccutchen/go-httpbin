@@ -19,6 +19,7 @@ import (
 
 var (
 	address string
+	https   bool
 
 	identityJson      string
 	identityJsonFile  string
@@ -31,6 +32,7 @@ var (
 
 func main() {
 	flag.StringVar(&address, "address", "", "Address to query")
+	flag.BoolVar(&https, "https", false, "Enable https")
 
 	headers = make(map[string][]string)
 	queries = make(map[string][]string)
@@ -76,14 +78,16 @@ func main() {
 	if enableZiti {
 		if identityJsonFile == "" && os.Getenv("ZITI_IDENTITY") != "" {
 			identityJsonFile = os.Getenv("ZITI_IDENTITY")
+		}
+		if os.Getenv("ZITI_IDENTITY_JSON") != "" {
+			identityJson = os.Getenv("ZITI_IDENTITY_JSON")
+			identityJsonBytes = []byte(identityJson)
+		} else {
 			identityJsonBytes, err = os.ReadFile(identityJsonFile)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: failed to read identity config JSON from file %s: %s\n", identityJsonFile, err)
 				os.Exit(1)
 			}
-		} else if os.Getenv("ZITI_IDENTITY_JSON") != "" {
-			identityJson = os.Getenv("ZITI_IDENTITY_JSON")
-			identityJsonBytes = []byte(identityJson)
 		}
 		if len(identityJsonBytes) == 0 {
 			fmt.Fprintf(os.Stderr, "Error: When running a ziti enabled service must have ziti identity provided\n\n")
@@ -120,6 +124,11 @@ func main() {
 		addr = serviceName
 	}
 
+	if https {
+		addr = fmt.Sprintf("https://%s", addr)
+	} else {
+		addr = fmt.Sprintf("http://%s", addr)
+	}
 	c := httpbinclient.NewClient(httpc, addr)
 
 	var request *http.Request
