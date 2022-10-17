@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -109,7 +108,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 
 	// Always set resp.Data to the incoming request body, in case we don't know
 	// how to handle the content type
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		r.Body.Close()
 		return err
@@ -119,7 +118,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	// After reading the body to populate resp.Data, we need to re-wrap it in
 	// an io.Reader for further processing below
 	r.Body.Close()
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	ct := r.Header.Get("Content-Type")
 	switch {

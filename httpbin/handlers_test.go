@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"mime/multipart"
@@ -40,7 +40,7 @@ var app = New(
 	WithDefaultParams(testDefaultParams),
 	WithMaxBodySize(maxBodySize),
 	WithMaxDuration(maxDuration),
-	WithObserver(StdLogObserver(log.New(ioutil.Discard, "", 0))),
+	WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
 )
 
 var handler = app.Handler()
@@ -1489,7 +1489,7 @@ func TestGzip(t *testing.T) {
 		t.Fatalf("error creating gzip reader: %s", err)
 	}
 
-	unzippedBody, err := ioutil.ReadAll(gzipReader)
+	unzippedBody, err := io.ReadAll(gzipReader)
 	if err != nil {
 		t.Fatalf("error reading gzipped body: %s", err)
 	}
@@ -1533,7 +1533,7 @@ func TestDeflate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := ioutil.ReadAll(reader)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1805,7 +1805,7 @@ func TestDrip(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("error reading response body: %s", err)
 		}
@@ -1829,7 +1829,7 @@ func TestDrip(t *testing.T) {
 		}
 
 		// in this case, the timeout happens while trying to read the body
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err == nil {
 			t.Fatal("expected timeout reading body")
 		}
@@ -1892,7 +1892,7 @@ func TestDrip(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("error reading response body: %s", err)
 		}
