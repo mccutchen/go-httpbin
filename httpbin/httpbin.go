@@ -30,14 +30,17 @@ type userAgentResponse struct {
 	UserAgent string `json:"user-agent"`
 }
 
-type getResponse struct {
+// A generic response for any incoming request that should not contain a body
+// (GET, HEAD, OPTIONS, etc).
+type noBodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 }
 
-// A generic response for any incoming request that might contain a body
+// A generic response for any incoming request that might contain a body (POST,
+// PUT, PATCH, etc).
 type bodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
@@ -141,6 +144,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/post", methods(h.RequestWithBody, "POST"))
 	mux.HandleFunc("/put", methods(h.RequestWithBody, "PUT"))
 
+	mux.HandleFunc("/anything", h.Anything)
+	mux.HandleFunc("/anything/", h.Anything)
+
 	mux.HandleFunc("/ip", h.IP)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/headers", h.Headers)
@@ -154,9 +160,6 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/relative-redirect/", h.RelativeRedirect)
 	mux.HandleFunc("/absolute-redirect/", h.AbsoluteRedirect)
 	mux.HandleFunc("/redirect-to", h.RedirectTo)
-
-	mux.HandleFunc("/anything/", h.RequestWithBody)
-	mux.HandleFunc("/anything", h.RequestWithBody)
 
 	mux.HandleFunc("/cookies", h.Cookies)
 	mux.HandleFunc("/cookies/set", h.SetCookies)

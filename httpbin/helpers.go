@@ -123,6 +123,13 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	ct := r.Header.Get("Content-Type")
 	switch {
 	case strings.HasPrefix(ct, "application/x-www-form-urlencoded"):
+		// r.ParseForm() does not populate r.PostForm for DELETE requests, but
+		// we need it to for compatibility with the httpbin implementation, so
+		// we trick it with this ugly hack.
+		if r.Method == http.MethodDelete {
+			r.Method = http.MethodPost
+			defer func() { r.Method = http.MethodDelete }()
+		}
 		if err := r.ParseForm(); err != nil {
 			return err
 		}

@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -46,28 +47,33 @@ var app = New(
 var handler = app.Handler()
 
 func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
+	t.Helper()
 	if w.Code != code {
 		t.Fatalf("expected status code %d, got %d", code, w.Code)
 	}
 }
 
 func assertHeader(t *testing.T, w *httptest.ResponseRecorder, key, val string) {
+	t.Helper()
 	if w.Header().Get(key) != val {
 		t.Fatalf("expected header %s=%#v, got %#v", key, val, w.Header().Get(key))
 	}
 }
 
 func assertContentType(t *testing.T, w *httptest.ResponseRecorder, contentType string) {
+	t.Helper()
 	assertHeader(t, w, "Content-Type", contentType)
 }
 
 func assertBodyContains(t *testing.T, w *httptest.ResponseRecorder, needle string) {
+	t.Helper()
 	if !strings.Contains(w.Body.String(), needle) {
 		t.Fatalf("expected string %q in body %q", needle, w.Body.String())
 	}
 }
 
 func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
+	t.Helper()
 	have := w.Body.String()
 	if want != have {
 		t.Fatalf("expected body = %v, got %v", want, have)
@@ -124,39 +130,10 @@ func TestUTF8(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	t.Parallel()
-	makeGetRequest := func(params *url.Values, headers *http.Header, expectedStatus int) (*getResponse, *httptest.ResponseRecorder) {
-		urlStr := "/get"
-		if params != nil {
-			urlStr = fmt.Sprintf("%s?%s", urlStr, params.Encode())
-		}
-		r, _ := http.NewRequest("GET", urlStr, nil)
-		r.Host = "localhost"
-		r.Header.Set("User-Agent", "test")
-		if headers != nil {
-			for k, vs := range *headers {
-				for _, v := range vs {
-					r.Header.Set(k, v)
-				}
-			}
-		}
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-
-		assertStatusCode(t, w, expectedStatus)
-
-		var resp *getResponse
-		if expectedStatus == http.StatusOK {
-			err := json.Unmarshal(w.Body.Bytes(), &resp)
-			if err != nil {
-				t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
-			}
-		}
-		return resp, w
-	}
 
 	t.Run("basic", func(t *testing.T) {
 		t.Parallel()
-		resp, _ := makeGetRequest(nil, nil, http.StatusOK)
+		resp, _ := testRequestWithoutBody(t, "/get", nil, nil, http.StatusOK)
 
 		if resp.Args.Encode() != "" {
 			t.Fatalf("expected empty args, got %s", resp.Args.Encode())
@@ -168,16 +145,13 @@ func TestGet(t *testing.T) {
 			t.Fatalf("unexpected url: %#v", resp.URL)
 		}
 
-		headerTests := []struct {
-			key      string
-			expected string
-		}{
-			{"Content-Type", ""},
-			{"User-Agent", "test"},
+		wantHeaders := map[string]string{
+			"Content-Type": "",
+			"User-Agent":   "test",
 		}
-		for _, test := range headerTests {
-			if resp.Headers.Get(test.key) != test.expected {
-				t.Fatalf("expected %s = %#v, got %#v", test.key, test.expected, resp.Headers.Get(test.key))
+		for key, val := range wantHeaders {
+			if resp.Headers.Get(key) != val {
+				t.Fatalf("expected %s = %#v, got %#v", key, val, resp.Headers.Get(key))
 			}
 		}
 	})
@@ -189,7 +163,7 @@ func TestGet(t *testing.T) {
 		params.Add("bar", "bar1")
 		params.Add("bar", "bar2")
 
-		resp, _ := makeGetRequest(params, nil, http.StatusOK)
+		resp, _ := testRequestWithoutBody(t, "/get", params, nil, http.StatusOK)
 		if resp.Args.Encode() != params.Encode() {
 			t.Fatalf("args mismatch: %s != %s", resp.Args.Encode(), params.Encode())
 		}
@@ -219,7 +193,7 @@ func TestGet(t *testing.T) {
 			t.Parallel()
 			headers := &http.Header{}
 			headers.Set(test.key, test.value)
-			resp, _ := makeGetRequest(nil, headers, http.StatusOK)
+			resp, _ := testRequestWithoutBody(t, "/get", nil, headers, http.StatusOK)
 			if !strings.HasPrefix(resp.URL, "https://") {
 				t.Fatalf("%s=%s should result in https URL", test.key, test.value)
 			}
@@ -227,7 +201,38 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestHEAD(t *testing.T) {
+func testRequestWithoutBody(t *testing.T, path string, params *url.Values, headers *http.Header, expectedStatus int) (*noBodyResponse, *httptest.ResponseRecorder) {
+	t.Helper()
+
+	urlStr := path
+	if params != nil {
+		urlStr = fmt.Sprintf("%s?%s", urlStr, params.Encode())
+	}
+	r, _ := http.NewRequest("GET", urlStr, nil)
+	r.Host = "localhost"
+	r.Header.Set("User-Agent", "test")
+	if headers != nil {
+		for k, vs := range *headers {
+			for _, v := range vs {
+				r.Header.Set(k, v)
+			}
+		}
+	}
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, expectedStatus)
+
+	var resp *noBodyResponse
+	if expectedStatus == http.StatusOK {
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+		}
+	}
+	return resp, w
+}
+
+func TestHead(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
 		verb     string
@@ -267,7 +272,7 @@ func TestHEAD(t *testing.T) {
 				t.Fatalf("error converting Content-Lengh %v to integer: %s", contentLengthStr, err)
 			}
 			if contentLength <= 0 {
-				t.Fatalf("Content-Lengh %v should be greater than 0", contentLengthStr)
+				t.Fatalf("Content-Length %v should be greater than 0", contentLengthStr)
 			}
 		})
 	}
@@ -451,8 +456,93 @@ func TestHeaders(t *testing.T) {
 	}
 }
 
-func TestPost__EmptyBody(t *testing.T) {
+func TestPost(t *testing.T) {
 	t.Parallel()
+	testRequestWithBody(t, "POST", "/post")
+}
+
+func TestPut(t *testing.T) {
+	t.Parallel()
+	testRequestWithBody(t, "PUT", "/put")
+}
+
+func TestDelete(t *testing.T) {
+	t.Parallel()
+	testRequestWithBody(t, "DELETE", "/delete")
+}
+
+func TestPatch(t *testing.T) {
+	t.Parallel()
+	testRequestWithBody(t, "PATCH", "/patch")
+}
+
+func TestAnything(t *testing.T) {
+	t.Parallel()
+	var (
+		verbsWithReqBodies = []string{
+			"DELETE",
+			"PATCH",
+			"POST",
+			"PUT",
+		}
+		paths = []string{
+			"/anything",
+			"/anything/else",
+		}
+	)
+	for _, path := range paths {
+		for _, verb := range verbsWithReqBodies {
+			testRequestWithBody(t, verb, path)
+		}
+		// also test GET requests for each path
+		t.Run("GET "+path, func(t *testing.T) {
+			testRequestWithoutBody(t, path, nil, nil, http.StatusOK)
+		})
+	}
+}
+
+// getFuncName uses runtime type reflection to get the name of the given
+// function.
+//
+// Cribbed from https://stackoverflow.com/a/70535822/151221
+func getFuncName(f interface{}) string {
+	parts := strings.Split((runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()), ".")
+	return parts[len(parts)-1]
+}
+
+// getTestName expects a function named like testRequestWithBody__BodyTooBig
+// and returns only the trailing BodyTooBig part.
+func getTestName(prefix string, f interface{}) string {
+	name := strings.TrimPrefix(getFuncName(f), "testRequestWithBody")
+	return fmt.Sprintf("%s/%s", prefix, name)
+}
+
+func testRequestWithBody(t *testing.T, verb, path string) {
+	type testFunc func(t *testing.T, verb, path string)
+	testFuncs := []testFunc{
+		testRequestWithBodyBodyTooBig,
+		testRequestWithBodyEmptyBody,
+		testRequestWithBodyFormEncodedBody,
+		testRequestWithBodyFormEncodedBodyNoContentType,
+		testRequestWithBodyInvalidFormEncodedBody,
+		testRequestWithBodyInvalidJSON,
+		testRequestWithBodyInvalidMultiPartBody,
+		testRequestWithBodyJSON,
+		testRequestWithBodyMultiPartBody,
+		testRequestWithBodyQueryParams,
+		testRequestWithBodyQueryParamsAndBody,
+	}
+	for _, testFunc := range testFuncs {
+		testFunc := testFunc
+
+		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
+			t.Parallel()
+			testFunc(t, verb, path)
+		})
+	}
+}
+
+func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 	tests := []struct {
 		contentType string
 	}{
@@ -465,7 +555,7 @@ func TestPost__EmptyBody(t *testing.T) {
 		test := test
 		t.Run("content type/"+test.contentType, func(t *testing.T) {
 			t.Parallel()
-			r, _ := http.NewRequest("POST", "/post", nil)
+			r, _ := http.NewRequest(verb, path, nil)
 			r.Header.Set("Content-Type", test.contentType)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
@@ -496,14 +586,13 @@ func TestPost__EmptyBody(t *testing.T) {
 	}
 }
 
-func TestPost__FormEncodedBody(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
 	params.Add("bar", "bar2")
 
-	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
+	r, _ := http.NewRequest(verb, path, strings.NewReader(params.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -534,14 +623,13 @@ func TestPost__FormEncodedBody(t *testing.T) {
 	}
 }
 
-func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path string) {
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
 	params.Add("bar", "bar2")
 
-	r, _ := http.NewRequest("POST", "/post", strings.NewReader(params.Encode()))
+	r, _ := http.NewRequest(verb, path, strings.NewReader(params.Encode()))
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 
@@ -565,8 +653,7 @@ func TestPost__FormEncodedBodyNoContentType(t *testing.T) {
 	}
 }
 
-func TestPost__MultiPartBody(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	params := map[string][]string{
 		"foo": {"foo"},
 		"bar": {"bar1", "bar2"},
@@ -589,7 +676,7 @@ func TestPost__MultiPartBody(t *testing.T) {
 	}
 	mw.Close()
 
-	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body.Bytes()))
+	r, _ := http.NewRequest(verb, path, bytes.NewReader(body.Bytes()))
 	r.Header.Set("Content-Type", mw.FormDataContentType())
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -620,26 +707,23 @@ func TestPost__MultiPartBody(t *testing.T) {
 	}
 }
 
-func TestPost__InvalidFormEncodedBody(t *testing.T) {
-	t.Parallel()
-	r, _ := http.NewRequest("POST", "/post", strings.NewReader("%ZZ"))
+func testRequestWithBodyInvalidFormEncodedBody(t *testing.T, verb, path string) {
+	r, _ := http.NewRequest(verb, path, strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
-func TestPost__InvalidMultiPartBody(t *testing.T) {
-	t.Parallel()
-	r, _ := http.NewRequest("POST", "/post", strings.NewReader("%ZZ"))
+func testRequestWithBodyInvalidMultiPartBody(t *testing.T, verb, path string) {
+	r, _ := http.NewRequest(verb, path, strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "multipart/form-data; etc")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
-func TestPost__JSON(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	type testInput struct {
 		Foo  string
 		Bar  int
@@ -654,7 +738,7 @@ func TestPost__JSON(t *testing.T) {
 	}
 	inputBody, _ := json.Marshal(input)
 
-	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(inputBody))
+	r, _ := http.NewRequest(verb, path, bytes.NewReader(inputBody))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -692,8 +776,7 @@ func TestPost__JSON(t *testing.T) {
 	}
 }
 
-func TestPost__InvalidJSON(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader([]byte("foo")))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
@@ -701,8 +784,7 @@ func TestPost__InvalidJSON(t *testing.T) {
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
-func TestPost__BodyTooBig(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyBodyTooBig(t *testing.T, verb, path string) {
 	body := make([]byte, maxBodySize+1)
 
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
@@ -712,8 +794,7 @@ func TestPost__BodyTooBig(t *testing.T) {
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
-func TestPost__QueryParams(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
 	params := url.Values{}
 	params.Set("foo", "foo")
 	params.Add("bar", "bar1")
@@ -741,8 +822,7 @@ func TestPost__QueryParams(t *testing.T) {
 	}
 }
 
-func TestPost__QueryParamsAndBody(t *testing.T) {
-	t.Parallel()
+func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	args := url.Values{}
 	args.Set("query1", "foo")
 	args.Add("query2", "bar1")
@@ -2103,7 +2183,7 @@ func TestCache(t *testing.T) {
 			t.Fatalf("expected ETag header %v, got %v", sha1hash(lastModified), etag)
 		}
 
-		var resp *getResponse
+		var resp *noBodyResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		if err != nil {
 			t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)

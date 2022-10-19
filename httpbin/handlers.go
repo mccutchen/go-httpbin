@@ -48,7 +48,7 @@ func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
 
 // Get handles HTTP GET requests
 func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
-	resp := &getResponse{
+	resp := &noBodyResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
 		Origin:  getClientIP(r),
@@ -56,6 +56,16 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := json.Marshal(resp)
 	writeJSON(w, body, http.StatusOK)
+}
+
+// Anything returns anything that is passed to request.
+func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET", "HEAD":
+		h.Get(w, r)
+	default:
+		h.RequestWithBody(w, r)
+	}
 }
 
 // RequestWithBody handles POST, PUT, and PATCH requests
@@ -712,7 +722,7 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: This mostly duplicates the work of Get() above, should this be
 	// pulled into a little helper?
-	resp := &getResponse{
+	resp := &noBodyResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
 		Origin:  getClientIP(r),
