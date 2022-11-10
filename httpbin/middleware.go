@@ -58,6 +58,20 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	})
 }
 
+func gzipHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// buf := &bytes.Buffer{}
+		// gzw := gzip.NewWriter(buf)
+		// gzw.Write(body)
+		// gzw.Close()
+
+		// gzBody := buf.Bytes()
+
+		// w.Header().Set("Content-Encoding", "gzip")
+		// writeJSON(w, gzBody, http.StatusOK)
+	})
+}
+
 // headResponseWriter implements http.ResponseWriter in order to discard the
 // body of the response
 type headResponseWriter struct {

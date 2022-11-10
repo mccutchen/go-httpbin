@@ -339,3 +339,61 @@ func (b *base64Helper) Decode() ([]byte, error) {
 	_, err := base64.StdEncoding.Decode(buff, []byte(b.data))
 	return buff, err
 }
+
+// parseAcceptEncodings parses an Accept-Encoding header value into a map of
+// coding name and weight. Invalid or malformed codings are ignored, and
+// parsing does not attempt to accommodate variations in whitespace in the
+// input format.
+//
+// For more info:
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
+// https://httpwg.org/specs/rfc9110.html#field.accept-encoding
+func parseAcceptEncodings(acceptEncodingHeaderVal string) codings {
+	var (
+		codingVals = strings.Split(acceptEncodingHeaderVal, ",")
+		result     = make(codings, 0, len(codingVals))
+	)
+	for _, codingVal := range codingVals {
+		if idx := strings.Index(codingVal, ";"); idx > -1 {
+			// should have a ;q=x.y weight
+			if !strings.HasPrefix(codingVal[idx:], ";q=") {
+				continue
+			}
+			// 3 == len(";q=")
+			if q, err := strconv.ParseFloat(codingVal[idx+3:], 64); err == nil {
+				name := strings.TrimSpace(codingVal[:idx])
+				if len(name) > 0 {
+					result = append(result, coding{name, q})
+				}
+			}
+		} else {
+			// no weight given, default to 1.0
+			name := strings.TrimSpace(codingVal)
+			if len(name) > 0 {
+				result = append(result, coding{name, 1.0})
+			}
+		}
+	}
+	return result
+}
+
+type coding struct {
+	name   string
+	weight float64
+}
+
+type codings []coding
+
+func (cs codings) Preferred() string {
+	var (
+		result string
+		best   float64
+	)
+	for _, c := range cs {
+		if c.weight > best {
+			result = c.name
+			best = c.weight
+		}
+	}
+	return result
+}

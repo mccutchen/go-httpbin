@@ -215,3 +215,94 @@ func Test_getClientIP(t *testing.T) {
 		})
 	}
 }
+
+func TestParseAcceptEncodings(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		given           string
+		expected        codings
+		expectPreferred string
+	}{
+		{
+			given:           "gzip",
+			expected:        codings{{"gzip", 1.0}},
+			expectPreferred: "gzip",
+		},
+		{
+			given:           "gzip, compress, br",
+			expected:        codings{{"gzip", 1.0}, {"compress", 1.0}, {"br", 1.0}},
+			expectPreferred: "gzip", // first entry wins tie
+		},
+		{
+			given:           "br;q=0.8, gzip;q=1.0, *;q=0.1",
+			expected:        codings{{"br", 0.8}, {"gzip", 1.0}, {"*", 0.1}},
+			expectPreferred: "gzip",
+		},
+		{
+			given:           "deflate, gzip;q=1.0, *;q=0.5",
+			expected:        codings{{"deflate", 1.0}, {"gzip", 1.0}, {"*", 0.5}},
+			expectPreferred: "deflate",
+		},
+		{
+			given:    "",
+			expected: codings{},
+		},
+		{
+			given:    "    ",
+			expected: codings{},
+		},
+		{
+			// malformed entry ignored
+			given:           "deflate, ;",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+		{
+			// malformed entry ignored
+			given:           "deflate, gzip;",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+		{
+			// malformed entry ignored
+			given:           "deflate, gzip;q=",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+		{
+			// malformed entry without encoding name is ignored
+			given:           "deflate, ;q=1.0",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+		{
+			// strict parsing of qvalues does not allow any spaces
+			given:           "deflate, gzip; q=1.0",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+		{
+			// strict parsing of qvalues does not allow any spaces
+			given:           "deflate, gzip;q = 1.0",
+			expected:        codings{{"deflate", 1.0}},
+			expectPreferred: "deflate",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.given, func(t *testing.T) {
+			t.Parallel()
+
+			got := parseAcceptEncodings(tc.given)
+			if !reflect.DeepEqual(tc.expected, got) {
+				t.Fatalf("failed to parse %q:\ngot:  %#v\nwant: %#v", tc.given, got, tc.expected)
+			}
+			gotPreferred := got.Preferred()
+			if !reflect.DeepEqual(tc.expectPreferred, gotPreferred) {
+				t.Fatalf("expected preferred coding %#v, got %#v", tc.expectPreferred, gotPreferred)
+			}
+		})
+	}
+}
