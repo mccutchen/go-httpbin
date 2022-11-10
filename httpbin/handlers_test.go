@@ -524,6 +524,7 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyInvalidFormEncodedBody,
 		testRequestWithBodyInvalidJSON,
 		testRequestWithBodyInvalidMultiPartBody,
+		testRequestWithBodyHTML,
 		testRequestWithBodyJSON,
 		testRequestWithBodyMultiPartBody,
 		testRequestWithBodyQueryParams,
@@ -617,6 +618,26 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 		if !reflect.DeepEqual(expectedValues, values) {
 			t.Fatalf("form value mismatch: %#v != %#v", values, expectedValues)
 		}
+	}
+}
+
+func testRequestWithBodyHTML(t *testing.T, verb, path string) {
+	data := "<html><body><h1>hello world</h1></body></html>"
+
+	r, _ := http.NewRequest(verb, path, strings.NewReader(data))
+	r.Header.Set("Content-Type", htmlContentType)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, jsonContentType)
+
+	// We do not use json.Unmarshal here which would unescape any escaped characters.
+	// For httpbin compatibility, we need to verify the data is returned as-is without
+	// escaping.
+	respBody := w.Body.String()
+	if !strings.Contains(respBody, data) {
+		t.Fatalf("response data mismatch, %#v != %#v", respBody, data)
 	}
 }
 

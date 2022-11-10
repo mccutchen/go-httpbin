@@ -519,7 +519,6 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 		resp.ID = i
 		line, _ := jsonMarshalNoEscape(resp)
 		w.Write(line)
-		w.Write([]byte("\n"))
 		f.Flush()
 	}
 }
