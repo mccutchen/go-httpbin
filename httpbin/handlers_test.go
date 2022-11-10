@@ -480,6 +480,7 @@ func TestAnything(t *testing.T) {
 	t.Parallel()
 	var (
 		verbsWithReqBodies = []string{
+			"GET",
 			"DELETE",
 			"PATCH",
 			"POST",
@@ -494,10 +495,6 @@ func TestAnything(t *testing.T) {
 		for _, verb := range verbsWithReqBodies {
 			testRequestWithBody(t, verb, path)
 		}
-		// also test GET requests for each path
-		t.Run("GET "+path, func(t *testing.T) {
-			testRequestWithoutBody(t, path, nil, nil, http.StatusOK)
-		})
 	}
 }
 

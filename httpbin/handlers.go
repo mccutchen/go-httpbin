@@ -61,7 +61,7 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 // Anything returns anything that is passed to request.
 func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case "GET", "HEAD":
+	case "HEAD":
 		h.Get(w, r)
 	default:
 		h.RequestWithBody(w, r)
