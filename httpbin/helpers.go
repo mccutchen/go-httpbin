@@ -127,9 +127,9 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		// we need it to for compatibility with the httpbin implementation, so
 		// we trick it with this ugly hack.
 		if r.Method == http.MethodDelete || r.Method == http.MethodGet {
-			method := r.Method
+			originalMethod := r.Method
 			r.Method = http.MethodPost
-			defer func() { r.Method = method }()
+			defer func() { r.Method = originalMethod }()
 		}
 		if err := r.ParseForm(); err != nil {
 			return err
