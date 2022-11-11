@@ -512,6 +512,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	f := w.(http.Flusher)
 	for i := 0; i < n; i++ {
 		resp.ID = i
+		// Call json.Marshal directly to avoid pretty printing
 		line, _ := json.Marshal(resp)
 		w.Write(append(line, '\n'))
 		f.Flush()
