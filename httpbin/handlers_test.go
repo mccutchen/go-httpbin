@@ -1218,9 +1218,11 @@ func TestRedirectTo(t *testing.T) {
 		url            string
 		expectedStatus int
 	}{
-		{"/redirect-to", http.StatusBadRequest},
-		{"/redirect-to?status_code=302", http.StatusBadRequest},
-		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},
+		{"/redirect-to", http.StatusBadRequest},                                               // missing url
+		{"/redirect-to?status_code=302", http.StatusBadRequest},                               // missing url
+		{"/redirect-to?url=foo&status_code=201", http.StatusBadRequest},                       // invalid status code
+		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},                       // invalid status code
+		{"/redirect-to?url=http%3A%2F%2Ffoo%25%25bar&status_code=418", http.StatusBadRequest}, // invalid URL
 	}
 	for _, test := range badTests {
 		test := test
@@ -1230,6 +1232,32 @@ func TestRedirectTo(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
 
+			assertStatusCode(t, w, test.expectedStatus)
+		})
+	}
+
+	allowListHandler := New(
+		WithAllowedRedirectDomains([]string{"httpbingo.org", "example.org"}),
+		WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
+	).Handler()
+
+	allowListTests := []struct {
+		url            string
+		expectedStatus int
+	}{
+		{"/redirect-to?url=http://httpbingo.org", http.StatusFound},                // allowlist ok
+		{"/redirect-to?url=https://httpbingo.org", http.StatusFound},               // scheme doesn't matter
+		{"/redirect-to?url=https://example.org/foo/bar", http.StatusFound},         // paths don't matter
+		{"/redirect-to?url=https://foo.example.org/foo/bar", http.StatusForbidden}, // subdomains of allowed domains do not match
+		{"/redirect-to?url=https://evil.com", http.StatusForbidden},                // not in allowlist
+	}
+	for _, test := range allowListTests {
+		test := test
+		t.Run("allowlist"+test.url, func(t *testing.T) {
+			t.Parallel()
+			r, _ := http.NewRequest("GET", test.url, nil)
+			w := httptest.NewRecorder()
+			allowListHandler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}

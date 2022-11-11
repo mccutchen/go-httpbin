@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -375,13 +376,25 @@ func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	url := q.Get("url")
-	if url == "" {
+	inputURL := q.Get("url")
+	if inputURL == "" {
 		http.Error(w, "Missing URL", http.StatusBadRequest)
 		return
 	}
 
-	var err error
+	u, err := url.Parse(inputURL)
+	if err != nil {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	if u.IsAbs() && len(h.AllowedRedirectDomains) > 0 {
+		if _, ok := h.AllowedRedirectDomains[u.Hostname()]; !ok {
+			http.Error(w, "Forbidden redirect URL. Be careful with this link.", http.StatusForbidden)
+			return
+		}
+	}
+
 	statusCode := http.StatusFound
 	rawStatusCode := q.Get("status_code")
 	if rawStatusCode != "" {
@@ -392,7 +405,7 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Location", url)
+	w.Header().Set("Location", u.String())
 	w.WriteHeader(statusCode)
 }
 
