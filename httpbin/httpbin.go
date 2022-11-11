@@ -101,6 +101,9 @@ type HTTPBin struct {
 	// Default parameter values
 	DefaultParams DefaultParams
 
+	// Set of hosts to which the /redirect-to endpoint will allow redirects
+	AllowedRedirectDomains map[string]struct{}
+
 	// The hostname to expose via /hostname.
 	hostname string
 }
@@ -272,5 +275,17 @@ func WithHostname(s string) OptionFunc {
 func WithObserver(o Observer) OptionFunc {
 	return func(h *HTTPBin) {
 		h.Observer = o
+	}
+}
+
+// WithAllowedRedirectDomains limits the domains to which the /redirect-to
+// endpoint will redirect traffic.
+func WithAllowedRedirectDomains(hosts []string) OptionFunc {
+	return func(h *HTTPBin) {
+		hostSet := make(map[string]struct{}, len(hosts))
+		for _, host := range hosts {
+			hostSet[host] = struct{}{}
+		}
+		h.AllowedRedirectDomains = hostSet
 	}
 }

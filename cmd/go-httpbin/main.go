@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,23 +23,25 @@ const (
 )
 
 var (
-	host            string
-	port            int
-	maxBodySize     int64
-	maxDuration     time.Duration
-	httpsCertFile   string
-	httpsKeyFile    string
-	useRealHostname bool
+	allowedRedirectDomains string
+	host                   string
+	httpsCertFile          string
+	httpsKeyFile           string
+	maxBodySize            int64
+	maxDuration            time.Duration
+	port                   int
+	useRealHostname        bool
 )
 
 func main() {
-	flag.StringVar(&host, "host", defaultHost, "Host to listen on")
+	flag.BoolVar(&useRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
+	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
+	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
 	flag.IntVar(&port, "port", defaultPort, "Port to listen on")
+	flag.StringVar(&allowedRedirectDomains, "allowed-redirect-domains", "", "Comma-separated list of domains the /redirect-to endpoint will allow")
+	flag.StringVar(&host, "host", defaultHost, "Host to listen on")
 	flag.StringVar(&httpsCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	flag.StringVar(&httpsKeyFile, "https-key-file", "", "HTTPS Server private key file")
-	flag.Int64Var(&maxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
-	flag.DurationVar(&maxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
-	flag.BoolVar(&useRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
 	flag.Parse()
 
 	// Command line flags take precedence over environment vars, so we only
@@ -97,6 +100,16 @@ func main() {
 		useRealHostname = true
 	}
 
+	var allowedRedirectDomainsList []string
+	if allowedRedirectDomains == "" && os.Getenv("ALLOWED_REDIRECT_DOMAINS") != "" {
+		allowedRedirectDomains = os.Getenv("ALLOWED_REDIRECT_DOMAINS")
+	}
+	for _, domain := range strings.Split(allowedRedirectDomains, ",") {
+		if strings.TrimSpace(domain) != "" {
+			allowedRedirectDomainsList = append(allowedRedirectDomainsList, strings.TrimSpace(domain))
+		}
+	}
+
 	logger := log.New(os.Stderr, "", 0)
 
 	// A hacky log helper function to ensure that shutdown messages are
@@ -122,6 +135,9 @@ func main() {
 			os.Exit(1)
 		}
 		opts = append(opts, httpbin.WithHostname(hostname))
+	}
+	if len(allowedRedirectDomainsList) > 0 {
+		opts = append(opts, httpbin.WithAllowedRedirectDomains(allowedRedirectDomainsList))
 	}
 	h := httpbin.New(opts...)
 
