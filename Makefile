@@ -16,22 +16,18 @@ TOOL_BIN_DIR     ?= $(shell go env GOPATH)/bin
 TOOL_GOLINT      := $(TOOL_BIN_DIR)/golint
 TOOL_STATICCHECK := $(TOOL_BIN_DIR)/staticcheck
 
-GO_SOURCES = $(shell find . -name *.go)
-
 
 # =============================================================================
 # build
 # =============================================================================
-build: $(DIST_PATH)/go-httpbin
-
-buildtests: $(DIST_PATH)/go-httpbin.test
-
-$(DIST_PATH)/go-httpbin: $(GO_SOURCES)
+build:
 	mkdir -p $(DIST_PATH)
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
+.PHONY: build
 
-$(DIST_PATH)/go-httpbin.test: $(GO_SOURCES)
+buildtests:
 	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
+.PHONY: buildtests
 
 clean:
 	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
