@@ -14,14 +14,6 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
 )
 
-var acceptedMediaTypes = []string{
-	"image/webp",
-	"image/svg+xml",
-	"image/jpeg",
-	"image/png",
-	"image/",
-}
-
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not implemented", http.StatusNotImplemented)
 }
@@ -151,36 +143,29 @@ func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, body, http.StatusOK)
 }
 
-// Status responds with the specified status code. TODO: support random choice
-// from multiple, optionally weighted status codes.
-func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	code, err := strconv.Atoi(parts[2])
-	if err != nil {
-		http.Error(w, "Invalid status", http.StatusBadRequest)
-		return
-	}
+type statusCase struct {
+	headers map[string]string
+	body    []byte
+}
 
-	type statusCase struct {
-		headers map[string]string
-		body    []byte
-	}
-
-	redirectHeaders := &statusCase{
+var (
+	statusRedirectHeaders = &statusCase{
 		headers: map[string]string{
 			"Location": "/redirect/1",
 		},
 	}
-	notAcceptableBody, _ := jsonMarshalNoEscape(map[string]interface{}{
-		"message": "Client did not request a supported media type",
-		"accept":  acceptedMediaTypes,
-	})
-
-	http300body := []byte(`<!doctype html>
+	statusNotAcceptableBody = []byte(`{
+  "message": "Client did not request a supported media type",
+  "accept": [
+    "image/webp",
+    "image/svg+xml",
+    "image/jpeg",
+    "image/png",
+    "image/"
+  ]
+}
+`)
+	statusHTTP300body = []byte(`<!doctype html>
 <head>
 <title>Multiple Choices</title>
 </head>
@@ -192,7 +177,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`)
 
-	http308body := []byte(`<!doctype html>
+	statusHTTP308Body = []byte(`<!doctype html>
 <head>
 <title>Permanent Redirect</title>
 </head>
@@ -200,20 +185,20 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`)
 
-	specialCases := map[int]*statusCase{
+	statusSpecialCases = map[int]*statusCase{
 		300: {
-			body: http300body,
+			body: statusHTTP300body,
 			headers: map[string]string{
 				"Location": "/image/jpeg",
 			},
 		},
-		301: redirectHeaders,
-		302: redirectHeaders,
-		303: redirectHeaders,
-		305: redirectHeaders,
-		307: redirectHeaders,
+		301: statusRedirectHeaders,
+		302: statusRedirectHeaders,
+		303: statusRedirectHeaders,
+		305: statusRedirectHeaders,
+		307: statusRedirectHeaders,
 		308: {
-			body: http308body,
+			body: statusHTTP308Body,
 			headers: map[string]string{
 				"Location": "/image/jpeg",
 			},
@@ -230,7 +215,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 		406: {
-			body: notAcceptableBody,
+			body: statusNotAcceptableBody,
 			headers: map[string]string{
 				"Content-Type": jsonContentType,
 			},
@@ -247,8 +232,23 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
+)
 
-	if specialCase, ok := specialCases[code]; ok {
+// Status responds with the specified status code. TODO: support random choice
+// from multiple, optionally weighted status codes.
+func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	code, err := strconv.Atoi(parts[2])
+	if err != nil {
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
+
+	if specialCase, ok := statusSpecialCases[code]; ok {
 		for key, val := range specialCase.headers {
 			w.Header().Set(key, val)
 		}
@@ -256,9 +256,10 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		if specialCase.body != nil {
 			w.Write(specialCase.body)
 		}
-	} else {
-		w.WriteHeader(code)
+		return
 	}
+
+	w.WriteHeader(code)
 }
 
 // Unstable - returns 500, sometimes
