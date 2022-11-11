@@ -54,14 +54,14 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 	writeJSON(w, body, http.StatusOK)
 }
 
 // Anything returns anything that is passed to request.
 func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case "GET", "HEAD":
+	case "HEAD":
 		h.Get(w, r)
 	default:
 		h.RequestWithBody(w, r)
@@ -83,7 +83,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 	writeJSON(w, body, http.StatusOK)
 }
 
@@ -94,7 +94,7 @@ func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 		Origin:  getClientIP(r),
 		Gzipped: true,
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 
 	buf := &bytes.Buffer{}
 	gzw := gzip.NewWriter(buf)
@@ -114,7 +114,7 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 		Origin:   getClientIP(r),
 		Deflated: true,
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 
 	buf := &bytes.Buffer{}
 	w2 := zlib.NewWriter(buf)
@@ -129,7 +129,7 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 
 // IP echoes the IP address of the incoming request
 func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
-	body, _ := json.Marshal(&ipResponse{
+	body, _ := jsonMarshalNoEscape(&ipResponse{
 		Origin: getClientIP(r),
 	})
 	writeJSON(w, body, http.StatusOK)
@@ -137,7 +137,7 @@ func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
 
 // UserAgent echoes the incoming User-Agent header
 func (h *HTTPBin) UserAgent(w http.ResponseWriter, r *http.Request) {
-	body, _ := json.Marshal(&userAgentResponse{
+	body, _ := jsonMarshalNoEscape(&userAgentResponse{
 		UserAgent: r.Header.Get("User-Agent"),
 	})
 	writeJSON(w, body, http.StatusOK)
@@ -145,7 +145,7 @@ func (h *HTTPBin) UserAgent(w http.ResponseWriter, r *http.Request) {
 
 // Headers echoes the incoming request headers
 func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
-	body, _ := json.Marshal(&headersResponse{
+	body, _ := jsonMarshalNoEscape(&headersResponse{
 		Headers: getRequestHeaders(r),
 	})
 	writeJSON(w, body, http.StatusOK)
@@ -175,7 +175,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 			"Location": "/redirect/1",
 		},
 	}
-	notAcceptableBody, _ := json.Marshal(map[string]interface{}{
+	notAcceptableBody, _ := jsonMarshalNoEscape(map[string]interface{}{
 		"message": "Client did not request a supported media type",
 		"accept":  acceptedMediaTypes,
 	})
@@ -302,7 +302,7 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(k, v)
 		}
 	}
-	body, _ := json.Marshal(args)
+	body, _ := jsonMarshalNoEscape(args)
 	if contentType := w.Header().Get("Content-Type"); contentType == "" {
 		w.Header().Set("Content-Type", jsonContentType)
 	}
@@ -400,7 +400,7 @@ func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 	for _, c := range r.Cookies() {
 		resp[c.Name] = c.Value
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 	writeJSON(w, body, http.StatusOK)
 }
 
@@ -455,7 +455,7 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Fake Realm"`)
 	}
 
-	body, _ := json.Marshal(&authResponse{
+	body, _ := jsonMarshalNoEscape(&authResponse{
 		Authorized: authorized,
 		User:       givenUser,
 	})
@@ -481,7 +481,7 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := json.Marshal(&authResponse{
+	body, _ := jsonMarshalNoEscape(&authResponse{
 		Authorized: authorized,
 		User:       givenUser,
 	})
@@ -517,9 +517,8 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	f := w.(http.Flusher)
 	for i := 0; i < n; i++ {
 		resp.ID = i
-		line, _ := json.Marshal(resp)
+		line, _ := jsonMarshalNoEscape(resp)
 		w.Write(line)
-		w.Write([]byte("\n"))
 		f.Flush()
 	}
 }
@@ -728,7 +727,7 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
 	}
-	body, _ := json.Marshal(resp)
+	body, _ := jsonMarshalNoEscape(resp)
 
 	// Let http.ServeContent deal with If-None-Match and If-Match headers:
 	// https://golang.org/pkg/net/http/#ServeContent
@@ -954,7 +953,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := json.Marshal(&authResponse{
+	resp, _ := jsonMarshalNoEscape(&authResponse{
 		Authorized: true,
 		User:       user,
 	})
@@ -963,7 +962,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 
 // UUID - responds with a generated UUID
 func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
-	resp, _ := json.Marshal(&uuidResponse{
+	resp, _ := jsonMarshalNoEscape(&uuidResponse{
 		UUID: uuidv4(),
 	})
 	writeJSON(w, resp, http.StatusOK)
@@ -1007,7 +1006,7 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	body, _ := json.Marshal(&bearerResponse{
+	body, _ := jsonMarshalNoEscape(&bearerResponse{
 		Authenticated: true,
 		Token:         tokenFields[1],
 	})
@@ -1016,8 +1015,18 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 
 // Hostname - returns the hostname.
 func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
-	body, _ := json.Marshal(hostnameResponse{
+	body, _ := jsonMarshalNoEscape(hostnameResponse{
 		Hostname: h.hostname,
 	})
 	writeJSON(w, body, http.StatusOK)
+}
+
+// json.Marshal escapes HTML in strings while httpbin does not, so
+// we need to set up the encoder manually to reproduce that behavior.
+func jsonMarshalNoEscape(value interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(value)
+	return buffer.Bytes(), err
 }
