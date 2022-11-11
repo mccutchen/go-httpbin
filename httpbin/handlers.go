@@ -40,24 +40,26 @@ func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
 
 // Get handles HTTP GET requests
 func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
-	resp := &noBodyResponse{
+	writeJSON(http.StatusOK, w, &noBodyResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
 		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
-	}
-	body, _ := jsonMarshalNoEscape(resp)
-	writeJSON(w, body, http.StatusOK)
+	})
 }
 
 // Anything returns anything that is passed to request.
 func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "HEAD":
+	// Short-circuit for HEAD requests, which should be handled like regular
+	// GET requests (where the autohead middleware will take care of discarding
+	// the body)
+	if r.Method == http.MethodHead {
 		h.Get(w, r)
-	default:
-		h.RequestWithBody(w, r)
+		return
 	}
+	// All other requests will be handled the same.  For compatibility with
+	// httpbin, the /anything endpoint even allows GET requests to have bodies.
+	h.RequestWithBody(w, r)
 }
 
 // RequestWithBody handles POST, PUT, and PATCH requests
@@ -75,72 +77,72 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := jsonMarshalNoEscape(resp)
-	writeJSON(w, body, http.StatusOK)
+	writeJSON(http.StatusOK, w, resp)
 }
 
 // Gzip returns a gzipped response
 func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
-	resp := &gzipResponse{
+	var (
+		buf bytes.Buffer
+		gzw = gzip.NewWriter(&buf)
+	)
+	mustMarshalJSON(gzw, &noBodyResponse{
+		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
 		Origin:  getClientIP(r),
 		Gzipped: true,
-	}
-	body, _ := jsonMarshalNoEscape(resp)
-
-	buf := &bytes.Buffer{}
-	gzw := gzip.NewWriter(buf)
-	gzw.Write(body)
+	})
 	gzw.Close()
 
-	gzBody := buf.Bytes()
-
+	body := buf.Bytes()
 	w.Header().Set("Content-Encoding", "gzip")
-	writeJSON(w, gzBody, http.StatusOK)
+	w.Header().Set("Content-Type", jsonContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
 }
 
 // Deflate returns a gzipped response
 func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
-	resp := &deflateResponse{
+	var (
+		buf bytes.Buffer
+		zw  = zlib.NewWriter(&buf)
+	)
+	mustMarshalJSON(zw, &noBodyResponse{
+		Args:     r.URL.Query(),
 		Headers:  getRequestHeaders(r),
 		Origin:   getClientIP(r),
 		Deflated: true,
-	}
-	body, _ := jsonMarshalNoEscape(resp)
+	})
+	zw.Close()
 
-	buf := &bytes.Buffer{}
-	w2 := zlib.NewWriter(buf)
-	w2.Write(body)
-	w2.Close()
-
-	compressedBody := buf.Bytes()
-
+	body := buf.Bytes()
 	w.Header().Set("Content-Encoding", "deflate")
-	writeJSON(w, compressedBody, http.StatusOK)
+	w.Header().Set("Content-Type", jsonContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
 }
 
 // IP echoes the IP address of the incoming request
 func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
-	body, _ := jsonMarshalNoEscape(&ipResponse{
+	writeJSON(http.StatusOK, w, &ipResponse{
 		Origin: getClientIP(r),
 	})
-	writeJSON(w, body, http.StatusOK)
 }
 
 // UserAgent echoes the incoming User-Agent header
 func (h *HTTPBin) UserAgent(w http.ResponseWriter, r *http.Request) {
-	body, _ := jsonMarshalNoEscape(&userAgentResponse{
+	writeJSON(http.StatusOK, w, &userAgentResponse{
 		UserAgent: r.Header.Get("User-Agent"),
 	})
-	writeJSON(w, body, http.StatusOK)
 }
 
 // Headers echoes the incoming request headers
 func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
-	body, _ := jsonMarshalNoEscape(&headersResponse{
+	writeJSON(http.StatusOK, w, &headersResponse{
 		Headers: getRequestHeaders(r),
 	})
-	writeJSON(w, body, http.StatusOK)
 }
 
 type statusCase struct {
@@ -303,11 +305,10 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(k, v)
 		}
 	}
-	body, _ := jsonMarshalNoEscape(args)
 	if contentType := w.Header().Get("Content-Type"); contentType == "" {
 		w.Header().Set("Content-Type", jsonContentType)
 	}
-	w.Write(body)
+	mustMarshalJSON(w, args)
 }
 
 func redirectLocation(r *http.Request, relative bool, n int) string {
@@ -401,8 +402,7 @@ func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 	for _, c := range r.Cookies() {
 		resp[c.Name] = c.Value
 	}
-	body, _ := jsonMarshalNoEscape(resp)
-	writeJSON(w, body, http.StatusOK)
+	writeJSON(http.StatusOK, w, resp)
 }
 
 // SetCookies sets cookies as specified in query params and redirects to
@@ -456,11 +456,10 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Fake Realm"`)
 	}
 
-	body, _ := jsonMarshalNoEscape(&authResponse{
+	writeJSON(status, w, authResponse{
 		Authorized: authorized,
 		User:       givenUser,
 	})
-	writeJSON(w, body, status)
 }
 
 // HiddenBasicAuth requires HTTP Basic authentication but returns a status of
@@ -482,11 +481,10 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := jsonMarshalNoEscape(&authResponse{
+	writeJSON(http.StatusOK, w, authResponse{
 		Authorized: authorized,
 		User:       givenUser,
 	})
-	writeJSON(w, body, http.StatusOK)
 }
 
 // Stream responds with max(n, 100) lines of JSON-encoded request data.
@@ -518,8 +516,9 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	f := w.(http.Flusher)
 	for i := 0; i < n; i++ {
 		resp.ID = i
-		line, _ := jsonMarshalNoEscape(resp)
-		w.Write(line)
+		// Call json.Marshal directly to avoid pretty printing
+		line, _ := json.Marshal(resp)
+		w.Write(append(line, '\n'))
 		f.Flush()
 	}
 }
@@ -708,7 +707,7 @@ func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
 	h.Get(w, r)
 }
 
-// ETag assumes the resource has the given etag and response to If-None-Match
+// ETag assumes the resource has the given etag and responds to If-None-Match
 // and If-Match headers appropriately.
 func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
@@ -720,19 +719,17 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	etag := parts[2]
 	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, etag))
 
-	// TODO: This mostly duplicates the work of Get() above, should this be
-	// pulled into a little helper?
-	resp := &noBodyResponse{
+	var buf bytes.Buffer
+	mustMarshalJSON(&buf, noBodyResponse{
 		Args:    r.URL.Query(),
 		Headers: getRequestHeaders(r),
 		Origin:  getClientIP(r),
 		URL:     getURL(r).String(),
-	}
-	body, _ := jsonMarshalNoEscape(resp)
+	})
 
 	// Let http.ServeContent deal with If-None-Match and If-Match headers:
 	// https://golang.org/pkg/net/http/#ServeContent
-	http.ServeContent(w, r, "response.json", time.Now(), bytes.NewReader(body))
+	http.ServeContent(w, r, "response.json", time.Now(), bytes.NewReader(buf.Bytes()))
 }
 
 // Bytes returns N random bytes generated with an optional seed
@@ -954,19 +951,17 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := jsonMarshalNoEscape(&authResponse{
+	writeJSON(http.StatusOK, w, authResponse{
 		Authorized: true,
 		User:       user,
 	})
-	writeJSON(w, resp, http.StatusOK)
 }
 
 // UUID - responds with a generated UUID
 func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
-	resp, _ := jsonMarshalNoEscape(&uuidResponse{
+	writeJSON(http.StatusOK, w, uuidResponse{
 		UUID: uuidv4(),
 	})
-	writeJSON(w, resp, http.StatusOK)
 }
 
 // Base64 - encodes/decodes input data
@@ -995,7 +990,9 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 
 // JSON - returns a sample json
 func (h *HTTPBin) JSON(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, mustStaticAsset("sample.json"), http.StatusOK)
+	w.Header().Set("Content-Type", jsonContentType)
+	w.WriteHeader(http.StatusOK)
+	w.Write(mustStaticAsset("sample.json"))
 }
 
 // Bearer - Prompts the user for authorization using bearer authentication.
@@ -1007,27 +1004,15 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	body, _ := jsonMarshalNoEscape(&bearerResponse{
+	writeJSON(http.StatusOK, w, bearerResponse{
 		Authenticated: true,
 		Token:         tokenFields[1],
 	})
-	writeJSON(w, body, http.StatusOK)
 }
 
 // Hostname - returns the hostname.
 func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
-	body, _ := jsonMarshalNoEscape(hostnameResponse{
+	writeJSON(http.StatusOK, w, hostnameResponse{
 		Hostname: h.hostname,
 	})
-	writeJSON(w, body, http.StatusOK)
-}
-
-// json.Marshal escapes HTML in strings while httpbin does not, so
-// we need to set up the encoder manually to reproduce that behavior.
-func jsonMarshalNoEscape(value interface{}) ([]byte, error) {
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(value)
-	return buffer.Bytes(), err
 }

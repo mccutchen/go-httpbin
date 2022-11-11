@@ -37,6 +37,9 @@ type noBodyResponse struct {
 	Headers http.Header `json:"headers"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
+
+	Deflated bool `json:"deflated,omitempty"`
+	Gzipped  bool `json:"gzipped,omitempty"`
 }
 
 // A generic response for any incoming request that might contain a body (POST,
@@ -58,18 +61,6 @@ type cookiesResponse map[string]string
 type authResponse struct {
 	Authorized bool   `json:"authorized"`
 	User       string `json:"user"`
-}
-
-type gzipResponse struct {
-	Headers http.Header `json:"headers"`
-	Origin  string      `json:"origin"`
-	Gzipped bool        `json:"gzipped"`
-}
-
-type deflateResponse struct {
-	Headers  http.Header `json:"headers"`
-	Origin   string      `json:"origin"`
-	Deflated bool        `json:"deflated"`
 }
 
 // An actual stream response body will be made up of one or more of these
