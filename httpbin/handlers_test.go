@@ -488,6 +488,18 @@ func TestAnything(t *testing.T) {
 			testRequestWithBody(t, verb, path)
 		}
 	}
+
+	t.Run("HEAD", func(t *testing.T) {
+		t.Parallel()
+		r, _ := http.NewRequest("HEAD", "/anything", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		assertStatusCode(t, w, http.StatusOK)
+		assertBodyEquals(t, w, "")
+		if contentLength := w.Header().Get("Content-Length"); contentLength != "" {
+			t.Fatalf("did not expect Content-Length in response to HEAD request")
+		}
+	})
 }
 
 // getFuncName uses runtime type reflection to get the name of the given

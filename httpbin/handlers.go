@@ -50,12 +50,16 @@ func (h *HTTPBin) Get(w http.ResponseWriter, r *http.Request) {
 
 // Anything returns anything that is passed to request.
 func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "HEAD":
+	// Short-circuit for HEAD requests, which should be handled like regular
+	// GET requests (where the autohead middleware will take care of discarding
+	// the body)
+	if r.Method == http.MethodHead {
 		h.Get(w, r)
-	default:
-		h.RequestWithBody(w, r)
+		return
 	}
+	// All other requests will be handled the same.  For compatibility with
+	// httpbin, the /anything endpoint even allows GET requests to have bodies.
+	h.RequestWithBody(w, r)
 }
 
 // RequestWithBody handles POST, PUT, and PATCH requests
