@@ -263,16 +263,8 @@ func TestHead(t *testing.T) {
 			assertStatusCode(t, w, http.StatusOK)
 			assertBodyEquals(t, w, "")
 
-			contentLengthStr := w.Header().Get("Content-Length")
-			if contentLengthStr == "" {
-				t.Fatalf("missing Content-Length header in response")
-			}
-			contentLength, err := strconv.Atoi(contentLengthStr)
-			if err != nil {
-				t.Fatalf("error converting Content-Lengh %v to integer: %s", contentLengthStr, err)
-			}
-			if contentLength <= 0 {
-				t.Fatalf("Content-Length %v should be greater than 0", contentLengthStr)
+			if contentLength := w.Header().Get("Content-Length"); contentLength != "" {
+				t.Fatalf("did not expect Content-Length in response to HEAD request")
 			}
 		})
 	}
@@ -1591,10 +1583,8 @@ func TestGzip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error reading gzipped body: %s", err)
 	}
-
-	var resp *gzipResponse
-	err = json.Unmarshal(unzippedBody, &resp)
-	if err != nil {
+	var resp *noBodyResponse
+	if err := json.Unmarshal(unzippedBody, &resp); err != nil {
 		t.Fatalf("error unmarshalling response: %s", err)
 	}
 
@@ -1602,7 +1592,7 @@ func TestGzip(t *testing.T) {
 		t.Fatalf("expected resp.Gzipped == true")
 	}
 
-	if len(unzippedBody) >= zippedContentLength {
+	if len(unzippedBody) <= zippedContentLength {
 		t.Fatalf("expected compressed body")
 	}
 }
@@ -1622,7 +1612,7 @@ func TestDeflate(t *testing.T) {
 		t.Fatalf("missing Content-Length header in response")
 	}
 
-	contentLength, err := strconv.Atoi(contentLengthHeader)
+	compressedContentLength, err := strconv.Atoi(contentLengthHeader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1636,7 +1626,7 @@ func TestDeflate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var resp *deflateResponse
+	var resp *noBodyResponse
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		t.Fatalf("error unmarshalling response: %s", err)
@@ -1646,7 +1636,7 @@ func TestDeflate(t *testing.T) {
 		t.Fatalf("expected resp.Deflated == true")
 	}
 
-	if len(body) >= contentLength {
+	if len(body) <= compressedContentLength {
 		t.Fatalf("expected compressed body")
 	}
 }

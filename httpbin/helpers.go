@@ -82,13 +82,23 @@ func getURL(r *http.Request) *url.URL {
 
 func writeResponse(w http.ResponseWriter, status int, contentType string, body []byte) {
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	w.WriteHeader(status)
 	w.Write(body)
 }
 
-func writeJSON(w http.ResponseWriter, body []byte, status int) {
-	writeResponse(w, status, jsonContentType, body)
+func mustMarshalJSON(w io.Writer, val interface{}) {
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(val); err != nil {
+		panic(err.Error())
+	}
+}
+
+func writeJSON(status int, w http.ResponseWriter, val interface{}) {
+	w.Header().Set("Content-Type", jsonContentType)
+	w.WriteHeader(status)
+	mustMarshalJSON(w, val)
 }
 
 func writeHTML(w http.ResponseWriter, body []byte, status int) {

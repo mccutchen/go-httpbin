@@ -65,7 +65,7 @@ type headResponseWriter struct {
 }
 
 func (hw *headResponseWriter) Write(b []byte) (int, error) {
-	return 0, nil
+	return len(b), nil
 }
 
 // autohead automatically discards the body of responses to HEAD requests
