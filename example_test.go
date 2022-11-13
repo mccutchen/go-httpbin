@@ -12,7 +12,7 @@ import (
 
 func TestSlowResponse(t *testing.T) {
 	app := httpbin.New()
-	testServer := httptest.NewServer(app.Handler())
+	testServer := httptest.NewServer(app)
 	defer testServer.Close()
 
 	client := http.Client{
