@@ -131,7 +131,7 @@ func (e ConfigError) Error() string {
 func loadConfig(args []string, getEnv func(string) string, getHostname func() (string, error)) (*config, error) {
 	cfg := &config{}
 
-	fs := flag.NewFlagSet("", flag.ContinueOnError)
+	fs := flag.NewFlagSet("go-httpbin", flag.ContinueOnError)
 	fs.BoolVar(&cfg.rawUseRealHostname, "use-real-hostname", false, "Expose value of os.Hostname() in the /hostname endpoint instead of dummy value")
 	fs.DurationVar(&cfg.MaxDuration, "max-duration", httpbin.DefaultMaxDuration, "Maximum duration a response may take")
 	fs.Int64Var(&cfg.MaxBodySize, "max-body-size", httpbin.DefaultMaxBodySize, "Maximum size of request or response, in bytes")
