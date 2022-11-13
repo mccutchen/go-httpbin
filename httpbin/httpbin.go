@@ -106,6 +106,9 @@ type HTTPBin struct {
 
 	// The hostname to expose via /hostname.
 	hostname string
+
+	// The app's http handler
+	handler http.Handler
 }
 
 // DefaultParams defines default parameter values
@@ -236,8 +239,17 @@ func New(opts ...OptionFunc) *HTTPBin {
 	for _, opt := range opts {
 		opt(h)
 	}
+	h.handler = h.Handler()
 	return h
 }
+
+// ServeHTTP implememnts the http.Handler interface.
+func (h *HTTPBin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.handler.ServeHTTP(w, r)
+}
+
+// Assert that HTTPBin implements http.Handler interface
+var _ http.Handler = &HTTPBin{}
 
 // OptionFunc uses the "functional options" pattern to customize an HTTPBin
 // instance

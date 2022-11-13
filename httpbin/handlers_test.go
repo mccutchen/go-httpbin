@@ -44,8 +44,6 @@ var app = New(
 	WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
 )
 
-var handler = app.Handler()
-
 func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
 	t.Helper()
 	if w.Code != code {
@@ -93,7 +91,7 @@ func TestIndex(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, htmlContentType)
 	assertHeader(t, w, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
@@ -104,7 +102,7 @@ func TestIndex__NotFound(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/foo", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusNotFound)
 }
 
@@ -112,7 +110,7 @@ func TestFormsPost(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/forms/post", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `<form method="post" action="/post">`)
@@ -122,7 +120,7 @@ func TestUTF8(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/encoding/utf8", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `Hello world, Καλημέρα κόσμε, コンニチハ`)
@@ -173,7 +171,7 @@ func TestGet(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("POST", "/get", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusMethodNotAllowed)
 		assertContentType(t, w, "text/plain; charset=utf-8")
@@ -219,7 +217,7 @@ func testRequestWithoutBody(t *testing.T, path string, params *url.Values, heade
 		}
 	}
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, expectedStatus)
 
@@ -251,7 +249,7 @@ func TestHead(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest(tc.verb, tc.path, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, tc.wantCode)
 
@@ -276,7 +274,7 @@ func TestCORS(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("GET", "/get", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertHeader(t, w, "Access-Control-Allow-Origin", "*")
 	})
 
@@ -285,7 +283,7 @@ func TestCORS(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/get", nil)
 		r.Header.Set("Origin", "origin")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertHeader(t, w, "Access-Control-Allow-Origin", "origin")
 	})
 
@@ -293,7 +291,7 @@ func TestCORS(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("OPTIONS", "/get", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, 200)
 
@@ -317,7 +315,7 @@ func TestCORS(t *testing.T) {
 		r, _ := http.NewRequest("OPTIONS", "/get", nil)
 		r.Header.Set("Access-Control-Request-Headers", "X-Test-Header")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, 200)
 
@@ -371,7 +369,7 @@ func TestIP(t *testing.T) {
 				r.Header.Set(k, v)
 			}
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, http.StatusOK)
 			assertContentType(t, w, jsonContentType)
@@ -394,7 +392,7 @@ func TestUserAgent(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/user-agent", nil)
 	r.Header.Set("User-Agent", "test")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -419,7 +417,7 @@ func TestHeaders(t *testing.T) {
 	r.Header.Add("Bar-Header", "bar1")
 	r.Header.Add("Bar-Header", "bar2")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -493,7 +491,7 @@ func TestAnything(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("HEAD", "/anything", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertStatusCode(t, w, http.StatusOK)
 		assertBodyEquals(t, w, "")
 		if contentLength := w.Header().Get("Content-Length"); contentLength != "" {
@@ -560,7 +558,7 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 			r, _ := http.NewRequest(verb, path, nil)
 			r.Header.Set("Content-Type", test.contentType)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, http.StatusOK)
 			assertContentType(t, w, jsonContentType)
@@ -597,7 +595,7 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest(verb, path, strings.NewReader(params.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -631,7 +629,7 @@ func testRequestWithBodyHTML(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest(verb, path, strings.NewReader(data))
 	r.Header.Set("Content-Type", htmlContentType)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -653,7 +651,7 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 
 	r, _ := http.NewRequest(verb, path, strings.NewReader(params.Encode()))
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -701,7 +699,7 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest(verb, path, bytes.NewReader(body.Bytes()))
 	r.Header.Set("Content-Type", mw.FormDataContentType())
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -733,7 +731,7 @@ func testRequestWithBodyInvalidFormEncodedBody(t *testing.T, verb, path string) 
 	r, _ := http.NewRequest(verb, path, strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
@@ -741,7 +739,7 @@ func testRequestWithBodyInvalidMultiPartBody(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest(verb, path, strings.NewReader("%ZZ"))
 	r.Header.Set("Content-Type", "multipart/form-data; etc")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
@@ -763,7 +761,7 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest(verb, path, bytes.NewReader(inputBody))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -802,7 +800,7 @@ func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader([]byte("foo")))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
 
@@ -811,7 +809,7 @@ func testRequestWithBodyBodyTooBig(t *testing.T, verb, path string) {
 
 	r, _ := http.NewRequest("POST", "/post", bytes.NewReader(body))
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusBadRequest)
 }
@@ -824,7 +822,7 @@ func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
 
 	r, _ := http.NewRequest("POST", fmt.Sprintf("/post?%s", params.Encode()), nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -861,7 +859,7 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	r, _ := http.NewRequest("POST", url, body)
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -935,7 +933,7 @@ func TestStatus(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", fmt.Sprintf("/status/%d", test.code), nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.code)
 
@@ -970,7 +968,7 @@ func TestStatus(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
 	}
@@ -982,7 +980,7 @@ func TestUnstable(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("GET", "/unstable", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		if w.Code != 200 && w.Code != 500 {
 			t.Fatalf("expected status code 200 or 500, got %d", w.Code)
 		}
@@ -1002,7 +1000,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
 	}
@@ -1017,7 +1015,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			if w.Code != 200 && w.Code != 500 {
 				t.Fatalf("expected status code 200 or 500, got %d", w.Code)
 			}
@@ -1039,7 +1037,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusBadRequest)
 		})
 	}
@@ -1061,7 +1059,7 @@ func TestResponseHeaders__OK(t *testing.T) {
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/response-headers?%s", params.Encode()), nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, jsonContentType)
@@ -1102,7 +1100,7 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/response-headers?%s", params.Encode()), nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentType(t, w, contentType)
@@ -1142,7 +1140,7 @@ func TestRedirects(t *testing.T) {
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			r.Host = "host"
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, http.StatusFound)
 			assertHeader(t, w, "Location", test.expectedLocation)
@@ -1178,7 +1176,7 @@ func TestRedirects(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.expectedStatus)
 		})
@@ -1207,7 +1205,7 @@ func TestRedirectTo(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.expectedStatus)
 			assertHeader(t, w, "Location", test.expectedLocation)
@@ -1230,7 +1228,7 @@ func TestRedirectTo(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.expectedStatus)
 		})
@@ -1274,7 +1272,7 @@ func TestCookies(t *testing.T) {
 			})
 		}
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -1318,7 +1316,7 @@ func TestSetCookies(t *testing.T) {
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/cookies/set?%s", params.Encode()), nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusFound)
 	assertHeader(t, w, "Location", "/cookies")
@@ -1353,7 +1351,7 @@ func TestDeleteCookies(t *testing.T) {
 		})
 	}
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusFound)
 	assertHeader(t, w, "Location", "/cookies")
@@ -1374,7 +1372,7 @@ func TestBasicAuth(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		r.SetBasicAuth("user", "pass")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -1395,7 +1393,7 @@ func TestBasicAuth(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusUnauthorized)
 		assertContentType(t, w, jsonContentType)
@@ -1418,7 +1416,7 @@ func TestBasicAuth(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/basic-auth/user/pass", nil)
 		r.SetBasicAuth("bad", "auth")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusUnauthorized)
 		assertContentType(t, w, jsonContentType)
@@ -1451,7 +1449,7 @@ func TestBasicAuth(t *testing.T) {
 			r, _ := http.NewRequest("GET", test.url, nil)
 			r.SetBasicAuth("foo", "bar")
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
 	}
@@ -1464,7 +1462,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		r.SetBasicAuth("user", "pass")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -1485,7 +1483,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		t.Parallel()
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusNotFound)
 		if w.Header().Get("WWW-Authenticate") != "" {
@@ -1498,7 +1496,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		r, _ := http.NewRequest("GET", "/hidden-basic-auth/user/pass", nil)
 		r.SetBasicAuth("bad", "auth")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusNotFound)
 		if w.Header().Get("WWW-Authenticate") != "" {
@@ -1521,7 +1519,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 			r, _ := http.NewRequest("GET", test.url, nil)
 			r.SetBasicAuth("foo", "bar")
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
 	}
@@ -1553,7 +1551,7 @@ func TestDigestAuth(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.status)
 		})
 	}
@@ -1577,7 +1575,7 @@ func TestDigestAuth(t *testing.T) {
 		r.RequestURI = url
 		r.Header.Set("Authorization", authorization)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 
@@ -1598,7 +1596,7 @@ func TestGzip(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/gzip", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "application/json; encoding=utf-8")
 	assertHeader(t, w, "Content-Encoding", "gzip")
@@ -1641,7 +1639,7 @@ func TestDeflate(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/deflate", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "application/json; encoding=utf-8")
 	assertHeader(t, w, "Content-Encoding", "deflate")
@@ -1699,7 +1697,7 @@ func TestStream(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			// TODO: The stdlib seems to automagically unchunk these responses
 			// and I'm not quite sure how to test this:
@@ -1747,7 +1745,7 @@ func TestStream(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
 		})
 	}
@@ -1776,7 +1774,7 @@ func TestDelay(t *testing.T) {
 
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			elapsed := time.Since(start)
 
@@ -1797,7 +1795,7 @@ func TestDelay(t *testing.T) {
 
 	t.Run("handle cancelation", func(t *testing.T) {
 		t.Parallel()
-		srv := httptest.NewServer(handler)
+		srv := httptest.NewServer(app)
 		defer srv.Close()
 
 		client := http.Client{
@@ -1816,7 +1814,7 @@ func TestDelay(t *testing.T) {
 
 		r, _ := http.NewRequestWithContext(ctx, "GET", "/delay/1s", nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		if w.Code != 499 {
 			t.Errorf("expected 499 response, got %d", w.Code)
@@ -1844,7 +1842,7 @@ func TestDelay(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
 		})
 	}
@@ -1895,7 +1893,7 @@ func TestDrip(t *testing.T) {
 
 			r, _ := http.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			elapsed := time.Since(start)
 
@@ -1914,7 +1912,7 @@ func TestDrip(t *testing.T) {
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
 		t.Parallel()
-		srv := httptest.NewServer(handler)
+		srv := httptest.NewServer(app)
 		defer srv.Close()
 
 		// For this test, we expect the client to time out and cancel the
@@ -1945,7 +1943,7 @@ func TestDrip(t *testing.T) {
 
 	t.Run("handle cancelation during drip", func(t *testing.T) {
 		t.Parallel()
-		srv := httptest.NewServer(handler)
+		srv := httptest.NewServer(app)
 		defer srv.Close()
 
 		client := http.Client{
@@ -2004,14 +2002,14 @@ func TestDrip(t *testing.T) {
 
 			r, _ := http.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
 		})
 	}
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
 		t.Parallel()
-		srv := httptest.NewServer(handler)
+		srv := httptest.NewServer(app)
 		defer srv.Close()
 
 		resp, err := http.Head(srv.URL + "/drip?duration=900ms&delay=100ms")
@@ -2042,7 +2040,7 @@ func TestRange(t *testing.T) {
 		url := fmt.Sprintf("/range/%d", wantBytes)
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertHeader(t, w, "ETag", fmt.Sprintf("range%d", wantBytes))
@@ -2061,7 +2059,7 @@ func TestRange(t *testing.T) {
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=10-24")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusPartialContent)
 		assertHeader(t, w, "ETag", "range100")
@@ -2077,7 +2075,7 @@ func TestRange(t *testing.T) {
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=0-15")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusPartialContent)
 		assertHeader(t, w, "ETag", "range1000")
@@ -2093,7 +2091,7 @@ func TestRange(t *testing.T) {
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=20-")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusPartialContent)
 		assertHeader(t, w, "ETag", "range26")
@@ -2108,7 +2106,7 @@ func TestRange(t *testing.T) {
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=-5")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		t.Logf("headers = %v", w.Header())
 		assertStatusCode(t, w, http.StatusPartialContent)
@@ -2124,7 +2122,7 @@ func TestRange(t *testing.T) {
 		r, _ := http.NewRequest("GET", url, nil)
 		r.Header.Add("Range", "bytes=-5")
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusPartialContent)
 		assertHeader(t, w, "ETag", "range26")
@@ -2149,7 +2147,7 @@ func TestRange(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusOK)
 			assertBodyEquals(t, w, "abcdefghijklmnopqrstuvwxyz")
 		})
@@ -2173,7 +2171,7 @@ func TestRange(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
 		})
 	}
@@ -2183,7 +2181,7 @@ func TestHTML(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/html", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, htmlContentType)
 	assertBodyContains(t, w, `<h1>Herman Melville - Moby-Dick</h1>`)
@@ -2193,7 +2191,7 @@ func TestRobots(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/robots.txt", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "text/plain")
 	assertBodyContains(t, w, `Disallow: /deny`)
@@ -2203,7 +2201,7 @@ func TestDeny(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/deny", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "text/plain")
 	assertBodyContains(t, w, `YOU SHOULDN'T BE HERE`)
@@ -2216,7 +2214,7 @@ func TestCache(t *testing.T) {
 		url := "/cache"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -2252,7 +2250,7 @@ func TestCache(t *testing.T) {
 			r, _ := http.NewRequest("GET", "/cache", nil)
 			r.Header.Add(test.headerKey, test.headerVal)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusNotModified)
 		})
 	}
@@ -2265,7 +2263,7 @@ func TestCacheControl(t *testing.T) {
 		url := "/cache/60"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -2286,7 +2284,7 @@ func TestCacheControl(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}
@@ -2299,7 +2297,7 @@ func TestETag(t *testing.T) {
 		url := "/etag/abc"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertStatusCode(t, w, http.StatusOK)
 		assertHeader(t, w, "ETag", `"abc"`)
 	})
@@ -2330,7 +2328,7 @@ func TestETag(t *testing.T) {
 			r, _ := http.NewRequest("GET", url, nil)
 			r.Header.Add(test.headerKey, test.headerVal)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}
@@ -2347,7 +2345,7 @@ func TestETag(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}
@@ -2360,7 +2358,7 @@ func TestBytes(t *testing.T) {
 		url := "/bytes/1024"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, "application/octet-stream")
@@ -2374,7 +2372,7 @@ func TestBytes(t *testing.T) {
 		url := "/bytes/16?seed=1234567890"
 		r, _ := http.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, "application/octet-stream")
@@ -2402,7 +2400,7 @@ func TestBytes(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusOK)
 			assertHeader(t, w, "Content-Length", fmt.Sprintf("%d", test.expectedContentLength))
 			if len(w.Body.Bytes()) != test.expectedContentLength {
@@ -2431,7 +2429,7 @@ func TestBytes(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}
@@ -2460,7 +2458,7 @@ func TestStreamBytes(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			// TODO: The stdlib seems to automagically unchunk these responses
 			// and I'm not quite sure how to test this:
@@ -2496,7 +2494,7 @@ func TestStreamBytes(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.code)
 		})
 	}
@@ -2518,7 +2516,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, http.StatusFound)
 			assertHeader(t, w, "Location", test.expectedLocation)
@@ -2547,7 +2545,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.expectedStatus)
 		})
@@ -2571,7 +2569,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, http.StatusOK)
 			assertContentType(t, w, htmlContentType)
@@ -2606,7 +2604,7 @@ func TestImage(t *testing.T) {
 			r, _ := http.NewRequest("GET", "/image", nil)
 			r.Header.Set("Accept", test.acceptHeader)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 
 			assertStatusCode(t, w, test.expectedStatus)
 			if test.expectedContentType != "" {
@@ -2635,7 +2633,7 @@ func TestImage(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
 		})
 	}
@@ -2645,7 +2643,7 @@ func TestXML(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/xml", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "application/xml")
 	assertBodyContains(t, w, `<?xml version='1.0' encoding='us-ascii'?>`)
@@ -2666,7 +2664,7 @@ func TestUUID(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/uuid", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertStatusCode(t, w, http.StatusOK)
 
@@ -2709,7 +2707,7 @@ func TestBase64(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusOK)
 			assertContentType(t, w, "text/plain")
 			assertBodyEquals(t, w, test.want)
@@ -2764,7 +2762,7 @@ func TestBase64(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.requestURL, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusBadRequest)
 			assertBodyContains(t, w, test.expectedBodyContains)
 		})
@@ -2775,7 +2773,7 @@ func TestJSON(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/json", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, r)
+	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, jsonContentType)
 	assertBodyContains(t, w, `Wake up to WonderWidgets!`)
@@ -2791,7 +2789,7 @@ func TestBearer(t *testing.T) {
 		r, _ := http.NewRequest("GET", requestURL, nil)
 		r.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 
@@ -2842,7 +2840,7 @@ func TestBearer(t *testing.T) {
 				r.Header.Set("Authorization", test.authorizationHeader)
 			}
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertHeader(t, w, "WWW-Authenticate", "Bearer")
 			assertStatusCode(t, w, http.StatusUnauthorized)
 		})
@@ -2862,7 +2860,7 @@ func TestNotImplemented(t *testing.T) {
 			t.Parallel()
 			r, _ := http.NewRequest("GET", test.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, r)
+			app.ServeHTTP(w, r)
 			assertStatusCode(t, w, http.StatusNotImplemented)
 		})
 	}
@@ -2882,11 +2880,11 @@ func TestHostname(t *testing.T) {
 	t.Run("default hostname", func(t *testing.T) {
 		t.Parallel()
 		var (
-			handler = New().Handler()
-			r, _    = http.NewRequest("GET", "/hostname", nil)
-			w       = httptest.NewRecorder()
+			app  = New()
+			r, _ = http.NewRequest("GET", "/hostname", nil)
+			w    = httptest.NewRecorder()
 		)
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertStatusCode(t, w, http.StatusOK)
 		resp := loadResponse(t, w.Body.Bytes())
 		if resp.Hostname != DefaultHostname {
@@ -2898,11 +2896,11 @@ func TestHostname(t *testing.T) {
 		t.Parallel()
 		var (
 			realHostname = "real-hostname"
-			handler      = New(WithHostname(realHostname)).Handler()
+			app          = New(WithHostname(realHostname))
 			r, _         = http.NewRequest("GET", "/hostname", nil)
 			w            = httptest.NewRecorder()
 		)
-		handler.ServeHTTP(w, r)
+		app.ServeHTTP(w, r)
 		assertStatusCode(t, w, http.StatusOK)
 		resp := loadResponse(t, w.Body.Bytes())
 		if resp.Hostname != realHostname {

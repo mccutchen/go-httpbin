@@ -13,12 +13,12 @@ import (
 func main() {
 	statsdClient, _ := statsd.New("")
 
-	h := httpbin.New(
+	app := httpbin.New(
 		httpbin.WithObserver(datadogObserver(statsdClient)),
 	)
 
 	listenAddr := "0.0.0.0:8080"
-	http.ListenAndServe(listenAddr, h.Handler())
+	http.ListenAndServe(listenAddr, app)
 }
 
 func datadogObserver(client statsd.ClientInterface) httpbin.Observer {
