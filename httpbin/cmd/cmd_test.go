@@ -14,7 +14,7 @@ import (
 
 // To update, run:
 // make && ./dist/go-httpbin -h 2>&1 | pbcopy
-const usage = `Usage:
+const usage = `Usage of go-httpbin:
   -allowed-redirect-domains string
     	Comma-separated list of domains the /redirect-to endpoint will allow
   -host string
