@@ -26,7 +26,7 @@ build:
 .PHONY: build
 
 buildexamples: build
-	$(foreach dir, $(wildcard examples/*), @pushd $(dir) >/dev/null; echo "building $(dir) ..."; go build -o /dev/null .; popd >/dev/null;)
+	./examples/build-all
 .PHONY: buildexamples
 
 buildtests:
