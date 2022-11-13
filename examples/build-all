@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+cd "$(dirname "$0")"
+for dir in $(find . -name go.mod -mindepth 2 -maxdepth 2 | cut -d/ -f2); do
+    pushd "$dir" >/dev/null
+    echo "building example $dir ..." 1>&2
+    go build -o /dev/null .
+    popd >/dev/null
+done

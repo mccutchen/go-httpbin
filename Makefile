@@ -25,6 +25,10 @@ build:
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 .PHONY: build
 
+buildexamples: build
+	./examples/build-all
+.PHONY: buildexamples
+
 buildtests:
 	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 .PHONY: buildtests
@@ -45,7 +49,7 @@ test:
 # Test command to run for continuous integration, which includes code coverage
 # based on codecov.io's documentation:
 # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
-testci: build
+testci: build buildexamples
 	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 	git diff --exit-code
 .PHONY: testci
