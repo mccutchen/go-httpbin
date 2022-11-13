@@ -2,7 +2,6 @@ package httpbin
 
 import (
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -13,77 +12,19 @@ const (
 	DefaultHostname          = "go-httpbin"
 )
 
-const (
-	jsonContentType = "application/json; encoding=utf-8"
-	htmlContentType = "text/html; charset=utf-8"
-)
-
-type headersResponse struct {
-	Headers http.Header `json:"headers"`
+// DefaultParams defines default parameter values
+type DefaultParams struct {
+	DripDuration time.Duration
+	DripDelay    time.Duration
+	DripNumBytes int64
 }
 
-type ipResponse struct {
-	Origin string `json:"origin"`
-}
-
-type userAgentResponse struct {
-	UserAgent string `json:"user-agent"`
-}
-
-// A generic response for any incoming request that should not contain a body
-// (GET, HEAD, OPTIONS, etc).
-type noBodyResponse struct {
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
-
-	Deflated bool `json:"deflated,omitempty"`
-	Gzipped  bool `json:"gzipped,omitempty"`
-}
-
-// A generic response for any incoming request that might contain a body (POST,
-// PUT, PATCH, etc).
-type bodyResponse struct {
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
-
-	Data  string              `json:"data"`
-	Files map[string][]string `json:"files"`
-	Form  map[string][]string `json:"form"`
-	JSON  interface{}         `json:"json"`
-}
-
-type cookiesResponse map[string]string
-
-type authResponse struct {
-	Authorized bool   `json:"authorized"`
-	User       string `json:"user"`
-}
-
-// An actual stream response body will be made up of one or more of these
-// structs, encoded as JSON and separated by newlines
-type streamResponse struct {
-	ID      int         `json:"id"`
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
-}
-
-type uuidResponse struct {
-	UUID string `json:"uuid"`
-}
-
-type bearerResponse struct {
-	Authenticated bool   `json:"authenticated"`
-	Token         string `json:"token"`
-}
-
-type hostnameResponse struct {
-	Hostname string `json:"hostname"`
+// DefaultDefaultParams defines the DefaultParams that are used by default. In
+// general, these should match the original httpbin.org's defaults.
+var DefaultDefaultParams = DefaultParams{
+	DripDuration: 2 * time.Second,
+	DripDelay:    2 * time.Second,
+	DripNumBytes: 10,
 }
 
 // HTTPBin contains the business logic
@@ -111,20 +52,28 @@ type HTTPBin struct {
 	handler http.Handler
 }
 
-// DefaultParams defines default parameter values
-type DefaultParams struct {
-	DripDuration time.Duration
-	DripDelay    time.Duration
-	DripNumBytes int64
+// New creates a new HTTPBin instance
+func New(opts ...OptionFunc) *HTTPBin {
+	h := &HTTPBin{
+		MaxBodySize:   DefaultMaxBodySize,
+		MaxDuration:   DefaultMaxDuration,
+		DefaultParams: DefaultDefaultParams,
+		hostname:      DefaultHostname,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	h.handler = h.Handler()
+	return h
 }
 
-// DefaultDefaultParams defines the DefaultParams that are used by default. In
-// general, these should match the original httpbin.org's defaults.
-var DefaultDefaultParams = DefaultParams{
-	DripDuration: 2 * time.Second,
-	DripDelay:    2 * time.Second,
-	DripNumBytes: 10,
+// ServeHTTP implememnts the http.Handler interface.
+func (h *HTTPBin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.handler.ServeHTTP(w, r)
 }
+
+// Assert that HTTPBin implements http.Handler interface
+var _ http.Handler = &HTTPBin{}
 
 // Handler returns an http.Handler that exposes all HTTPBin endpoints
 func (h *HTTPBin) Handler() http.Handler {
@@ -226,78 +175,4 @@ func (h *HTTPBin) Handler() http.Handler {
 	}
 
 	return handler
-}
-
-// New creates a new HTTPBin instance
-func New(opts ...OptionFunc) *HTTPBin {
-	h := &HTTPBin{
-		MaxBodySize:   DefaultMaxBodySize,
-		MaxDuration:   DefaultMaxDuration,
-		DefaultParams: DefaultDefaultParams,
-		hostname:      DefaultHostname,
-	}
-	for _, opt := range opts {
-		opt(h)
-	}
-	h.handler = h.Handler()
-	return h
-}
-
-// ServeHTTP implememnts the http.Handler interface.
-func (h *HTTPBin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.handler.ServeHTTP(w, r)
-}
-
-// Assert that HTTPBin implements http.Handler interface
-var _ http.Handler = &HTTPBin{}
-
-// OptionFunc uses the "functional options" pattern to customize an HTTPBin
-// instance
-type OptionFunc func(*HTTPBin)
-
-// WithDefaultParams sets the default params handlers will use
-func WithDefaultParams(defaultParams DefaultParams) OptionFunc {
-	return func(h *HTTPBin) {
-		h.DefaultParams = defaultParams
-	}
-}
-
-// WithMaxBodySize sets the maximum amount of memory
-func WithMaxBodySize(m int64) OptionFunc {
-	return func(h *HTTPBin) {
-		h.MaxBodySize = m
-	}
-}
-
-// WithMaxDuration sets the maximum amount of time httpbin may take to respond
-func WithMaxDuration(d time.Duration) OptionFunc {
-	return func(h *HTTPBin) {
-		h.MaxDuration = d
-	}
-}
-
-// WithHostname sets the hostname to return via the /hostname endpoint.
-func WithHostname(s string) OptionFunc {
-	return func(h *HTTPBin) {
-		h.hostname = s
-	}
-}
-
-// WithObserver sets the request observer callback
-func WithObserver(o Observer) OptionFunc {
-	return func(h *HTTPBin) {
-		h.Observer = o
-	}
-}
-
-// WithAllowedRedirectDomains limits the domains to which the /redirect-to
-// endpoint will redirect traffic.
-func WithAllowedRedirectDomains(hosts []string) OptionFunc {
-	return func(h *HTTPBin) {
-		hostSet := make(map[string]struct{}, len(hosts))
-		for _, host := range hosts {
-			hostSet[host] = struct{}{}
-		}
-		h.AllowedRedirectDomains = hostSet
-	}
 }
