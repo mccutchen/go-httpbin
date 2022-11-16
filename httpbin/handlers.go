@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -390,7 +391,17 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 
 	if u.IsAbs() && len(h.AllowedRedirectDomains) > 0 {
 		if _, ok := h.AllowedRedirectDomains[u.Hostname()]; !ok {
-			http.Error(w, "Forbidden redirect URL. Be careful with this link.", http.StatusForbidden)
+			domainListItems := make([]string, 0, len(h.AllowedRedirectDomains))
+			for domain := range h.AllowedRedirectDomains {
+				domainListItems = append(domainListItems, fmt.Sprintf("- %s", domain))
+			}
+			sort.Strings(domainListItems)
+			formattedDomains := strings.Join(domainListItems, "\n")
+			msg := fmt.Sprintf(`Forbidden redirect URL. Please be careful with this link.
+
+Allowed redirect destinations:
+%s`, formattedDomains)
+			http.Error(w, msg, http.StatusForbidden)
 			return
 		}
 	}
