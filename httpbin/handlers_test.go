@@ -74,7 +74,7 @@ func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
 	t.Helper()
 	have := w.Body.String()
 	if want != have {
-		t.Fatalf("expected body = %v, got %v", want, have)
+		t.Fatalf("expected body = %q, got %q", want, have)
 	}
 }
 
@@ -1239,6 +1239,13 @@ func TestRedirectTo(t *testing.T) {
 		WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
 	).Handler()
 
+	allowedDomainsError := `Forbidden redirect URL. Please be careful with this link.
+
+Allowed redirect destinations:
+- example.org
+- httpbingo.org
+`
+
 	allowListTests := []struct {
 		url            string
 		expectedStatus int
@@ -1257,6 +1264,9 @@ func TestRedirectTo(t *testing.T) {
 			w := httptest.NewRecorder()
 			allowListHandler.ServeHTTP(w, r)
 			assertStatusCode(t, w, test.expectedStatus)
+			if test.expectedStatus >= 400 {
+				assertBodyEquals(t, w, allowedDomainsError)
+			}
 		})
 	}
 }
