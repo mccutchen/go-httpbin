@@ -51,10 +51,22 @@ func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
 	}
 }
 
-func assertHeader(t *testing.T, w *httptest.ResponseRecorder, key, val string) {
+// assertHeader asserts that a header key has a specific value in a
+// response-like object. x must be *httptest.ResponseRecorder or *http.Response
+func assertHeader(t *testing.T, x interface{}, key, want string) {
 	t.Helper()
-	if w.Header().Get(key) != val {
-		t.Fatalf("expected header %s=%#v, got %#v", key, val, w.Header().Get(key))
+
+	var got string
+	switch r := x.(type) {
+	case *httptest.ResponseRecorder:
+		got = r.Header().Get(key)
+	case *http.Response:
+		got = r.Header.Get(key)
+	default:
+		t.Fatalf("expected *httptest.ResponseRecorder or *http.Response, got %t", x)
+	}
+	if want != got {
+		t.Fatalf("expected header %s=%#v, got %#v", key, want, got)
 	}
 }
 
@@ -1705,31 +1717,30 @@ func TestStream(t *testing.T) {
 		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
-			r, _ := http.NewRequest("GET", test.url, nil)
-			w := httptest.NewRecorder()
-			app.ServeHTTP(w, r)
+			srv := httptest.NewServer(app)
+			defer srv.Close()
 
-			// TODO: The stdlib seems to automagically unchunk these responses
-			// and I'm not quite sure how to test this:
-			//
-			//     assertHeader(t, w, "Transfer-Encoding", "chunked")
-			//
-			// Instead, we assert that we got no Content-Length header, which
-			// is an indication that the Go stdlib streamed the response.
-			assertHeader(t, w, "Content-Length", "")
+			resp, err := http.Get(srv.URL + test.url)
+			assertNil(t, err)
+			defer resp.Body.Close()
 
-			var resp *streamResponse
-			var err error
+			// Expect empty content-length due to streaming response
+			assertHeader(t, resp, "Content-Length", "")
+
+			if len(resp.TransferEncoding) != 1 || resp.TransferEncoding[0] != "chunked" {
+				t.Fatalf("expected Transfer-Encoding: chunked, got %#v", resp.TransferEncoding)
+			}
+
+			var sr *streamResponse
 
 			i := 0
-			scanner := bufio.NewScanner(w.Body)
+			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				err = json.Unmarshal(scanner.Bytes(), &resp)
-				if err != nil {
+				if err := json.Unmarshal(scanner.Bytes(), &sr); err != nil {
 					t.Fatalf("error unmarshalling response: %s", err)
 				}
-				if resp.ID != i {
-					t.Fatalf("bad id: %v != %v", resp.ID, i)
+				if sr.ID != i {
+					t.Fatalf("bad id: %v != %v", sr.ID, i)
 				}
 				i++
 			}
@@ -1919,6 +1930,51 @@ func TestDrip(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("writes are actually incremmental", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(app)
+		defer srv.Close()
+
+		var (
+			duration  = 100 * time.Millisecond
+			numBytes  = 3
+			wantDelay = duration / time.Duration(numBytes)
+			wantBytes = []byte{'*'}
+		)
+		resp, err := http.Get(srv.URL + fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, wantDelay, numBytes))
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		defer resp.Body.Close()
+
+		// Here we read from the response one byte at a time, and ensure that
+		// at least the expected delay occurs for each read.
+		//
+		// The request above includes an initial delay equal to the expected
+		// wait between writes so that even the first iteration of this loop
+		// expects to wait the same amount of time for a read.
+		buf := make([]byte, 1)
+		for {
+			start := time.Now()
+			n, err := resp.Body.Read(buf)
+			gotDelay := time.Since(start)
+
+			if err == io.EOF {
+				break
+			}
+			assertNil(t, err)
+			assertIntEqual(t, n, 1)
+			if !reflect.DeepEqual(buf, wantBytes) {
+				t.Fatalf("unexpected bytes read: got %v, want %v", buf, wantBytes)
+			}
+
+			if gotDelay < wantDelay {
+				t.Fatalf("to wait at least %s between reads, waited %s", wantDelay, gotDelay)
+			}
+		}
+	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
 		t.Parallel()
@@ -2466,21 +2522,25 @@ func TestStreamBytes(t *testing.T) {
 		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
-			r, _ := http.NewRequest("GET", test.url, nil)
-			w := httptest.NewRecorder()
-			app.ServeHTTP(w, r)
 
-			// TODO: The stdlib seems to automagically unchunk these responses
-			// and I'm not quite sure how to test this:
-			//
-			//     assertHeader(t, w, "Transfer-Encoding", "chunked")
-			//
-			// Instead, we assert that we got no Content-Length header, which
-			// is an indication that the Go stdlib streamed the response.
-			assertHeader(t, w, "Content-Length", "")
+			srv := httptest.NewServer(app)
+			defer srv.Close()
 
-			if len(w.Body.Bytes()) != test.expectedContentLength {
-				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, len(w.Body.Bytes()))
+			resp, err := http.Get(srv.URL + test.url)
+			assertNil(t, err)
+			defer resp.Body.Close()
+
+			if len(resp.TransferEncoding) != 1 || resp.TransferEncoding[0] != "chunked" {
+				t.Fatalf("expected Transfer-Encoding: chunked, got %#v", resp.TransferEncoding)
+			}
+
+			// Expect empty content-length due to streaming response
+			assertHeader(t, resp, "Content-Length", "")
+
+			body, err := io.ReadAll(resp.Body)
+			assertNil(t, err)
+			if len(body) != test.expectedContentLength {
+				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, len(body))
 			}
 		})
 	}
