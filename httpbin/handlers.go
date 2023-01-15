@@ -23,7 +23,8 @@ func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		msg := fmt.Sprintf("Not Found (go-httpbin does not have the API: %s)", r.URL.Path)
+		http.Error(w, msg, http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
