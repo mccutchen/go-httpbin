@@ -116,6 +116,7 @@ func TestIndex__NotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	app.ServeHTTP(w, r)
 	assertStatusCode(t, w, http.StatusNotFound)
+	assertBodyContains(t, w, "/foo")
 }
 
 func TestFormsPost(t *testing.T) {
