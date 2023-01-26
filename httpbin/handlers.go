@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"sort"
 	"strconv"
@@ -1011,6 +1012,20 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeResponse(w, http.StatusOK, "text/plain", result)
+}
+
+// DumpRequest - returns the given request in its HTTP/1.x wire representation.
+// The returned representation is an approximation only;
+// some details of the initial request are lost while parsing it into
+// an http.Request. In particular, the order and case of header field
+// names are lost.
+func (h *HTTPBin) DumpRequest(w http.ResponseWriter, r *http.Request) {
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "%s", dump)
 }
 
 // JSON - returns a sample json

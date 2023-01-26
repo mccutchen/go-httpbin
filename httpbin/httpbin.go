@@ -145,6 +145,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/uuid", h.UUID)
 	mux.HandleFunc("/base64/", h.Base64)
 
+	mux.HandleFunc("/dump/request", h.DumpRequest)
+
 	// existing httpbin endpoints that we do not support
 	mux.HandleFunc("/brotli", notImplementedHandler)
 
