@@ -25,9 +25,9 @@ jobs:
 
     - run: make testci
 
-    - uses: codecov/codecov-action@v1
+    - uses: codecov/codecov-action@v3
       with:
-        file: ./coverage.txt
+        files: ./coverage.txt
 
     - run: make image
 
