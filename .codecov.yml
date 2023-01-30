@@ -12,10 +12,11 @@ coverage:
 
   # https://docs.codecov.io/docs/commit-status
   status:
-    target: auto
-    threshold: 2
-    patch: no
-    changes: no
+    project:
+      default:
+        target: auto
+        base: auto
+        threshold: 2%
 
 parsers:
   gcov:
