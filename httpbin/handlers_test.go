@@ -2840,6 +2840,16 @@ func TestBase64(t *testing.T) {
 	}
 }
 
+func TestDumpRequest(t *testing.T) {
+	t.Parallel()
+	r, _ := http.NewRequest("GET", "/dump/request", nil)
+	w := httptest.NewRecorder()
+	app.ServeHTTP(w, r)
+
+	assertContentType(t, w, "text/plain; charset=utf-8")
+	assertBodyEquals(t, w, "GET /dump/request HTTP/1.1\r\n\r\n")
+}
+
 func TestJSON(t *testing.T) {
 	t.Parallel()
 	r, _ := http.NewRequest("GET", "/json", nil)
