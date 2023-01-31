@@ -80,6 +80,7 @@
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd/:algorithm</code></a> Challenges HTTP Digest Auth.</li>
 <li><a href="/digest-auth/auth/user/passwd/MD5"><code>/digest-auth/:qop/:user/:passwd</code></a> Challenges HTTP Digest Auth.</li>
 <li><a href="/drip?code=200&amp;numbytes=5&amp;duration=5"><code>/drip?numbytes=n&amp;duration=s&amp;delay=s&amp;code=code</code></a> Drips data over a duration after an optional initial delay, then (optionally) returns with the given status code.</li>
+<li><a href="/dump/request"><code>/dump/request</code></a> Returns the given request in its HTTP/1.x wire approximate representation.</li>
 <li><a href="/encoding/utf8"><code>/encoding/utf8</code></a> Returns page containing UTF-8 data.</li>
 <li><a href="/etag/etag"><code>/etag/:etag</code></a> Assumes the resource has the given etag and responds to If-None-Match header with a 200 or 304 and If-Match with a 200 or 412 as appropriate.</li>
 <li><a href="/forms/post"><code>/forms/post</code></a> HTML form that submits to <em>/post</em></li>
@@ -156,6 +157,14 @@
   "origin": "73.238.9.52, 77.83.142.42",
   "url": "https://httpbingo.org/get?foo=bar"
 }
+</code></pre>
+
+<h3 id="-curl-http-httpbin-org-dump-request">$ curl https://httpbingo.org/dump/request?foo=bar</h3>
+
+<pre><code>GET /dump/request?foo=bar HTTP/1.1
+Host: httpbingo.org
+Accept: */*
+User-Agent: curl/7.64.1
 </code></pre>
 
 <h3 id="-curl-I-http-httpbin-org-status-418">$ curl -I https://httpbingo.org/status/418</h3>
