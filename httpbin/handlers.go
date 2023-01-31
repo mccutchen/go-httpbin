@@ -1022,10 +1022,10 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) DumpRequest(w http.ResponseWriter, r *http.Request) {
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, "%s", dump)
+	w.Write(dump)
 }
 
 // JSON - returns a sample json

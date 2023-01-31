@@ -2842,12 +2842,15 @@ func TestBase64(t *testing.T) {
 
 func TestDumpRequest(t *testing.T) {
 	t.Parallel()
-	r, _ := http.NewRequest("GET", "/dump/request", nil)
+	r, _ := http.NewRequest("GET", "/dump/request?foo=bar", nil)
+	r.Host = "test-host"
+	r.Header.Set("x-test-header2", "Test-Value2")
+	r.Header.Set("x-test-header1", "Test-Value1")
 	w := httptest.NewRecorder()
 	app.ServeHTTP(w, r)
 
 	assertContentType(t, w, "text/plain; charset=utf-8")
-	assertBodyEquals(t, w, "GET /dump/request HTTP/1.1\r\n\r\n")
+	assertBodyEquals(t, w, "GET /dump/request?foo=bar HTTP/1.1\r\nHost: test-host\r\nX-Test-Header1: Test-Value1\r\nX-Test-Header2: Test-Value2\r\n\r\n")
 }
 
 func TestJSON(t *testing.T) {
