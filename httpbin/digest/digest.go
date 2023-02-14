@@ -12,10 +12,10 @@ package digest
 
 import (
 	"crypto/md5"
+	crypto_rand "crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -55,7 +55,7 @@ func Check(req *http.Request, username, password string) bool {
 // algorithm. If an invalid realm or an unsupported algorithm is given
 func Challenge(realm string, algorithm digestAlgorithm) string {
 	entropy := make([]byte, 32)
-	rand.Read(entropy)
+	crypto_rand.Read(entropy)
 
 	opaqueVal := entropy[:16]
 	nonceVal := fmt.Sprintf("%s:%x", time.Now(), entropy[16:31])

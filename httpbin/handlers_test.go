@@ -91,7 +91,7 @@ func assertBodyEquals(t *testing.T, w *httptest.ResponseRecorder, want string) {
 }
 
 func randStringBytes(n int) string {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = alphanumLetters[rand.Intn(len(alphanumLetters))]
