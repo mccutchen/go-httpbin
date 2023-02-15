@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"bytes"
+	crypto_rand "crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
@@ -284,7 +285,7 @@ func sha1hash(input string) string {
 
 func uuidv4() string {
 	buff := make([]byte, 16)
-	_, err := rand.Read(buff[:])
+	_, err := crypto_rand.Read(buff[:])
 	if err != nil {
 		panic(err)
 	}
