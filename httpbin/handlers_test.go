@@ -2455,7 +2455,8 @@ func TestBytes(t *testing.T) {
 		url                   string
 		expectedContentLength int
 	}{
-		{"/bytes/-1", 1},
+		{"/bytes/0", 0},
+		{"/bytes/1", 1},
 		{"/bytes/99999999", 100 * 1024},
 
 		// negative seed allowed
@@ -2480,6 +2481,8 @@ func TestBytes(t *testing.T) {
 		url            string
 		expectedStatus int
 	}{
+		{"/bytes/-1", http.StatusBadRequest},
+
 		{"/bytes", http.StatusNotFound},
 		{"/bytes/16/foo", http.StatusNotFound},
 

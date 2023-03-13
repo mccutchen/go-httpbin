@@ -785,9 +785,20 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		return
 	}
 
-	if numBytes < 1 {
-		numBytes = 1
-	} else if numBytes > 100*1024 {
+	if numBytes < 0 {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Special case 0 bytes and exit early, since streaming & chunk size do not
+	// matter here.
+	if numBytes == 0 {
+		w.Header().Set("Content-Length", "0")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if numBytes > 100*1024 {
 		numBytes = 100 * 1024
 	}
 
