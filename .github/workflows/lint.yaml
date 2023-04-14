@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main] # pull requests AGAINST main
 
+# cancel CI runs when a new commit is pushed to any branch except main
+concurrency:
+  group: "lint-${{ github.ref }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   golangci:
     name: Lint
@@ -17,4 +22,4 @@ jobs:
           go-version: '1.20'
       - uses: golangci/golangci-lint-action@v3.4.0
         with:
-          version: v1.51.1
+          version: v1.52.2

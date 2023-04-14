@@ -11,6 +11,11 @@ on:
   pull_request:
     branches: [main]
 
+# cancel CI runs when a new commit is pushed to any branch except main
+concurrency:
+  group: "test-${{ github.ref }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   test:
     name: Test
