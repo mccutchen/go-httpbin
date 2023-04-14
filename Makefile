@@ -11,10 +11,10 @@ COVERAGE_PATH ?= coverage.txt
 COVERAGE_ARGS ?= -covermode=atomic -coverprofile=$(COVERAGE_PATH)
 TEST_ARGS     ?= -race
 
-# Tool dependencies
-TOOL_BIN_DIR     ?= $(shell go env GOPATH)/bin
-TOOL_GOLINT      := $(TOOL_BIN_DIR)/golint
-TOOL_STATICCHECK := $(TOOL_BIN_DIR)/staticcheck
+# 3rd party tools
+GOLINT      := go run golang.org/x/lint/golint@latest
+REFLEX      := go run github.com/cespare/reflex@v0.3.1
+STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2023.1.3
 
 
 # =============================================================================
@@ -58,11 +58,11 @@ testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
 .PHONY: testcover
 
-lint: $(TOOL_GOLINT) $(TOOL_STATICCHECK)
+lint:
 	test -z "$$(gofmt -d -s -e .)" || (echo "Error: gofmt failed"; gofmt -d -s -e . ; exit 1)
 	go vet ./...
-	$(TOOL_GOLINT) -set_exit_status ./...
-	$(TOOL_STATICCHECK) ./...
+	$(GOLINT) -set_exit_status ./...
+	$(STATICCHECK) ./...
 .PHONY: lint
 
 
@@ -73,8 +73,8 @@ run: build
 	$(DIST_PATH)/go-httpbin
 .PHONY: run
 
-watch: $(TOOL_REFLEX)
-	reflex -s -r '\.(go|html)$$' make run
+watch:
+	$(REFLEX) -s -r '\.(go|html)$$' make run
 .PHONY: watch
 
 
@@ -91,18 +91,3 @@ imagepush:
 	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG) .
 	docker buildx rm httpbin
 .PHONY: imagepush
-
-
-# =============================================================================
-# dependencies
-#
-# Deps are installed outside of working dir to avoid polluting go modules
-# =============================================================================
-$(TOOL_GOLINT):
-	go install golang.org/x/lint/golint@latest
-
-$(TOOL_REFLEX):
-	go install github.com/cespare/reflex@0.3.1
-
-$(TOOL_STATICCHECK):
-	go install honnef.co/go/tools/cmd/staticcheck@v0.3.0
