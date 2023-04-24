@@ -159,6 +159,19 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		if err != nil && err != io.EOF {
 			return err
 		}
+	// in case of binary data, we encode it as base64 and return it as a data url
+	case strings.HasPrefix(ct, "image/png"):
+		fallthrough
+	case strings.HasPrefix(ct, "image/jpeg"):
+		fallthrough
+	case strings.HasPrefix(ct, "image/webp"):
+		fallthrough
+	case strings.HasPrefix(ct, "application/octet-stream"):
+		data := base64.StdEncoding.EncodeToString(body)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		resp.Data = string("data:application/octet-stream;base64," + data)
 	}
 
 	return nil

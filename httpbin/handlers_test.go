@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -544,6 +545,7 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyMultiPartBody,
 		testRequestWithBodyQueryParams,
 		testRequestWithBodyQueryParamsAndBody,
+		testRequestWithBodyBinaryBody,
 	}
 	for _, testFunc := range testFuncs {
 		testFunc := testFunc
@@ -551,6 +553,54 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
 			t.Parallel()
 			testFunc(t, verb, path)
+		})
+	}
+}
+
+func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
+	tests := []struct {
+		contentType  string
+		bodyResponse string
+	}{
+		{"application/octet-stream", "encodeMe"},
+		{"image/png", "encodeMe-png"},
+		{"image/webp", "encodeMe-webp"},
+		{"image/jpeg", "encodeMe-jpeg"},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run("content type/"+test.contentType, func(t *testing.T) {
+			t.Parallel()
+
+			testBody := bytes.NewReader([]byte(test.bodyResponse))
+
+			r, _ := http.NewRequest(verb, path, testBody)
+			r.Header.Set("Content-Type", test.contentType)
+			w := httptest.NewRecorder()
+			app.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, http.StatusOK)
+			assertContentType(t, w, jsonContentType)
+
+			var resp *bodyResponse
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			if err != nil {
+				t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+			}
+
+			if resp.Data != "data:application/octet-stream;base64,"+base64.StdEncoding.EncodeToString([]byte(test.bodyResponse)) {
+				t.Fatalf("expected binary encoded response data, got %#v", resp.Data)
+			}
+			if resp.JSON != nil {
+				t.Fatalf("expected nil response json, got %#v", resp.JSON)
+			}
+
+			if len(resp.Args) > 0 {
+				t.Fatalf("expected no query params, got %#v", resp.Args)
+			}
+			if len(resp.Form) > 0 {
+				t.Fatalf("expected no form data, got %#v", resp.Form)
+			}
 		})
 	}
 }
