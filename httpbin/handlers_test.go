@@ -559,8 +559,8 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 
 func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 	tests := []struct {
-		contentType  string
-		bodyResponse string
+		contentType string
+		requestBody string
 	}{
 		{"application/octet-stream", "encodeMe"},
 		{"image/png", "encodeMe-png"},
@@ -572,7 +572,7 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 		t.Run("content type/"+test.contentType, func(t *testing.T) {
 			t.Parallel()
 
-			testBody := bytes.NewReader([]byte(test.bodyResponse))
+			testBody := bytes.NewReader([]byte(test.requestBody))
 
 			r, _ := http.NewRequest(verb, path, testBody)
 			r.Header.Set("Content-Type", test.contentType)
