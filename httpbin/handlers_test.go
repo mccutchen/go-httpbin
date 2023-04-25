@@ -566,6 +566,7 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 		{"image/png", "encodeMe-png"},
 		{"image/webp", "encodeMe-webp"},
 		{"image/jpeg", "encodeMe-jpeg"},
+		{"unknown", "encodeMe-unknown"},
 	}
 	for _, test := range tests {
 		test := test
@@ -588,8 +589,10 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 				t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
 			}
 
-			if resp.Data != "data:application/octet-stream;base64,"+base64.StdEncoding.EncodeToString([]byte(test.bodyResponse)) {
-				t.Fatalf("expected binary encoded response data, got %#v", resp.Data)
+			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
+
+			if resp.Data != expected {
+				t.Fatalf("expected binary encoded response data: %#v got %#v", expected, resp.Data)
 			}
 			if resp.JSON != nil {
 				t.Fatalf("expected nil response json, got %#v", resp.JSON)

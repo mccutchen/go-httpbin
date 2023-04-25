@@ -133,6 +133,13 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 
 	ct := r.Header.Get("Content-Type")
 	switch {
+	// cases where we don't need to parse the body
+	case ct == "":
+		fallthrough
+	case strings.HasPrefix(ct, "text/"):
+		// string body is already set above
+		return nil
+
 	case strings.HasPrefix(ct, "application/x-www-form-urlencoded"):
 		// r.ParseForm() does not populate r.PostForm for DELETE or GET requests, but
 		// we need it to for compatibility with the httpbin implementation, so
@@ -161,20 +168,25 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 		}
 	// in case of binary data, we encode it as base64 and return it as a data url
 	case strings.HasPrefix(ct, "image/png"):
-		fallthrough
+		resp.Data = encodeData(body, "image/png")
 	case strings.HasPrefix(ct, "image/jpeg"):
-		fallthrough
+		resp.Data = encodeData(body, "image/jpeg")
 	case strings.HasPrefix(ct, "image/webp"):
-		fallthrough
+		resp.Data = encodeData(body, "image/webp")
 	case strings.HasPrefix(ct, "application/octet-stream"):
-		data := base64.StdEncoding.EncodeToString(body)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		resp.Data = string("data:application/octet-stream;base64," + data)
+		resp.Data = encodeData(body, "application/octet-stream")
+	default:
+		// If we don't know how to handle the content type, we'll just return it encoded as base64 data url
+		resp.Data = encodeData(body, ct)
 	}
 
 	return nil
+}
+
+// return provided string as base64 encoded data url, with the given content type
+func encodeData(body []byte, contentType string) string {
+	data := base64.StdEncoding.EncodeToString(body)
+	return string("data:" + contentType + ";base64," + data)
 }
 
 // parseDuration takes a user's input as a string and attempts to convert it
