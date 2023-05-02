@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -544,6 +545,7 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyMultiPartBody,
 		testRequestWithBodyQueryParams,
 		testRequestWithBodyQueryParamsAndBody,
+		testRequestWithBodyBinaryBody,
 	}
 	for _, testFunc := range testFuncs {
 		testFunc := testFunc
@@ -551,6 +553,57 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
 			t.Parallel()
 			testFunc(t, verb, path)
+		})
+	}
+}
+
+func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
+	tests := []struct {
+		contentType string
+		requestBody string
+	}{
+		{"application/octet-stream", "encodeMe"},
+		{"image/png", "encodeMe-png"},
+		{"image/webp", "encodeMe-webp"},
+		{"image/jpeg", "encodeMe-jpeg"},
+		{"unknown", "encodeMe-unknown"},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run("content type/"+test.contentType, func(t *testing.T) {
+			t.Parallel()
+
+			testBody := bytes.NewReader([]byte(test.requestBody))
+
+			r, _ := http.NewRequest(verb, path, testBody)
+			r.Header.Set("Content-Type", test.contentType)
+			w := httptest.NewRecorder()
+			app.ServeHTTP(w, r)
+
+			assertStatusCode(t, w, http.StatusOK)
+			assertContentType(t, w, jsonContentType)
+
+			var resp *bodyResponse
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			if err != nil {
+				t.Fatalf("failed to unmarshal body %s from JSON: %s", w.Body, err)
+			}
+
+			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
+
+			if resp.Data != expected {
+				t.Fatalf("expected binary encoded response data: %#v got %#v", expected, resp.Data)
+			}
+			if resp.JSON != nil {
+				t.Fatalf("expected nil response json, got %#v", resp.JSON)
+			}
+
+			if len(resp.Args) > 0 {
+				t.Fatalf("expected no query params, got %#v", resp.Args)
+			}
+			if len(resp.Form) > 0 {
+				t.Fatalf("expected no form data, got %#v", resp.Form)
+			}
 		})
 	}
 }
@@ -681,8 +734,10 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 	if len(resp.Form) != 0 {
 		t.Fatalf("expected no form values, got %d", len(resp.Form))
 	}
-	if string(resp.Data) != params.Encode() {
-		t.Fatalf("response data mismatch, %#v != %#v", string(resp.Data), params.Encode())
+	// Because we did not set an content type, httpbin will return the base64 encoded data.
+	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
+	if string(resp.Data) != expectedBody {
+		t.Fatalf("response data mismatch, %#v != %#v", string(resp.Data), expectedBody)
 	}
 }
 
