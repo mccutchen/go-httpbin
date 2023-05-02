@@ -140,8 +140,6 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 
 	switch {
 	// cases where we don't need to parse the body
-	case ct == "":
-		fallthrough
 	case strings.HasPrefix(ct, "html/"):
 		fallthrough
 	case strings.HasPrefix(ct, "text/"):
@@ -187,6 +185,12 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 // return provided string as base64 encoded data url, with the given content type
 func encodeData(body []byte, contentType string) string {
 	data := base64.StdEncoding.EncodeToString(body)
+
+	// If no content type is provided, default to application/octet-stream
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
 	return string("data:" + contentType + ";base64," + data)
 }
 

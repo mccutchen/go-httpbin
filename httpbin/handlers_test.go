@@ -734,8 +734,10 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 	if len(resp.Form) != 0 {
 		t.Fatalf("expected no form values, got %d", len(resp.Form))
 	}
-	if string(resp.Data) != params.Encode() {
-		t.Fatalf("response data mismatch, %#v != %#v", string(resp.Data), params.Encode())
+	// Because we did not set an content type, httpbin will return the base64 encoded data.
+	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
+	if string(resp.Data) != expectedBody {
+		t.Fatalf("response data mismatch, %#v != %#v", string(resp.Data), expectedBody)
 	}
 }
 
