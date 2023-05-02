@@ -132,15 +132,23 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	ct := r.Header.Get("Content-Type")
+
+	// Strip of charset encoding, if present
+	if strings.Contains(ct, ";") {
+		ct = strings.Split(ct, ";")[0]
+	}
+
 	switch {
 	// cases where we don't need to parse the body
 	case ct == "":
+		fallthrough
+	case strings.HasPrefix(ct, "html/"):
 		fallthrough
 	case strings.HasPrefix(ct, "text/"):
 		// string body is already set above
 		return nil
 
-	case strings.HasPrefix(ct, "application/x-www-form-urlencoded"):
+	case ct == "application/x-www-form-urlencoded":
 		// r.ParseForm() does not populate r.PostForm for DELETE or GET requests, but
 		// we need it to for compatibility with the httpbin implementation, so
 		// we trick it with this ugly hack.
@@ -153,7 +161,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 			return err
 		}
 		resp.Form = r.PostForm
-	case strings.HasPrefix(ct, "multipart/form-data"):
+	case ct == "multipart/form-data":
 		// The memory limit here only restricts how many parts will be kept in
 		// memory before overflowing to disk:
 		// https://golang.org/pkg/net/http/#Request.ParseMultipartForm
@@ -161,22 +169,15 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 			return err
 		}
 		resp.Form = r.PostForm
-	case strings.HasPrefix(ct, "application/json"):
+	case ct == "application/json":
 		err := json.NewDecoder(r.Body).Decode(&resp.JSON)
 		if err != nil && err != io.EOF {
 			return err
 		}
-	// in case of binary data, we encode it as base64 and return it as a data url
-	case strings.HasPrefix(ct, "image/png"):
-		resp.Data = encodeData(body, "image/png")
-	case strings.HasPrefix(ct, "image/jpeg"):
-		resp.Data = encodeData(body, "image/jpeg")
-	case strings.HasPrefix(ct, "image/webp"):
-		resp.Data = encodeData(body, "image/webp")
-	case strings.HasPrefix(ct, "application/octet-stream"):
-		resp.Data = encodeData(body, "application/octet-stream")
+
 	default:
-		// If we don't know how to handle the content type, we'll just return it encoded as base64 data url
+		// If we don't have a special case for the content type, we'll just return it encoded as base64 data url
+		// we strip off any charset information, since we will re-encode the body
 		resp.Data = encodeData(body, ct)
 	}
 
