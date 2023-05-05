@@ -184,7 +184,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 
 // return provided string as base64 encoded data url, with the given content type
 func encodeData(body []byte, contentType string) string {
-	data := base64.StdEncoding.EncodeToString(body)
+	data := base64.URLEncoding.EncodeToString(body)
 
 	// If no content type is provided, default to application/octet-stream
 	if contentType == "" {
@@ -370,14 +370,12 @@ func newBase64Helper(path string) (*base64Helper, error) {
 
 // Encode - encode data as base64
 func (b *base64Helper) Encode() ([]byte, error) {
-	buff := make([]byte, base64.StdEncoding.EncodedLen(len(b.data)))
-	base64.StdEncoding.Encode(buff, []byte(b.data))
+	buff := make([]byte, base64.URLEncoding.EncodedLen(len(b.data)))
+	base64.URLEncoding.Encode(buff, []byte(b.data))
 	return buff, nil
 }
 
 // Decode - decode data from base64
 func (b *base64Helper) Decode() ([]byte, error) {
-	buff := make([]byte, base64.StdEncoding.DecodedLen(len(b.data)))
-	_, err := base64.StdEncoding.Decode(buff, []byte(b.data))
-	return buff, err
+	return base64.URLEncoding.DecodeString(b.data)
 }
