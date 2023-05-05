@@ -2828,6 +2828,24 @@ func TestBase64(t *testing.T) {
 			"/base64/encode/valid_base64_encoded_string",
 			"dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
 		},
+		{
+			// make sure we correctly handle padding
+			// https://github.com/mccutchen/go-httpbin/issues/118
+			"/base64/dGVzdC1pbWFnZQ==",
+			"test-image",
+		},
+		{
+			// URL-safe base64 is used for decoding (note the - instead of + in
+			// encoded input string)
+			"/base64/decode/YWJjMTIzIT8kKiYoKSctPUB-",
+			"abc123!?$*&()'-=@~",
+		},
+		{
+			// URL-safe base64 is used for encoding (note the - instead of + in
+			// encoded output string)
+			"/base64/encode/abc123%21%3F%24%2A%26%28%29%27-%3D%40~",
+			"YWJjMTIzIT8kKiYoKSctPUB-",
+		},
 	}
 
 	for _, test := range okTests {
@@ -2882,6 +2900,12 @@ func TestBase64(t *testing.T) {
 		{
 			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
 			"invalid operation: unknown",
+		},
+		{
+			// we only support URL-safe base64 encoded strings (note the +
+			// instead of - in encoded input string)
+			"/base64/decode/YWJjMTIzIT8kKiYoKSctPUB+",
+			"illegal base64 data",
 		},
 	}
 
