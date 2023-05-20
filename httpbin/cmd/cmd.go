@@ -70,6 +70,9 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 		httpbin.WithMaxDuration(cfg.MaxDuration),
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
 	}
+	if cfg.Prefix != "" {
+		opts = append(opts, httpbin.WithPrefix(cfg.Prefix))
+	}
 	if cfg.RealHostname != "" {
 		opts = append(opts, httpbin.WithHostname(cfg.RealHostname))
 	}
@@ -102,6 +105,7 @@ type config struct {
 	ListenPort             int
 	MaxBodySize            int64
 	MaxDuration            time.Duration
+	Prefix                 string
 	RealHostname           string
 	TLSCertFile            string
 	TLSKeyFile             string
@@ -138,6 +142,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.IntVar(&cfg.ListenPort, "port", defaultListenPort, "Port to listen on")
 	fs.StringVar(&cfg.rawAllowedRedirectDomains, "allowed-redirect-domains", "", "Comma-separated list of domains the /redirect-to endpoint will allow")
 	fs.StringVar(&cfg.ListenHost, "host", defaultListenHost, "Host to listen on")
+	fs.StringVar(&cfg.Prefix, "prefix", "", "Path prefix (empty or start with slash and does not end with slash)")
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 

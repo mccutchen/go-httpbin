@@ -30,6 +30,7 @@ const (
 	maxBodySize     int64         = 1024
 	maxDuration     time.Duration = 1 * time.Second
 	alphanumLetters               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	testPrefix                    = "/a-prefix"
 )
 
 var testDefaultParams = DefaultParams{
@@ -38,12 +39,28 @@ var testDefaultParams = DefaultParams{
 	DripNumBytes: 10,
 }
 
-var app = New(
-	WithDefaultParams(testDefaultParams),
-	WithMaxBodySize(maxBodySize),
-	WithMaxDuration(maxDuration),
-	WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
-)
+func createApp(opts ...OptionFunc) *HTTPBin {
+	return New(
+		append(append(make([]OptionFunc, 0, 4+len(opts)),
+			WithDefaultParams(testDefaultParams),
+			WithMaxBodySize(maxBodySize),
+			WithMaxDuration(maxDuration),
+			WithObserver(StdLogObserver(log.New(io.Discard, "", 0)))),
+			opts...)...)
+}
+
+var app = createApp()
+var appPrefix = createApp(WithPrefix(testPrefix))
+
+type server struct {
+	app    *HTTPBin
+	prefix string
+}
+
+var servers = []*server{
+	&server{app, ""},
+	&server{appPrefix, testPrefix},
+}
 
 func assertStatusCode(t *testing.T, w *httptest.ResponseRecorder, code int) {
 	t.Helper()
@@ -109,6 +126,18 @@ func TestIndex(t *testing.T) {
 	assertContentType(t, w, htmlContentType)
 	assertHeader(t, w, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
 	assertBodyContains(t, w, "go-httpbin")
+}
+
+func TestIndexPrefix(t *testing.T) {
+	t.Parallel()
+	r, _ := http.NewRequest("GET", testPrefix+"/", nil)
+	w := httptest.NewRecorder()
+	appPrefix.ServeHTTP(w, r)
+
+	assertContentType(t, w, htmlContentType)
+	assertHeader(t, w, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
+	assertBodyContains(t, w, "go-httpbin")
+	assertBodyContains(t, w, testPrefix+"/get")
 }
 
 func TestIndex__NotFound(t *testing.T) {
@@ -1176,78 +1205,85 @@ func TestResponseHeaders__OverrideContentType(t *testing.T) {
 
 func TestRedirects(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		requestURL       string
 		expectedLocation string
 	}{
-		{"/redirect/1", "/get"},
-		{"/redirect/2", "/relative-redirect/1"},
-		{"/redirect/100", "/relative-redirect/99"},
+		{"%s/redirect/1", "%s/get"},
+		{"%s/redirect/2", "%s/relative-redirect/1"},
+		{"%s/redirect/100", "%s/relative-redirect/99"},
+		{"%s/redirect/1?absolute=true", "http://host%s/get"},
+		{"%s/redirect/2?absolute=TRUE", "http://host%s/absolute-redirect/1"},
+		{"%s/redirect/100?absolute=True", "http://host%s/absolute-redirect/99"},
+		{"%s/redirect/100?absolute=t", "%s/relative-redirect/99"},
+		{"%s/redirect/100?absolute=1", "%s/relative-redirect/99"},
+		{"%s/redirect/100?absolute=yes", "%s/relative-redirect/99"},
 
-		{"/redirect/1?absolute=true", "http://host/get"},
-		{"/redirect/2?absolute=TRUE", "http://host/absolute-redirect/1"},
-		{"/redirect/100?absolute=True", "http://host/absolute-redirect/99"},
+		{"%s/relative-redirect/1", "%s/get"},
+		{"%s/relative-redirect/2", "%s/relative-redirect/1"},
+		{"%s/relative-redirect/100", "%s/relative-redirect/99"},
 
-		{"/redirect/100?absolute=t", "/relative-redirect/99"},
-		{"/redirect/100?absolute=1", "/relative-redirect/99"},
-		{"/redirect/100?absolute=yes", "/relative-redirect/99"},
-
-		{"/relative-redirect/1", "/get"},
-		{"/relative-redirect/2", "/relative-redirect/1"},
-		{"/relative-redirect/100", "/relative-redirect/99"},
-
-		{"/absolute-redirect/1", "http://host/get"},
-		{"/absolute-redirect/2", "http://host/absolute-redirect/1"},
-		{"/absolute-redirect/100", "http://host/absolute-redirect/99"},
+		{"%s/absolute-redirect/1", "http://host%s/get"},
+		{"%s/absolute-redirect/2", "http://host%s/absolute-redirect/1"},
+		{"%s/absolute-redirect/100", "http://host%s/absolute-redirect/99"},
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run("ok"+test.requestURL, func(t *testing.T) {
-			t.Parallel()
-			r, _ := http.NewRequest("GET", test.requestURL, nil)
-			r.Host = "host"
-			w := httptest.NewRecorder()
-			app.ServeHTTP(w, r)
+	for _, s := range servers {
+		for _, test := range tests {
+			s := s
+			test := test
+			requestURL := fmt.Sprintf(test.requestURL, s.prefix)
+			t.Run("ok"+requestURL, func(t *testing.T) {
+				t.Parallel()
+				r, _ := http.NewRequest("GET", requestURL, nil)
+				r.Host = "host"
+				w := httptest.NewRecorder()
+				s.app.ServeHTTP(w, r)
 
-			assertStatusCode(t, w, http.StatusFound)
-			assertHeader(t, w, "Location", test.expectedLocation)
-		})
+				assertStatusCode(t, w, http.StatusFound)
+				assertHeader(t, w, "Location", fmt.Sprintf(test.expectedLocation, s.prefix))
+			})
+		}
 	}
 
 	errorTests := []struct {
 		requestURL     string
 		expectedStatus int
 	}{
-		{"/redirect", http.StatusNotFound},
-		{"/redirect/", http.StatusBadRequest},
-		{"/redirect/3.14", http.StatusBadRequest},
-		{"/redirect/foo", http.StatusBadRequest},
-		{"/redirect/10/foo", http.StatusNotFound},
+		{"%s/redirect", http.StatusNotFound},
+		{"%s/redirect/", http.StatusBadRequest},
+		{"%s/redirect/3.14", http.StatusBadRequest},
+		{"%s/redirect/foo", http.StatusBadRequest},
+		{"%s/redirect/10/foo", http.StatusNotFound},
 
-		{"/relative-redirect", http.StatusNotFound},
-		{"/relative-redirect/", http.StatusBadRequest},
-		{"/relative-redirect/3.14", http.StatusBadRequest},
-		{"/relative-redirect/foo", http.StatusBadRequest},
-		{"/relative-redirect/10/foo", http.StatusNotFound},
+		{"%s/relative-redirect", http.StatusNotFound},
+		{"%s/relative-redirect/", http.StatusBadRequest},
+		{"%s/relative-redirect/3.14", http.StatusBadRequest},
+		{"%s/relative-redirect/foo", http.StatusBadRequest},
+		{"%s/relative-redirect/10/foo", http.StatusNotFound},
 
-		{"/absolute-redirect", http.StatusNotFound},
-		{"/absolute-redirect/", http.StatusBadRequest},
-		{"/absolute-redirect/3.14", http.StatusBadRequest},
-		{"/absolute-redirect/foo", http.StatusBadRequest},
-		{"/absolute-redirect/10/foo", http.StatusNotFound},
+		{"%s/absolute-redirect", http.StatusNotFound},
+		{"%s/absolute-redirect/", http.StatusBadRequest},
+		{"%s/absolute-redirect/3.14", http.StatusBadRequest},
+		{"%s/absolute-redirect/foo", http.StatusBadRequest},
+		{"%s/absolute-redirect/10/foo", http.StatusNotFound},
 	}
 
-	for _, test := range errorTests {
-		test := test
-		t.Run("error"+test.requestURL, func(t *testing.T) {
-			t.Parallel()
-			r, _ := http.NewRequest("GET", test.requestURL, nil)
-			w := httptest.NewRecorder()
-			app.ServeHTTP(w, r)
+	for _, s := range servers {
+		for _, test := range errorTests {
+			s := s
+			test := test
+			requestURL := fmt.Sprintf(test.requestURL, s.prefix)
+			t.Run("error"+requestURL, func(t *testing.T) {
+				t.Parallel()
+				r, _ := http.NewRequest("GET", requestURL, nil)
+				w := httptest.NewRecorder()
+				s.app.ServeHTTP(w, r)
 
-			assertStatusCode(t, w, test.expectedStatus)
-		})
+				assertStatusCode(t, w, test.expectedStatus)
+			})
+		}
 	}
 }
 
@@ -1341,8 +1377,8 @@ Allowed redirect destinations:
 
 func TestCookies(t *testing.T) {
 	t.Parallel()
-	testCookies := func(t *testing.T, cookies cookiesResponse) {
-		r, _ := http.NewRequest("GET", "/cookies", nil)
+	testCookies := func(t *testing.T, s *server, cookies cookiesResponse) {
+		r, _ := http.NewRequest("GET", s.prefix+"/cookies", nil)
 		for k, v := range cookies {
 			r.AddCookie(&http.Cookie{
 				Name:  k,
@@ -1350,7 +1386,7 @@ func TestCookies(t *testing.T) {
 			})
 		}
 		w := httptest.NewRecorder()
-		app.ServeHTTP(w, r)
+		s.app.ServeHTTP(w, r)
 
 		assertStatusCode(t, w, http.StatusOK)
 		assertContentType(t, w, jsonContentType)
@@ -1366,18 +1402,21 @@ func TestCookies(t *testing.T) {
 		}
 	}
 
-	t.Run("ok/no cookies", func(t *testing.T) {
-		t.Parallel()
-		testCookies(t, cookiesResponse{})
-	})
-
-	t.Run("ok/cookies", func(t *testing.T) {
-		t.Parallel()
-		testCookies(t, cookiesResponse{
-			"k1": "v1",
-			"k2": "v2",
+	for _, s := range servers {
+		s := s
+		t.Run("ok/no cookies", func(t *testing.T) {
+			t.Parallel()
+			testCookies(t, s, cookiesResponse{})
 		})
-	})
+
+		t.Run("ok/cookies", func(t *testing.T) {
+			t.Parallel()
+			testCookies(t, s, cookiesResponse{
+				"k1": "v1",
+				"k2": "v2",
+			})
+		})
+	}
 }
 
 func TestSetCookies(t *testing.T) {
