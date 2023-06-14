@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
+	"golang.org/x/time/rate"
+	"nhooyr.io/websocket"
 )
 
 var acceptedMediaTypes = []string{
@@ -1020,4 +1024,62 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
 		Hostname: h.hostname,
 	})
 	writeJSON(w, body, http.StatusOK)
+}
+
+func (h *HTTPBin) WebsocketEcho(w http.ResponseWriter, r *http.Request) {
+	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		Subprotocols:       []string{"echo"},
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	if c.Subprotocol() != "echo" {
+		c.Close(websocket.StatusPolicyViolation, "client must speak the echo subprotocol")
+		return
+	}
+
+	l := rate.NewLimiter(rate.Every(time.Millisecond*100), 10)
+	for {
+		err = echo(r.Context(), c, l)
+		if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
+			return
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+// echo reads from the WebSocket connection and then writes
+// the received message back to it.
+// The entire function has 10s to complete.
+func echo(ctx context.Context, c *websocket.Conn, l *rate.Limiter) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	err := l.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	typ, r, err := c.Reader(ctx)
+	if err != nil {
+		return err
+	}
+
+	w, err := c.Writer(ctx, typ)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(w, r)
+	if err != nil {
+		return fmt.Errorf("failed to io.Copy: %w", err)
+	}
+
+	err = w.Close()
+	return err
 }

@@ -1,8 +1,11 @@
 package httpbin
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -84,6 +87,14 @@ type metaResponseWriter struct {
 	w      http.ResponseWriter
 	status int
 	size   int64
+}
+
+func (mw *metaResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := mw.w.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("hijack not supported")
+	}
+	return h.Hijack()
 }
 
 func (mw *metaResponseWriter) Write(b []byte) (int, error) {
