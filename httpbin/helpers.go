@@ -126,6 +126,11 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 	}
 	resp.Data = string(body)
 
+	// if we read an empty body, there's no need to do anything further
+	if len(resp.Data) == 0 {
+		return nil
+	}
+
 	// After reading the body to populate resp.Data, we need to re-wrap it in
 	// an io.Reader for further processing below
 	r.Body.Close()
