@@ -27,6 +27,7 @@ type userAgentResponse struct {
 type noBodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
+	Method  string      `json:"method"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
@@ -39,6 +40,7 @@ type noBodyResponse struct {
 type bodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
+	Method  string      `json:"method"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 

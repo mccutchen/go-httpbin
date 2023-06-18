@@ -150,6 +150,9 @@ func TestGet(t *testing.T) {
 		if resp.Args.Encode() != "" {
 			t.Fatalf("expected empty args, got %s", resp.Args.Encode())
 		}
+		if resp.Method != "GET" {
+			t.Fatalf("expected method to be GET, got %s", resp.Method)
+		}
 		if resp.Origin != "" {
 			t.Fatalf("expected empty origin, got %#v", resp.Origin)
 		}
@@ -178,6 +181,9 @@ func TestGet(t *testing.T) {
 		resp, _ := testRequestWithoutBody(t, "/get", params, nil, http.StatusOK)
 		if resp.Args.Encode() != params.Encode() {
 			t.Fatalf("args mismatch: %s != %s", resp.Args.Encode(), params.Encode())
+		}
+		if resp.Method != "GET" {
+			t.Fatalf("expected method to be GET, got %s", resp.Method)
 		}
 	})
 
@@ -601,6 +607,9 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			if len(resp.Args) > 0 {
 				t.Fatalf("expected no query params, got %#v", resp.Args)
 			}
+			if resp.Method != verb {
+				t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
+			}
 			if len(resp.Form) > 0 {
 				t.Fatalf("expected no form data, got %#v", resp.Form)
 			}
@@ -645,6 +654,9 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 			if len(resp.Args) > 0 {
 				t.Fatalf("expected no query params, got %#v", resp.Args)
 			}
+			if resp.Method != verb {
+				t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
+			}
 			if len(resp.Form) > 0 {
 				t.Fatalf("expected no form data, got %#v", resp.Form)
 			}
@@ -674,6 +686,9 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if resp.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
 	}
 	if len(resp.Form) != len(params) {
 		t.Fatalf("expected %d form values, got %d", len(params), len(resp.Form))
@@ -731,6 +746,9 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
 	}
+	if resp.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
+	}
 	if len(resp.Form) != 0 {
 		t.Fatalf("expected no form values, got %d", len(resp.Form))
 	}
@@ -780,6 +798,9 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if resp.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
 	}
 	if len(resp.Form) != len(params) {
 		t.Fatalf("expected %d form values, got %d", len(params), len(resp.Form))
@@ -846,6 +867,9 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
 	}
+	if resp.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
+	}
 	if len(resp.Form) != 0 {
 		t.Fatalf("expected no form values, got %d", len(resp.Form))
 	}
@@ -905,6 +929,10 @@ func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
 		t.Fatalf("expected args = %#v in response, got %#v", params.Encode(), resp.Args.Encode())
 	}
 
+	if resp.Method != "POST" {
+		t.Fatalf("expected method to be POST, got %s", resp.Method)
+	}
+
 	if len(resp.Form) > 0 {
 		t.Fatalf("expected form data, got %#v", resp.Form)
 	}
@@ -940,6 +968,10 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 
 	if resp.Args.Encode() != args.Encode() {
 		t.Fatalf("expected args = %#v in response, got %#v", args.Encode(), resp.Args.Encode())
+	}
+
+	if resp.Method != "POST" {
+		t.Fatalf("expected method to be POST, got %s", resp.Method)
 	}
 
 	if len(resp.Form) != len(form) {
