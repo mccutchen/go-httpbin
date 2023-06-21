@@ -59,6 +59,9 @@ func getURL(r *http.Request) *url.URL {
 	if scheme == "" && r.Header.Get("X-Forwarded-Ssl") == "on" {
 		scheme = "https"
 	}
+	if scheme == "" && r.TLS != nil {
+		scheme = "https"
+	}
 	if scheme == "" {
 		scheme = "http"
 	}
