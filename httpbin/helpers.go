@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -106,6 +107,27 @@ func writeHTML(w http.ResponseWriter, body []byte, status int) {
 	writeResponse(w, status, htmlContentType, body)
 }
 
+func parseFiles(fileHeaders map[string][]*multipart.FileHeader) (map[string][]string, error) {
+	files := map[string][]string{}
+	for k, fs := range fileHeaders {
+		files[k] = []string{}
+
+		for _, f := range fs {
+			fh, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			contents, err := io.ReadAll(fh)
+			if err != nil {
+				return nil, err
+			}
+			files[k] = append(files[k], string(contents))
+			fmt.Printf("file %s: %s %s\n", k, f.Filename, contents)
+		}
+	}
+	return files, nil
+}
+
 // parseBody handles parsing a request body into our standard API response,
 // taking care to only consume the request body once based on the Content-Type
 // of the request. The given bodyResponse will be modified.
@@ -172,6 +194,11 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 			return err
 		}
 		resp.Form = r.PostForm
+		files, err := parseFiles(r.MultipartForm.File)
+		if err != nil {
+			return err
+		}
+		resp.Files = files
 	case ct == "application/json":
 		err := json.NewDecoder(r.Body).Decode(&resp.JSON)
 		if err != nil && err != io.EOF {
