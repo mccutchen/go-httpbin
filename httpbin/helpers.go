@@ -122,7 +122,6 @@ func parseFiles(fileHeaders map[string][]*multipart.FileHeader) (map[string][]st
 				return nil, err
 			}
 			files[k] = append(files[k], string(contents))
-			fmt.Printf("file %s: %s %s\n", k, f.Filename, contents)
 		}
 	}
 	return files, nil
