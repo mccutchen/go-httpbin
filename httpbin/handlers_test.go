@@ -542,6 +542,7 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyBodyTooBig,
 		testRequestWithBodyEmptyBody,
 		testRequestWithBodyFormEncodedBody,
+		testRequestWithBodyMultiPartBodyFiles,
 		testRequestWithBodyFormEncodedBodyNoContentType,
 		testRequestWithBodyInvalidFormEncodedBody,
 		testRequestWithBodyInvalidJSON,
@@ -813,6 +814,51 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 		if !reflect.DeepEqual(expectedValues, values) {
 			t.Fatalf("form value mismatch: %#v != %#v", values, expectedValues)
 		}
+	}
+}
+
+func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
+	// Prepare a form that you will submit to that URL.
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+
+	part, _ := mw.CreateFormFile("fieldname", "filename")
+	part.Write([]byte("hello world"))
+	mw.Close()
+
+	r, _ := http.NewRequest(verb, path, bytes.NewReader(body.Bytes()))
+	r.Header.Set("Content-Type", mw.FormDataContentType())
+	w := httptest.NewRecorder()
+	app.ServeHTTP(w, r)
+
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentType(t, w, jsonContentType)
+
+	var resp *bodyResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal body %#v from JSON: %s", w.Body.String(), err)
+	}
+
+	if len(resp.Args) > 0 {
+		t.Fatalf("expected no query params, got %#v", resp.Args)
+	}
+	if len(resp.Files) < 1 {
+		t.Fatal("expected to have files in the response, got none")
+	}
+	if bodies, ok := resp.Files["fieldname"]; ok {
+		if len(bodies) != 1 {
+			t.Fatalf("expected one file, got %v", bodies)
+		}
+		if bodies[0] != "hello world" {
+			t.Fatalf("expected the body to be \"hello world\" but got %s", bodies[0])
+		}
+	} else {
+		t.Fatalf("expected to have a file called \"fieldname\" in %v", resp.Files)
+	}
+
+	if resp.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, resp.Method)
 	}
 }
 
