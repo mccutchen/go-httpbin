@@ -818,10 +818,10 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 }
 
 func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
-	// Prepare a form that you will submit to that URL.
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
 
+	// Add a file to the multipart request
 	part, _ := mw.CreateFormFile("fieldname", "filename")
 	part.Write([]byte("hello world"))
 	mw.Close()
@@ -843,18 +843,14 @@ func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
 	if len(resp.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", resp.Args)
 	}
-	if len(resp.Files) < 1 {
-		t.Fatal("expected to have files in the response, got none")
+
+	// verify that the file we added is present in the `files` attribute of the
+	// response, with the field as key and content as value
+	wantFiles := map[string][]string{
+		"fieldname": {"hello world"},
 	}
-	if bodies, ok := resp.Files["fieldname"]; ok {
-		if len(bodies) != 1 {
-			t.Fatalf("expected one file, got %v", bodies)
-		}
-		if bodies[0] != "hello world" {
-			t.Fatalf("expected the body to be \"hello world\" but got %s", bodies[0])
-		}
-	} else {
-		t.Fatalf("expected to have a file called \"fieldname\" in %v", resp.Files)
+	if !reflect.DeepEqual(resp.Files, wantFiles) {
+		t.Fatalf("want resp.Files = %#v, got %#v", wantFiles, resp.Files)
 	}
 
 	if resp.Method != verb {
