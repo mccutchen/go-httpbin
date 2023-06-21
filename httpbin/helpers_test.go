@@ -3,6 +3,8 @@ package httpbin
 import (
 	"fmt"
 	"io"
+	"io/fs"
+	"mime/multipart"
 	"net/http"
 	"reflect"
 	"testing"
@@ -213,5 +215,23 @@ func Test_getClientIP(t *testing.T) {
 				t.Errorf("getClientIP() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseFileDoesntExist(t *testing.T) {
+	// set up a headers map where the filename doesn't exist, to test `f.Open`
+	// throwing an error
+	headers := map[string][]*multipart.FileHeader{
+		"fieldname": {
+			{
+				Filename: "bananas",
+			},
+		},
+	}
+
+	// expect a patherror
+	_, err := parseFiles(headers)
+	if _, ok := err.(*fs.PathError); !ok {
+		t.Fatalf("Open(nonexist): error is %T, want *PathError", err)
 	}
 }
