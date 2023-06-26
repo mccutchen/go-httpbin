@@ -553,6 +553,7 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyQueryParams,
 		testRequestWithBodyQueryParamsAndBody,
 		testRequestWithBodyBinaryBody,
+		testRequestWithBodyTransferEncoding,
 	}
 	for _, testFunc := range testFuncs {
 		testFunc := testFunc
@@ -1027,6 +1028,45 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 		if !reflect.DeepEqual(expectedValues, values) {
 			t.Fatalf("form value mismatch: %#v != %#v", values, expectedValues)
 		}
+	}
+}
+
+func testRequestWithBodyTransferEncoding(t *testing.T, verb string, path string) {
+	testCases := []struct {
+		given string
+		want  string
+	}{
+		{"", ""},
+		{"identity", ""},
+		{"chunked", "chunked"},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run("transfer-encoding/"+tc.given, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(app)
+			defer srv.Close()
+
+			r, _ := http.NewRequest(verb, srv.URL+path, bytes.NewReader([]byte("{}")))
+			if tc.given != "" {
+				r.TransferEncoding = []string{tc.given}
+			}
+
+			httpResp, err := srv.Client().Do(r)
+			assertNilError(t, err)
+			assertIntEqual(t, httpResp.StatusCode, http.StatusOK)
+
+			var resp *bodyResponse
+			if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
+				t.Fatalf("failed to unmarshal body from JSON: %s", err)
+			}
+
+			got := resp.Headers.Get("Transfer-Encoding")
+			if got != tc.want {
+				t.Errorf("expected Transfer-Encoding %#v, got %#v", tc.want, got)
+			}
+		})
 	}
 }
 

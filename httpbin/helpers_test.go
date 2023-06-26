@@ -14,8 +14,16 @@ import (
 )
 
 func assertNil(t *testing.T, v interface{}) {
+	t.Helper()
 	if v != nil {
-		t.Errorf("expected nil, got %#v", v)
+		t.Fatalf("expected nil, got %#v", v)
+	}
+}
+
+func assertNilError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("expected nil error, got %s (%T)", err, err)
 	}
 }
 
