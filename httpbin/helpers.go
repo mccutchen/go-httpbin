@@ -25,11 +25,15 @@ const Base64MaxLen = 2000
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
 //
-// This is necessary to ensure that the incoming Host header is included,
-// because golang only exposes that header on the http.Request struct itself.
+// This is necessary to ensure that the incoming Host and Transfer-Encoding
+// headers are included, because golang only exposes those values on the
+// http.Request struct itself.
 func getRequestHeaders(r *http.Request) http.Header {
 	h := r.Header
 	h.Set("Host", r.Host)
+	if len(r.TransferEncoding) > 0 {
+		h.Set("Transfer-Encoding", strings.Join(r.TransferEncoding, ","))
+	}
 	return h
 }
 
