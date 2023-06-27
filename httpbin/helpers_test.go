@@ -13,13 +13,6 @@ import (
 	"time"
 )
 
-func assertNil(t *testing.T, v interface{}) {
-	t.Helper()
-	if v != nil {
-		t.Fatalf("expected nil, got %#v", v)
-	}
-}
-
 func assertNilError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -28,6 +21,7 @@ func assertNilError(t *testing.T, err error) {
 }
 
 func assertIntEqual(t *testing.T, a, b int) {
+	t.Helper()
 	if a != b {
 		t.Errorf("expected %v == %v", a, b)
 	}
@@ -186,7 +180,7 @@ func TestSyntheticByteStream(t *testing.T) {
 		// read first half
 		p := make([]byte, 5)
 		count, err := s.Read(p)
-		assertNil(t, err)
+		assertNilError(t, err)
 		assertIntEqual(t, count, 5)
 		assertBytesEqual(t, p, []byte{0, 1, 2, 3, 4})
 
@@ -222,19 +216,19 @@ func TestSyntheticByteStream(t *testing.T) {
 		p := make([]byte, 5)
 		s.Seek(10, io.SeekStart)
 		count, err := s.Read(p)
-		assertNil(t, err)
+		assertNilError(t, err)
 		assertIntEqual(t, count, 5)
 		assertBytesEqual(t, p, []byte{10, 11, 12, 13, 14})
 
 		s.Seek(10, io.SeekCurrent)
 		count, err = s.Read(p)
-		assertNil(t, err)
+		assertNilError(t, err)
 		assertIntEqual(t, count, 5)
 		assertBytesEqual(t, p, []byte{25, 26, 27, 28, 29})
 
 		s.Seek(10, io.SeekEnd)
 		count, err = s.Read(p)
-		assertNil(t, err)
+		assertNilError(t, err)
 		assertIntEqual(t, count, 5)
 		assertBytesEqual(t, p, []byte{90, 91, 92, 93, 94})
 
