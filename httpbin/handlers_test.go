@@ -45,6 +45,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// enable additional safety checks
+	testMode = true
+
 	app = New(
 		WithAllowedRedirectDomains([]string{
 			"httpbingo.org",
@@ -82,7 +85,13 @@ func TestIndex(t *testing.T) {
 		req := newTestRequest(t, "GET", "/foo")
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusNotFound)
-		assert.BodyContains(t, resp, "/foo")
+		assert.ContentType(t, resp, jsonContentType)
+		got := must.Unmarshal[errorRespnose](t, resp.Body)
+		want := errorRespnose{
+			StatusCode: http.StatusNotFound,
+			Error:      "Not Found",
+		}
+		assert.DeepEqual(t, got, want, "incorrect error response")
 	})
 }
 
@@ -1093,15 +1102,6 @@ func TestRedirectTo(t *testing.T) {
 		})
 	}
 
-	// error message matches redirect configuration in global shared test app
-	allowedDomainsError := `Forbidden redirect URL. Please be careful with this link.
-
-Allowed redirect destinations:
-- example.org
-- httpbingo.org
-- www.example.com
-`
-
 	allowListTests := []struct {
 		url            string
 		expectedStatus int
@@ -1121,7 +1121,7 @@ Allowed redirect destinations:
 			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedStatus >= 400 {
-				assert.BodyEquals(t, resp, allowedDomainsError)
+				assert.BodyEquals(t, resp, app.forbiddenRedirectError)
 			}
 		})
 	}
@@ -1527,17 +1527,11 @@ func TestStream(t *testing.T) {
 			assert.Header(t, resp, "Content-Length", "")
 			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
 
-			var sr *streamResponse
-
 			i := 0
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				if err := json.Unmarshal(scanner.Bytes(), &sr); err != nil {
-					t.Fatalf("error unmarshalling response: %s", err)
-				}
-				if sr.ID != i {
-					t.Fatalf("bad id: %v != %v", sr.ID, i)
-				}
+				sr := must.Unmarshal[streamResponse](t, bytes.NewReader(scanner.Bytes()))
+				assert.Equal(t, sr.ID, i, "bad id")
 				i++
 			}
 			if err := scanner.Err(); err != nil {

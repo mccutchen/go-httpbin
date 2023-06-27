@@ -57,6 +57,17 @@ func StatusCode(t *testing.T, resp *http.Response, code int) {
 	if resp.StatusCode != code {
 		t.Fatalf("expected status code %d, got %d", code, resp.StatusCode)
 	}
+	if resp.StatusCode >= 400 {
+		// Ensure our error responses are never served as HTML, so that we do
+		// not need to worry about XSS or other attacks in error responses.
+		if ct := resp.Header.Get("Content-Type"); !isSafeContentType(ct) {
+			t.Errorf("HTTP %s error served with dangerous content type: %s", resp.Status, ct)
+		}
+	}
+}
+
+func isSafeContentType(ct string) bool {
+	return strings.HasPrefix(ct, "application/json") || strings.HasPrefix(ct, "text/plain") || strings.HasPrefix(ct, "application/octet-stream")
 }
 
 // Header asserts that a header key has a specific value in a response.
