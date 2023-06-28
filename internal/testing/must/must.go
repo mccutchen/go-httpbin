@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// DoReq makes an HTTP request and fails the test if there is an error.
 func DoReq(t *testing.T, client *http.Client, req *http.Request) *http.Response {
 	t.Helper()
 	start := time.Now()
@@ -19,6 +20,8 @@ func DoReq(t *testing.T, client *http.Client, req *http.Request) *http.Response 
 	return resp
 }
 
+// ReadAll reads all bytes from an io.Reader and fails the test if there is an
+// error.
 func ReadAll(t *testing.T, r io.Reader) string {
 	t.Helper()
 	body, err := io.ReadAll(r)
@@ -31,6 +34,8 @@ func ReadAll(t *testing.T, r io.Reader) string {
 	return string(body)
 }
 
+// Unmarshal unmarshals JSON from an io.Reader into a value and fails the test
+// if there is an error.
 func Unmarshal[T any](t *testing.T, r io.Reader) T {
 	t.Helper()
 	var v T

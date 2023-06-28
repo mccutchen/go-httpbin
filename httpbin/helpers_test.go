@@ -23,7 +23,7 @@ func mustParse(s string) *url.URL {
 }
 
 func TestGetURL(t *testing.T) {
-	baseUrl, _ := url.Parse("http://example.com/something?foo=bar")
+	baseURL := mustParse("http://example.com/something?foo=bar")
 	tests := []struct {
 		name     string
 		input    *http.Request
@@ -32,7 +32,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"basic test",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{},
 			},
 			mustParse("http://example.com/something?foo=bar"),
@@ -40,7 +40,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if TLS is not nil, scheme is https",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				TLS:    &tls.ConnectionState{},
 				Header: http.Header{},
 			},
@@ -49,7 +49,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Proto is present, scheme is that value",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Proto": {"https"}},
 			},
 			mustParse("https://example.com/something?foo=bar"),
@@ -57,7 +57,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Proto is present, scheme is that value (2)",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Proto": {"bananas"}},
 			},
 			mustParse("bananas://example.com/something?foo=bar"),
@@ -65,7 +65,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Ssl is 'on', scheme is https",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Ssl": {"on"}},
 			},
 			mustParse("https://example.com/something?foo=bar"),

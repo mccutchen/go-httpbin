@@ -10,6 +10,7 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
 )
 
+// Equal asserts that two values are equal.
 func Equal[T comparable](t *testing.T, want, got T, msg string, arg ...any) {
 	t.Helper()
 	if want != got {
@@ -21,6 +22,7 @@ func Equal[T comparable](t *testing.T, want, got T, msg string, arg ...any) {
 	}
 }
 
+// DeepEqual asserts that two values are deeply equal.
 func DeepEqual[T any](t *testing.T, want, got T, msg string, arg ...any) {
 	t.Helper()
 	if !reflect.DeepEqual(want, got) {
@@ -32,6 +34,7 @@ func DeepEqual[T any](t *testing.T, want, got T, msg string, arg ...any) {
 	}
 }
 
+// NilError asserts that an error is nil.
 func NilError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -39,6 +42,7 @@ func NilError(t *testing.T, err error) {
 	}
 }
 
+// Error asserts that an error is not nil.
 func Error(t *testing.T, got, expected error) {
 	t.Helper()
 	if got != expected {
@@ -46,6 +50,7 @@ func Error(t *testing.T, got, expected error) {
 	}
 }
 
+// StatusCode asserts that a response has a specific status code.
 func StatusCode(t *testing.T, resp *http.Response, code int) {
 	t.Helper()
 	if resp.StatusCode != code {
@@ -53,8 +58,7 @@ func StatusCode(t *testing.T, resp *http.Response, code int) {
 	}
 }
 
-// assertHeader asserts that a header key has a specific value in a
-// response.
+// Header asserts that a header key has a specific value in a response.
 func Header(t *testing.T, resp *http.Response, key, want string) {
 	t.Helper()
 	got := resp.Header.Get(key)
@@ -63,11 +67,14 @@ func Header(t *testing.T, resp *http.Response, key, want string) {
 	}
 }
 
+// ContentType asserts that a response has a specific Content-Type header
+// value.
 func ContentType(t *testing.T, resp *http.Response, contentType string) {
 	t.Helper()
 	Header(t, resp, "Content-Type", contentType)
 }
 
+// BodyContains asserts that a response body contains a specific substring.
 func BodyContains(t *testing.T, resp *http.Response, needle string) {
 	t.Helper()
 	body := must.ReadAll(t, resp.Body)
@@ -76,6 +83,7 @@ func BodyContains(t *testing.T, resp *http.Response, needle string) {
 	}
 }
 
+// BodyEquals asserts that a response body is equal to a specific string.
 func BodyEquals(t *testing.T, resp *http.Response, want string) {
 	t.Helper()
 	got := must.ReadAll(t, resp.Body)
