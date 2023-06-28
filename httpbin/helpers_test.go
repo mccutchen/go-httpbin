@@ -8,36 +8,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
-
-func assertNilError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("expected nil error, got %s (%T)", err, err)
-	}
-}
-
-func assertIntEqual(t *testing.T, a, b int) {
-	t.Helper()
-	if a != b {
-		t.Errorf("expected %v == %v", a, b)
-	}
-}
-
-func assertBytesEqual(t *testing.T, a, b []byte) {
-	if !reflect.DeepEqual(a, b) {
-		t.Errorf("expected %v == %v", a, b)
-	}
-}
-
-func assertError(t *testing.T, got, expected error) {
-	if got != expected {
-		t.Errorf("expected error %v, got %v", expected, got)
-	}
-}
 
 func mustParse(s string) *url.URL {
 	u, e := url.Parse(s)
@@ -180,23 +155,23 @@ func TestSyntheticByteStream(t *testing.T) {
 		// read first half
 		p := make([]byte, 5)
 		count, err := s.Read(p)
-		assertNilError(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{0, 1, 2, 3, 4})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
 
 		// read second half
 		p = make([]byte, 5)
 		count, err = s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{5, 6, 7, 8, 9})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
 
 		// can't read any more
 		p = make([]byte, 5)
 		count, err = s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 0)
-		assertBytesEqual(t, p, []byte{0, 0, 0, 0, 0})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 0, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
 	})
 
 	t.Run("read into too-large buffer", func(t *testing.T) {
@@ -204,9 +179,9 @@ func TestSyntheticByteStream(t *testing.T) {
 		s := newSyntheticByteStream(5, factory)
 		p := make([]byte, 10)
 		count, err := s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{0, 1, 2, 3, 4, 0, 0, 0, 0, 0})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4, 0, 0, 0, 0, 0}, "incorrect bytes read")
 	})
 
 	t.Run("seek", func(t *testing.T) {
@@ -216,21 +191,21 @@ func TestSyntheticByteStream(t *testing.T) {
 		p := make([]byte, 5)
 		s.Seek(10, io.SeekStart)
 		count, err := s.Read(p)
-		assertNilError(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{10, 11, 12, 13, 14})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{10, 11, 12, 13, 14}, "incorrect bytes read")
 
 		s.Seek(10, io.SeekCurrent)
 		count, err = s.Read(p)
-		assertNilError(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{25, 26, 27, 28, 29})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{25, 26, 27, 28, 29}, "incorrect bytes read")
 
 		s.Seek(10, io.SeekEnd)
 		count, err = s.Read(p)
-		assertNilError(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{90, 91, 92, 93, 94})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{90, 91, 92, 93, 94}, "incorrect bytes read")
 
 		// invalid whence
 		_, err = s.Seek(10, 666)

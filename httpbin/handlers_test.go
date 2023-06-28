@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
 )
 
 const (
@@ -69,19 +70,19 @@ func TestIndex(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "GET", "/")
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
-		assertContentType(t, resp, htmlContentType)
-		assertHeader(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
-		assertBodyContains(t, resp, "go-httpbin")
+		assert.ContentType(t, resp, htmlContentType)
+		assert.Header(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
+		assert.BodyContains(t, resp, "go-httpbin")
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/foo")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusNotFound)
-		assertBodyContains(t, resp, "/foo")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusNotFound)
+		assert.BodyContains(t, resp, "/foo")
 	})
 }
 
@@ -89,20 +90,20 @@ func TestFormsPost(t *testing.T) {
 	t.Parallel()
 
 	req := newTestRequest(t, "GET", "/forms/post")
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 
-	assertContentType(t, resp, htmlContentType)
-	assertBodyContains(t, resp, `<form method="post" action="/post">`)
+	assert.ContentType(t, resp, htmlContentType)
+	assert.BodyContains(t, resp, `<form method="post" action="/post">`)
 }
 
 func TestUTF8(t *testing.T) {
 	t.Parallel()
 
 	req := newTestRequest(t, "GET", "/encoding/utf8")
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 
-	assertContentType(t, resp, htmlContentType)
-	assertBodyContains(t, resp, `Hello world, Καλημέρα κόσμε, コンニチハ`)
+	assert.ContentType(t, resp, htmlContentType)
+	assert.BodyContains(t, resp, `Hello world, Καλημέρα κόσμε, コンニチハ`)
 }
 
 func TestGet(t *testing.T) {
@@ -122,7 +123,7 @@ func TestGet(t *testing.T) {
 			}
 		}
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		return mustParseResponse[noBodyResponse](t, resp)
 	}
 
@@ -130,9 +131,9 @@ func TestGet(t *testing.T) {
 		t.Parallel()
 
 		result := doGetRequest(t, "/get", nil, nil)
-		assertEqual(t, result.Method, "GET", "method mismatch")
-		assertEqual(t, result.Args.Encode(), "", "expected empty args")
-		assertEqual(t, result.URL, srv.URL+"/get", "url mismatch")
+		assert.Equal(t, result.Method, "GET", "method mismatch")
+		assert.Equal(t, result.Args.Encode(), "", "expected empty args")
+		assert.Equal(t, result.URL, srv.URL+"/get", "url mismatch")
 
 		if !strings.HasPrefix(result.Origin, "127.0.0.1") {
 			t.Fatalf("expected 127.0.0.1 origin, got %q", result.Origin)
@@ -143,7 +144,7 @@ func TestGet(t *testing.T) {
 			"User-Agent":   "test",
 		}
 		for key, val := range wantHeaders {
-			assertEqual(t, result.Headers.Get(key), val, "header mismatch for key %q", key)
+			assert.Equal(t, result.Headers.Get(key), val, "header mismatch for key %q", key)
 		}
 	})
 
@@ -156,18 +157,18 @@ func TestGet(t *testing.T) {
 		params.Add("bar", "bar2")
 
 		result := doGetRequest(t, "/get", params, nil)
-		assertEqual(t, result.Args.Encode(), params.Encode(), "args mismatch")
-		assertEqual(t, result.Method, "GET", "method mismatch")
+		assert.Equal(t, result.Args.Encode(), params.Encode(), "args mismatch")
+		assert.Equal(t, result.Method, "GET", "method mismatch")
 	})
 
 	t.Run("only_allows_gets", func(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "POST", "/get")
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
-		assertStatusCode(t, resp, http.StatusMethodNotAllowed)
-		assertContentType(t, resp, "text/plain; charset=utf-8")
+		assert.StatusCode(t, resp, http.StatusMethodNotAllowed)
+		assert.ContentType(t, resp, "text/plain; charset=utf-8")
 	})
 
 	protoTests := []struct {
@@ -210,17 +211,17 @@ func TestHead(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, tc.verb, tc.path)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, tc.wantCode)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, tc.wantCode)
 
 			// we only do further validation when we get an OK response
 			if tc.wantCode != http.StatusOK {
 				return
 			}
 
-			assertStatusCode(t, resp, http.StatusOK)
-			assertBodyEquals(t, resp, "")
-			assertHeader(t, resp, "Content-Length", "") // content-length should be empty
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.BodyEquals(t, resp, "")
+			assert.Header(t, resp, "Content-Length", "") // content-length should be empty
 		})
 	}
 }
@@ -229,23 +230,23 @@ func TestCORS(t *testing.T) {
 	t.Run("CORS/no_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
-		resp := mustDoReq(t, req)
-		assertHeader(t, resp, "Access-Control-Allow-Origin", "*")
+		resp := must.DoReq(t, client, req)
+		assert.Header(t, resp, "Access-Control-Allow-Origin", "*")
 	})
 
 	t.Run("CORS/with_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
 		req.Header.Set("Origin", "origin")
-		resp := mustDoReq(t, req)
-		assertHeader(t, resp, "Access-Control-Allow-Origin", "origin")
+		resp := must.DoReq(t, client, req)
+		assert.Header(t, resp, "Access-Control-Allow-Origin", "origin")
 	})
 
 	t.Run("CORS/options_request", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "OPTIONS", "/get")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, 200)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, 200)
 
 		headerTests := []struct {
 			key      string
@@ -258,7 +259,7 @@ func TestCORS(t *testing.T) {
 			{"Access-Control-Allow-Headers", ""},
 		}
 		for _, test := range headerTests {
-			assertHeader(t, resp, test.key, test.expected)
+			assert.Header(t, resp, test.key, test.expected)
 		}
 	})
 
@@ -267,8 +268,8 @@ func TestCORS(t *testing.T) {
 
 		req := newTestRequest(t, "OPTIONS", "/get")
 		req.Header.Set("Access-Control-Request-Headers", "X-Test-Header")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, 200)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, 200)
 
 		headerTests := []struct {
 			key      string
@@ -277,7 +278,7 @@ func TestCORS(t *testing.T) {
 			{"Access-Control-Allow-Headers", "X-Test-Header"},
 		}
 		for _, test := range headerTests {
-			assertHeader(t, resp, test.key, test.expected)
+			assert.Header(t, resp, test.key, test.expected)
 		}
 	})
 }
@@ -334,8 +335,8 @@ func TestIP(t *testing.T) {
 				t.Errorf("expected content type %q, got %q", jsonContentType, ct)
 			}
 
-			result := mustUnmarshal[ipResponse](t, w.Body)
-			assertEqual(t, result.Origin, tc.wantOrigin, "incorrect origin")
+			result := must.Unmarshal[ipResponse](t, w.Body)
+			assert.Equal(t, result.Origin, tc.wantOrigin, "incorrect origin")
 		})
 	}
 }
@@ -346,9 +347,9 @@ func TestUserAgent(t *testing.T) {
 	req := newTestRequest(t, "GET", "/user-agent")
 	req.Header.Set("User-Agent", "test")
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[userAgentResponse](t, resp)
-	assertEqual(t, "test", result.UserAgent, "incorrect user agent")
+	assert.Equal(t, "test", result.UserAgent, "incorrect user agent")
 }
 
 func TestHeaders(t *testing.T) {
@@ -361,17 +362,17 @@ func TestHeaders(t *testing.T) {
 	req.Header.Add("Bar-Header", "bar1")
 	req.Header.Add("Bar-Header", "bar2")
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[headersResponse](t, resp)
 
 	// Host header requires special treatment, because it's a field on the
 	// http.Request struct itself, not part of its headers map
 	host := result.Headers.Get("Host")
-	assertEqual(t, req.Host, host, "missing or incorrect Host header")
+	assert.Equal(t, req.Host, host, "missing or incorrect Host header")
 
 	for k, expectedValues := range req.Header {
 		values := result.Headers.Values(k)
-		assertDeepEqual(t, expectedValues, values, "missing or incorrect header for key %q", k)
+		assert.DeepEqual(t, expectedValues, values, "missing or incorrect header for key %q", k)
 	}
 }
 
@@ -414,10 +415,10 @@ func TestAnything(t *testing.T) {
 	t.Run("HEAD", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "HEAD", "/anything")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertBodyEquals(t, resp, "")
-		assertHeader(t, resp, "Content-Length", "") // responses to HEAD requests should not have a Content-Length header
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.BodyEquals(t, resp, "")
+		assert.Header(t, resp, "Content-Length", "") // responses to HEAD requests should not have a Content-Length header
 	})
 }
 
@@ -484,17 +485,17 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			req := newTestRequestWithBody(t, verb, path, bytes.NewReader([]byte(test.requestBody)))
 			req.Header.Set("Content-Type", test.contentType)
 
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			result := mustParseResponse[bodyResponse](t, resp)
 
-			assertEqual(t, result.Method, verb, "method mismatch")
-			assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-			assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-			assertDeepEqual(t, result.Form, nilValues, "expected empty form")
-			assertDeepEqual(t, result.JSON, nil, "expected nil json")
+			assert.Equal(t, result.Method, verb, "method mismatch")
+			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+			assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+			assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+			assert.DeepEqual(t, result.JSON, nil, "expected nil json")
 
 			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
-			assertEqual(t, expected, result.Data, "expected binary encoded response data")
+			assert.Equal(t, expected, result.Data, "expected binary encoded response data")
 		})
 	}
 }
@@ -516,15 +517,15 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 			req := newTestRequest(t, verb, path)
 			req.Header.Set("Content-Type", test.contentType)
 
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			result := mustParseResponse[bodyResponse](t, resp)
 
-			assertEqual(t, result.Data, "", "expected empty response data")
-			assertEqual(t, result.Method, verb, "method mismatch")
-			assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-			assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-			assertDeepEqual(t, result.Form, nilValues, "expected empty form")
-			assertDeepEqual(t, result.JSON, nil, "expected nil JSON")
+			assert.Equal(t, result.Data, "", "expected empty response data")
+			assert.Equal(t, result.Method, verb, "method mismatch")
+			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+			assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+			assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+			assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
 		})
 	}
 }
@@ -538,14 +539,14 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertDeepEqual(t, params, result.Form, "form data mismatch")
-	assertEqual(t, verb, result.Method, "method mismatch")
-	assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-	assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-	assertDeepEqual(t, result.JSON, nil, "expected nil json")
+	assert.DeepEqual(t, params, result.Form, "form data mismatch")
+	assert.Equal(t, verb, result.Method, "method mismatch")
+	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+	assert.DeepEqual(t, result.JSON, nil, "expected nil json")
 }
 
 func testRequestWithBodyHTML(t *testing.T, verb, path string) {
@@ -554,10 +555,10 @@ func testRequestWithBodyHTML(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader(data))
 	req.Header.Set("Content-Type", htmlContentType)
 
-	resp := mustDoReq(t, req)
-	assertStatusCode(t, resp, http.StatusOK)
-	assertContentType(t, resp, jsonContentType)
-	assertBodyContains(t, resp, data)
+	resp := must.DoReq(t, client, req)
+	assert.StatusCode(t, resp, http.StatusOK)
+	assert.ContentType(t, resp, jsonContentType)
+	assert.BodyContains(t, resp, data)
 }
 
 func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path string) {
@@ -567,18 +568,18 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 	params.Add("bar", "bar2")
 
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertEqual(t, result.Method, verb, "method mismatch")
-	assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-	assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-	assertDeepEqual(t, result.Form, nilValues, "expected empty form")
-	assertDeepEqual(t, result.JSON, nil, "expected nil JSON")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+	assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
 
 	// Because we did not set an content type, httpbin will return the base64 encoded data.
 	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
-	assertEqual(t, expectedBody, result.Data, "response data mismatch")
+	assert.Equal(t, expectedBody, result.Data, "response data mismatch")
 }
 
 func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
@@ -607,14 +608,14 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertEqual(t, result.Method, verb, "method mismatch")
-	assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-	assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-	assertDeepEqual(t, result.Form, params, "form values mismatch")
-	assertDeepEqual(t, result.JSON, nil, "expected nil JSON")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+	assert.DeepEqual(t, result.Form, params, "form values mismatch")
+	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
 }
 
 func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
@@ -629,34 +630,34 @@ func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertEqual(t, result.Method, verb, "method mismatch")
-	assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-	assertDeepEqual(t, result.Form, nilValues, "expected empty form")
-	assertDeepEqual(t, result.JSON, nil, "expected nil JSON")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+	assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
 
 	// verify that the file we added is present in the `files` attribute of the
 	// response, with the field as key and content as value
 	wantFiles := url.Values{
 		"fieldname": {"hello world"},
 	}
-	assertDeepEqual(t, result.Files, wantFiles, "files mismatch")
+	assert.DeepEqual(t, result.Files, wantFiles, "files mismatch")
 }
 
 func testRequestWithBodyInvalidFormEncodedBody(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp := mustDoReq(t, req)
-	assertStatusCode(t, resp, http.StatusBadRequest)
+	resp := must.DoReq(t, client, req)
+	assert.StatusCode(t, resp, http.StatusBadRequest)
 }
 
 func testRequestWithBodyInvalidMultiPartBody(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
 	req.Header.Set("Content-Type", "multipart/form-data; etc")
-	resp := mustDoReq(t, req)
-	assertStatusCode(t, resp, http.StatusBadRequest)
+	resp := must.DoReq(t, client, req)
+	assert.StatusCode(t, resp, http.StatusBadRequest)
 }
 
 func testRequestWithBodyJSON(t *testing.T, verb, path string) {
@@ -677,39 +678,39 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(inputBody))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertEqual(t, result.Data, string(inputBody), "response data mismatch")
-	assertEqual(t, result.Method, verb, "method mismatch")
-	assertDeepEqual(t, result.Args, nilValues, "expected empty args")
-	assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-	assertDeepEqual(t, result.Form, nilValues, "form values mismatch")
+	assert.Equal(t, result.Data, string(inputBody), "response data mismatch")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+	assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
 
 	// Need to re-marshall just the JSON field from the response in order to
 	// re-unmarshall it into our expected type
 	roundTrippedInputBytes, err := json.Marshal(result.JSON)
-	assertNilError(t, err)
+	assert.NilError(t, err)
 
 	var roundTrippedInput testInput
 	if err := json.Unmarshal(roundTrippedInputBytes, &roundTrippedInput); err != nil {
 		t.Fatalf("failed to round-trip JSON: coult not re-unmarshal JSON: %s", err)
 	}
-	assertDeepEqual(t, input, roundTrippedInput, "round-tripped JSON mismatch")
+	assert.DeepEqual(t, input, roundTrippedInput, "round-tripped JSON mismatch")
 }
 
 func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
 	req := newTestRequestWithBody(t, verb, path, strings.NewReader("foo"))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp := mustDoReq(t, req)
-	assertStatusCode(t, resp, http.StatusBadRequest)
+	resp := must.DoReq(t, client, req)
+	assert.StatusCode(t, resp, http.StatusBadRequest)
 }
 
 func testRequestWithBodyBodyTooBig(t *testing.T, verb, path string) {
 	body := make([]byte, maxBodySize+1)
 	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body))
-	resp := mustDoReq(t, req)
-	assertStatusCode(t, resp, http.StatusBadRequest)
+	resp := must.DoReq(t, client, req)
+	assert.StatusCode(t, resp, http.StatusBadRequest)
 }
 
 func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
@@ -719,16 +720,16 @@ func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
 	params.Add("bar", "bar2")
 
 	req := newTestRequest(t, verb, fmt.Sprintf("%s?%s", path, params.Encode()))
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assertDeepEqual(t, result.Args, params, "args mismatch")
+	assert.DeepEqual(t, result.Args, params, "args mismatch")
 
 	// extra validation
-	assertEqual(t, result.Method, verb, "method mismatch")
-	assertDeepEqual(t, result.Files, nilValues, "expected empty files")
-	assertDeepEqual(t, result.Form, nilValues, "form values mismatch")
-	assertDeepEqual(t, result.JSON, nil, "expected nil JSON")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+	assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
+	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
 }
 
 func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
@@ -745,12 +746,12 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	url := fmt.Sprintf("%s?%s", path, args.Encode())
 	req := newTestRequestWithBody(t, verb, url, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 
 	result := mustParseResponse[bodyResponse](t, resp)
-	assertEqual(t, verb, result.Method, "method mismatch")
-	assertEqual(t, args.Encode(), result.Args.Encode(), "args mismatch")
-	assertEqual(t, form.Encode(), result.Form.Encode(), "form mismatch")
+	assert.Equal(t, verb, result.Method, "method mismatch")
+	assert.Equal(t, args.Encode(), result.Args.Encode(), "args mismatch")
+	assert.Equal(t, form.Encode(), result.Form.Encode(), "form mismatch")
 }
 
 func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
@@ -772,11 +773,11 @@ func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
 				req.TransferEncoding = []string{tc.given}
 			}
 
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			result := mustParseResponse[bodyResponse](t, resp)
 
 			got := result.Headers.Get("Transfer-Encoding")
-			assertEqual(t, got, tc.want, "Transfer-Encoding header mismatch")
+			assert.Equal(t, got, tc.want, "Transfer-Encoding header mismatch")
 		})
 	}
 }
@@ -824,11 +825,11 @@ func TestStatus(t *testing.T) {
 		t.Run(fmt.Sprintf("ok/status/%d", test.code), func(t *testing.T) {
 			t.Parallel()
 			req, _ := http.NewRequest("GET", srv.URL+fmt.Sprintf("/status/%d", test.code), nil)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
-			assertBodyEquals(t, resp, test.body)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
+			assert.BodyEquals(t, resp, test.body)
 			for key, val := range test.headers {
-				assertHeader(t, resp, key, val)
+				assert.Header(t, resp, key, val)
 			}
 		})
 	}
@@ -849,8 +850,8 @@ func TestStatus(t *testing.T) {
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.status)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.status)
 		})
 	}
 }
@@ -859,7 +860,7 @@ func TestUnstable(t *testing.T) {
 	t.Run("ok_no_seed", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/unstable")
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		if resp.StatusCode != 200 && resp.StatusCode != 500 {
 			t.Fatalf("expected status code 200 or 500, got %d", resp.StatusCode)
 		}
@@ -878,8 +879,8 @@ func TestUnstable(t *testing.T) {
 		t.Run("ok_"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.status)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.status)
 		})
 	}
 
@@ -892,7 +893,7 @@ func TestUnstable(t *testing.T) {
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			if resp.StatusCode != 200 && resp.StatusCode != 500 {
 				t.Fatalf("expected status code 200 or 500, got %d", resp.StatusCode)
 			}
@@ -913,8 +914,8 @@ func TestUnstable(t *testing.T) {
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusBadRequest)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusBadRequest)
 		})
 	}
 }
@@ -929,17 +930,17 @@ func TestResponseHeaders(t *testing.T) {
 		}
 
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/response-headers?%s", srv.URL, wantHeaders.Encode()), nil)
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[http.Header](t, resp)
 
 		for k, expectedValues := range wantHeaders {
 			// expected headers should be present in the HTTP response itself
 			respValues := resp.Header[k]
-			assertDeepEqual(t, expectedValues, respValues, "HTTP response headers mismatch")
+			assert.DeepEqual(t, expectedValues, respValues, "HTTP response headers mismatch")
 
 			// they should also be reflected in the decoded JSON resposne
 			resultValues := result[k]
-			assertDeepEqual(t, expectedValues, resultValues, "JSON response headers mismatch")
+			assert.DeepEqual(t, expectedValues, resultValues, "JSON response headers mismatch")
 		}
 	})
 
@@ -952,10 +953,10 @@ func TestResponseHeaders(t *testing.T) {
 		params.Set("Content-Type", contentType)
 
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/response-headers?%s", srv.URL, params.Encode()), nil)
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
-		assertStatusCode(t, resp, http.StatusOK)
-		assertContentType(t, resp, contentType)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, contentType)
 	})
 }
 
@@ -992,10 +993,10 @@ func TestRedirects(t *testing.T) {
 
 			req := newTestRequest(t, "GET", test.requestURL)
 			req.Host = "host"
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 
-			assertStatusCode(t, resp, http.StatusFound)
-			assertHeader(t, resp, "Location", test.expectedLocation)
+			assert.StatusCode(t, resp, http.StatusFound)
+			assert.Header(t, resp, "Location", test.expectedLocation)
 		})
 	}
 
@@ -1027,8 +1028,8 @@ func TestRedirects(t *testing.T) {
 		t.Run("error"+test.requestURL, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 }
@@ -1053,9 +1054,9 @@ func TestRedirectTo(t *testing.T) {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
-			assertHeader(t, resp, "Location", test.expectedLocation)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
+			assert.Header(t, resp, "Location", test.expectedLocation)
 		})
 	}
 
@@ -1074,8 +1075,8 @@ func TestRedirectTo(t *testing.T) {
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 
@@ -1103,10 +1104,10 @@ Allowed redirect destinations:
 		t.Run("allowlist"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedStatus >= 400 {
-				assertBodyEquals(t, resp, allowedDomainsError)
+				assert.BodyEquals(t, resp, allowedDomainsError)
 			}
 		})
 	}
@@ -1147,9 +1148,9 @@ func TestCookies(t *testing.T) {
 					})
 				}
 
-				resp := mustDoReq(t, req)
+				resp := must.DoReq(t, client, req)
 				result := mustParseResponse[cookiesResponse](t, resp)
-				assertDeepEqual(t, result, tc.cookies, "cookies mismatch")
+				assert.DeepEqual(t, result, tc.cookies, "cookies mismatch")
 			})
 		}
 	})
@@ -1167,17 +1168,17 @@ func TestCookies(t *testing.T) {
 		}
 
 		req := newTestRequest(t, "GET", "/cookies/set?"+params.Encode())
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
-		assertStatusCode(t, resp, http.StatusFound)
-		assertHeader(t, resp, "Location", "/cookies")
+		assert.StatusCode(t, resp, http.StatusFound)
+		assert.Header(t, resp, "Location", "/cookies")
 
 		for _, c := range resp.Cookies() {
 			v, ok := cookies[c.Name]
 			if !ok {
 				t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
 			}
-			assertEqual(t, c.Value, v, "value mismatch for cookie %q", c.Name)
+			assert.Equal(t, c.Value, v, "value mismatch for cookie %q", c.Name)
 		}
 	})
 
@@ -1201,9 +1202,9 @@ func TestCookies(t *testing.T) {
 			})
 		}
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusFound)
-		assertHeader(t, resp, "Location", "/cookies")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusFound)
+		assert.Header(t, resp, "Location", "/cookies")
 
 		for _, c := range resp.Cookies() {
 			if c.Name == toDelete {
@@ -1222,30 +1223,30 @@ func TestBasicAuth(t *testing.T) {
 		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
 		req.SetBasicAuth("user", "pass")
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[authResponse](t, resp)
 		expectedResult := authResponse{
 			Authorized: true,
 			User:       "user",
 		}
-		assertDeepEqual(t, result, expectedResult, "expected authorized user")
+		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
 
 	t.Run("error/no auth", func(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusUnauthorized)
-		assertContentType(t, resp, jsonContentType)
-		assertHeader(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusUnauthorized)
+		assert.ContentType(t, resp, jsonContentType)
+		assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		result := mustUnmarshal[authResponse](t, resp.Body)
+		result := must.Unmarshal[authResponse](t, resp.Body)
 		expectedResult := authResponse{
 			Authorized: false,
 			User:       "",
 		}
-		assertDeepEqual(t, result, expectedResult, "expected unauthorized user")
+		assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 	})
 
 	t.Run("error/bad auth", func(t *testing.T) {
@@ -1254,17 +1255,17 @@ func TestBasicAuth(t *testing.T) {
 		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
 		req.SetBasicAuth("bad", "auth")
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusUnauthorized)
-		assertContentType(t, resp, jsonContentType)
-		assertHeader(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusUnauthorized)
+		assert.ContentType(t, resp, jsonContentType)
+		assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		result := mustUnmarshal[authResponse](t, resp.Body)
+		result := must.Unmarshal[authResponse](t, resp.Body)
 		expectedResult := authResponse{
 			Authorized: false,
 			User:       "bad",
 		}
-		assertDeepEqual(t, result, expectedResult, "expected unauthorized user")
+		assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 	})
 
 	errorTests := []struct {
@@ -1281,8 +1282,8 @@ func TestBasicAuth(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			req.SetBasicAuth("foo", "bar")
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.status)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.status)
 		})
 	}
 }
@@ -1294,30 +1295,30 @@ func TestHiddenBasicAuth(t *testing.T) {
 		req := newTestRequest(t, "GET", "/hidden-basic-auth/user/pass")
 		req.SetBasicAuth("user", "pass")
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[authResponse](t, resp)
 		expectedResult := authResponse{
 			Authorized: true,
 			User:       "user",
 		}
-		assertDeepEqual(t, result, expectedResult, "expected authorized user")
+		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
 
 	t.Run("error/no auth", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/hidden-basic-auth/user/pass")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusNotFound)
-		assertHeader(t, resp, "WWW-Authenticate", "")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusNotFound)
+		assert.Header(t, resp, "WWW-Authenticate", "")
 	})
 
 	t.Run("error/bad auth", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/hidden-basic-auth/user/pass")
 		req.SetBasicAuth("bad", "auth")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusNotFound)
-		assertHeader(t, resp, "WWW-Authenticate", "")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusNotFound)
+		assert.Header(t, resp, "WWW-Authenticate", "")
 	})
 
 	errorTests := []struct {
@@ -1335,8 +1336,8 @@ func TestHiddenBasicAuth(t *testing.T) {
 
 			req := newTestRequest(t, "GET", test.url)
 			req.SetBasicAuth("foo", "bar")
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.status)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.status)
 		})
 	}
 }
@@ -1365,8 +1366,8 @@ func TestDigestAuth(t *testing.T) {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.status)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.status)
 		})
 	}
 
@@ -1390,13 +1391,13 @@ func TestDigestAuth(t *testing.T) {
 		req := newTestRequest(t, "GET", "/digest-auth/auth/user/pass/MD5")
 		req.Header.Set("Authorization", authorization)
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[authResponse](t, resp)
 		expectedResult := authResponse{
 			Authorized: true,
 			User:       "user",
 		}
-		assertDeepEqual(t, result, expectedResult, "expected authorized user")
+		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
 }
 
@@ -1406,10 +1407,10 @@ func TestGzip(t *testing.T) {
 	req := newTestRequest(t, "GET", "/gzip")
 	req.Header.Set("Accept-Encoding", "none") // disable automagic gzip decompression in default http client
 
-	resp := mustDoReq(t, req)
-	assertHeader(t, resp, "Content-Encoding", "gzip")
-	assertContentType(t, resp, jsonContentType)
-	assertStatusCode(t, resp, http.StatusOK)
+	resp := must.DoReq(t, client, req)
+	assert.Header(t, resp, "Content-Encoding", "gzip")
+	assert.ContentType(t, resp, jsonContentType)
+	assert.StatusCode(t, resp, http.StatusOK)
 
 	zippedContentLengthStr := resp.Header.Get("Content-Length")
 	if zippedContentLengthStr == "" {
@@ -1431,7 +1432,7 @@ func TestGzip(t *testing.T) {
 		t.Fatalf("error reading gzipped body: %s", err)
 	}
 
-	result := mustUnmarshal[noBodyResponse](t, bytes.NewBuffer(unzippedBody))
+	result := must.Unmarshal[noBodyResponse](t, bytes.NewBuffer(unzippedBody))
 
 	if result.Gzipped != true {
 		t.Fatalf("expected resp.Gzipped == true")
@@ -1446,11 +1447,11 @@ func TestDeflate(t *testing.T) {
 	t.Parallel()
 
 	req := newTestRequest(t, "GET", "/deflate")
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 
-	assertContentType(t, resp, "application/json; encoding=utf-8")
-	assertHeader(t, resp, "Content-Encoding", "deflate")
-	assertStatusCode(t, resp, http.StatusOK)
+	assert.ContentType(t, resp, "application/json; encoding=utf-8")
+	assert.Header(t, resp, "Content-Encoding", "deflate")
+	assert.StatusCode(t, resp, http.StatusOK)
 
 	contentLengthHeader := resp.Header.Get("Content-Length")
 	if contentLengthHeader == "" {
@@ -1471,7 +1472,7 @@ func TestDeflate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := mustUnmarshal[noBodyResponse](t, bytes.NewBuffer(body))
+	result := must.Unmarshal[noBodyResponse](t, bytes.NewBuffer(body))
 
 	if result.Deflated != true {
 		t.Fatalf("expected resp.Deflated == true")
@@ -1501,12 +1502,12 @@ func TestStream(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			defer resp.Body.Close()
 
 			// Expect empty content-length due to streaming response
-			assertHeader(t, resp, "Content-Length", "")
-			assertDeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
+			assert.Header(t, resp, "Content-Length", "")
+			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
 
 			var sr *streamResponse
 
@@ -1543,8 +1544,8 @@ func TestStream(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
 		})
 	}
 }
@@ -1572,7 +1573,7 @@ func TestDelay(t *testing.T) {
 
 			start := time.Now()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 			elapsed := time.Since(start)
 
 			_ = mustParseResponse[bodyResponse](t, resp)
@@ -1633,8 +1634,8 @@ func TestDelay(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
 		})
 	}
 }
@@ -1684,13 +1685,13 @@ func TestDrip(t *testing.T) {
 
 			start := time.Now()
 			req := newTestRequest(t, "GET", url)
-			resp := mustDoReq(t, req)
-			body := mustReadAll(t, resp.Body) // must read body before measuring elapsed time
+			resp := must.DoReq(t, client, req)
+			body := must.ReadAll(t, resp.Body) // must read body before measuring elapsed time
 			elapsed := time.Since(start)
 
-			assertStatusCode(t, resp, test.code)
-			assertHeader(t, resp, "Content-Type", "application/octet-stream")
-			assertHeader(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
+			assert.StatusCode(t, resp, test.code)
+			assert.Header(t, resp, "Content-Type", "application/octet-stream")
+			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
 
 			if len(body) != test.numbytes {
 				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(body))
@@ -1715,19 +1716,19 @@ func TestDrip(t *testing.T) {
 
 		req := newTestRequest(t, "GET", "/drip?code=100")
 		reqBytes, err := httputil.DumpRequestOut(req, false)
-		assertNilError(t, err)
+		assert.NilError(t, err)
 
 		conn, err := net.Dial("tcp", srv.Listener.Addr().String())
-		assertNilError(t, err)
+		assert.NilError(t, err)
 		defer conn.Close()
 
 		n, err := conn.Write(append(reqBytes, []byte("\r\n\r\n")...))
-		assertNilError(t, err)
-		assertIntEqual(t, len(reqBytes)+4, n)
+		assert.NilError(t, err)
+		assert.Equal(t, len(reqBytes)+4, n, "incorrect number of bytes written")
 
 		resp, err := http.ReadResponse(bufio.NewReader(conn), req)
-		assertNilError(t, err)
-		assertStatusCode(t, resp, 100)
+		assert.NilError(t, err)
+		assert.StatusCode(t, resp, 100)
 	})
 
 	t.Run("writes are actually incremmental", func(t *testing.T) {
@@ -1740,7 +1741,7 @@ func TestDrip(t *testing.T) {
 			endpoint  = fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, wantDelay, numBytes)
 		)
 		req := newTestRequest(t, "GET", endpoint)
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
 		// Here we read from the response one byte at a time, and ensure that
 		// at least the expected delay occurs for each read.
@@ -1758,12 +1759,9 @@ func TestDrip(t *testing.T) {
 				break
 			}
 
-			assertNilError(t, err)
-			assertIntEqual(t, n, 1)
-			if !reflect.DeepEqual(buf[:n], []byte{'*'}) {
-				t.Fatalf("unexpected bytes read: got %v, want %v", buf, []byte{'*'})
-			}
-
+			assert.NilError(t, err)
+			assert.Equal(t, n, 1, "incorrect number of bytes read")
+			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
 			if gotDelay < wantDelay {
 				t.Fatalf("to wait at least %s between reads, waited %s", wantDelay, gotDelay)
 			}
@@ -1786,8 +1784,8 @@ func TestDrip(t *testing.T) {
 		req := newTestRequest(t, "GET", "/drip?duration=500ms&delay=500ms")
 		req = req.WithContext(ctx)
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
 
 		body, err := io.ReadAll(resp.Body)
 		if !os.IsTimeout(err) {
@@ -1807,8 +1805,8 @@ func TestDrip(t *testing.T) {
 		req := newTestRequest(t, "GET", "/drip?duration=900ms&delay=100ms")
 		req = req.WithContext(ctx)
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
 
 		// in this case, the timeout happens while trying to read the body
 		body, err := io.ReadAll(resp.Body)
@@ -1817,7 +1815,7 @@ func TestDrip(t *testing.T) {
 		}
 
 		// but we should have received a partial response
-		assertBytesEqual(t, body, []byte("**"))
+		assert.DeepEqual(t, body, []byte("**"), "incorrect partial body")
 	})
 
 	badTests := []struct {
@@ -1857,8 +1855,8 @@ func TestDrip(t *testing.T) {
 
 			url := "/drip?" + test.params.Encode()
 			req := newTestRequest(t, "GET", url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
 		})
 	}
 
@@ -1866,10 +1864,10 @@ func TestDrip(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "HEAD", "/drip?duration=900ms&delay=100ms")
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
 
-		body := mustReadAll(t, resp.Body)
+		body := must.ReadAll(t, resp.Body)
 		if bodySize := len(body); bodySize > 0 {
 			t.Fatalf("expected empty body from HEAD request, got: %s", string(body))
 		}
@@ -1884,14 +1882,14 @@ func TestRange(t *testing.T) {
 		url := fmt.Sprintf("/range/%d", wantBytes)
 		req := newTestRequest(t, "GET", url)
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertHeader(t, resp, "ETag", fmt.Sprintf("range%d", wantBytes))
-		assertHeader(t, resp, "Accept-Ranges", "bytes")
-		assertHeader(t, resp, "Content-Length", strconv.Itoa(int(wantBytes)))
-		assertContentType(t, resp, "text/plain; charset=utf-8")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.Header(t, resp, "ETag", fmt.Sprintf("range%d", wantBytes))
+		assert.Header(t, resp, "Accept-Ranges", "bytes")
+		assert.Header(t, resp, "Content-Length", strconv.Itoa(int(wantBytes)))
+		assert.ContentType(t, resp, "text/plain; charset=utf-8")
 
-		body := mustReadAll(t, resp.Body)
+		body := must.ReadAll(t, resp.Body)
 		if len(body) != int(wantBytes) {
 			t.Errorf("expected content length %d, got %d", wantBytes, len(body))
 		}
@@ -1904,13 +1902,13 @@ func TestRange(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		req.Header.Add("Range", "bytes=10-24")
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusPartialContent)
-		assertHeader(t, resp, "ETag", "range100")
-		assertHeader(t, resp, "Accept-Ranges", "bytes")
-		assertHeader(t, resp, "Content-Length", "15")
-		assertHeader(t, resp, "Content-Range", "bytes 10-24/100")
-		assertBodyEquals(t, resp, "klmnopqrstuvwxy")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range100")
+		assert.Header(t, resp, "Accept-Ranges", "bytes")
+		assert.Header(t, resp, "Content-Length", "15")
+		assert.Header(t, resp, "Content-Range", "bytes 10-24/100")
+		assert.BodyEquals(t, resp, "klmnopqrstuvwxy")
 	})
 
 	t.Run("ok_range_first_16_bytes", func(t *testing.T) {
@@ -1920,13 +1918,13 @@ func TestRange(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		req.Header.Add("Range", "bytes=0-15")
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusPartialContent)
-		assertHeader(t, resp, "ETag", "range1000")
-		assertHeader(t, resp, "Accept-Ranges", "bytes")
-		assertHeader(t, resp, "Content-Length", "16")
-		assertHeader(t, resp, "Content-Range", "bytes 0-15/1000")
-		assertBodyEquals(t, resp, "abcdefghijklmnop")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range1000")
+		assert.Header(t, resp, "Accept-Ranges", "bytes")
+		assert.Header(t, resp, "Content-Length", "16")
+		assert.Header(t, resp, "Content-Range", "bytes 0-15/1000")
+		assert.BodyEquals(t, resp, "abcdefghijklmnop")
 	})
 
 	t.Run("ok_range_open_ended_last_6_bytes", func(t *testing.T) {
@@ -1936,12 +1934,12 @@ func TestRange(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		req.Header.Add("Range", "bytes=20-")
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusPartialContent)
-		assertHeader(t, resp, "ETag", "range26")
-		assertHeader(t, resp, "Content-Length", "6")
-		assertHeader(t, resp, "Content-Range", "bytes 20-25/26")
-		assertBodyEquals(t, resp, "uvwxyz")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range26")
+		assert.Header(t, resp, "Content-Length", "6")
+		assert.Header(t, resp, "Content-Range", "bytes 20-25/26")
+		assert.BodyEquals(t, resp, "uvwxyz")
 	})
 
 	t.Run("ok_range_suffix", func(t *testing.T) {
@@ -1951,13 +1949,13 @@ func TestRange(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		req.Header.Add("Range", "bytes=-5")
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		t.Logf("headers = %v", resp.Header)
-		assertStatusCode(t, resp, http.StatusPartialContent)
-		assertHeader(t, resp, "ETag", "range26")
-		assertHeader(t, resp, "Content-Length", "5")
-		assertHeader(t, resp, "Content-Range", "bytes 21-25/26")
-		assertBodyEquals(t, resp, "vwxyz")
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range26")
+		assert.Header(t, resp, "Content-Length", "5")
+		assert.Header(t, resp, "Content-Range", "bytes 21-25/26")
+		assert.BodyEquals(t, resp, "vwxyz")
 	})
 
 	t.Run("err_range_out_of_bounds", func(t *testing.T) {
@@ -1967,12 +1965,12 @@ func TestRange(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		req.Header.Add("Range", "bytes=-5")
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusPartialContent)
-		assertHeader(t, resp, "ETag", "range26")
-		assertHeader(t, resp, "Content-Length", "5")
-		assertHeader(t, resp, "Content-Range", "bytes 21-25/26")
-		assertBodyEquals(t, resp, "vwxyz")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range26")
+		assert.Header(t, resp, "Content-Length", "5")
+		assert.Header(t, resp, "Content-Range", "bytes 21-25/26")
+		assert.BodyEquals(t, resp, "vwxyz")
 	})
 
 	// Note: httpbin rejects these requests with invalid range headers, but the
@@ -1991,9 +1989,9 @@ func TestRange(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusOK)
-			assertBodyEquals(t, resp, "abcdefghijklmnopqrstuvwxyz")
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.BodyEquals(t, resp, "abcdefghijklmnopqrstuvwxyz")
 		})
 	}
 
@@ -2015,8 +2013,8 @@ func TestRange(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
 		})
 	}
 }
@@ -2024,25 +2022,25 @@ func TestRange(t *testing.T) {
 func TestHTML(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/html")
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, htmlContentType)
-	assertBodyContains(t, resp, `<h1>Herman Melville - Moby-Dick</h1>`)
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, htmlContentType)
+	assert.BodyContains(t, resp, `<h1>Herman Melville - Moby-Dick</h1>`)
 }
 
 func TestRobots(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/robots.txt")
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, "text/plain")
-	assertBodyContains(t, resp, `Disallow: /deny`)
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, "text/plain")
+	assert.BodyContains(t, resp, `Disallow: /deny`)
 }
 
 func TestDeny(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/deny")
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, "text/plain")
-	assertBodyContains(t, resp, `YOU SHOULDN'T BE HERE`)
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, "text/plain")
+	assert.BodyContains(t, resp, `YOU SHOULDN'T BE HERE`)
 }
 
 func TestCache(t *testing.T) {
@@ -2051,14 +2049,14 @@ func TestCache(t *testing.T) {
 
 		url := "/cache"
 		req := newTestRequest(t, "GET", url)
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 
 		_ = mustParseResponse[noBodyResponse](t, resp)
 		lastModified := resp.Header.Get("Last-Modified")
 		if lastModified == "" {
 			t.Fatalf("expected Last-Modified header")
 		}
-		assertHeader(t, resp, "ETag", sha1hash(lastModified))
+		assert.Header(t, resp, "ETag", sha1hash(lastModified))
 	})
 
 	tests := []struct {
@@ -2075,8 +2073,8 @@ func TestCache(t *testing.T) {
 
 			req := newTestRequest(t, "GET", "/cache")
 			req.Header.Add(test.headerKey, test.headerVal)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusNotModified)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusNotModified)
 		})
 	}
 }
@@ -2087,10 +2085,10 @@ func TestCacheControl(t *testing.T) {
 
 		url := "/cache/60"
 		req := newTestRequest(t, "GET", url)
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertContentType(t, resp, jsonContentType)
-		assertHeader(t, resp, "Cache-Control", "public, max-age=60")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, jsonContentType)
+		assert.Header(t, resp, "Cache-Control", "public, max-age=60")
 	})
 
 	badTests := []struct {
@@ -2107,8 +2105,8 @@ func TestCacheControl(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 }
@@ -2119,9 +2117,9 @@ func TestETag(t *testing.T) {
 
 		url := "/etag/abc"
 		req := newTestRequest(t, "GET", url)
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertHeader(t, resp, "ETag", `"abc"`)
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.Header(t, resp, "ETag", `"abc"`)
 	})
 
 	tests := []struct {
@@ -2150,8 +2148,8 @@ func TestETag(t *testing.T) {
 			url := "/etag/" + test.etag
 			req := newTestRequest(t, "GET", url)
 			req.Header.Add(test.headerKey, test.headerVal)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 
@@ -2167,8 +2165,8 @@ func TestETag(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 }
@@ -2179,11 +2177,11 @@ func TestBytes(t *testing.T) {
 
 		url := "/bytes/1024"
 		req := newTestRequest(t, "GET", url)
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertContentType(t, resp, "application/octet-stream")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, "application/octet-stream")
 
-		body := mustReadAll(t, resp.Body)
+		body := must.ReadAll(t, resp.Body)
 		if len(body) != 1024 {
 			t.Errorf("expected content length 1024, got %d", len(body))
 		}
@@ -2195,12 +2193,12 @@ func TestBytes(t *testing.T) {
 		url := "/bytes/16?seed=1234567890"
 		req := newTestRequest(t, "GET", url)
 
-		resp := mustDoReq(t, req)
-		assertStatusCode(t, resp, http.StatusOK)
-		assertContentType(t, resp, "application/octet-stream")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, "application/octet-stream")
 
 		want := "\xbf\xcd*\xfa\x15\xa2\xb3r\xc7\a\x98Z\"\x02J\x8e"
-		assertBodyEquals(t, resp, want)
+		assert.BodyEquals(t, resp, want)
 	})
 
 	edgeCaseTests := []struct {
@@ -2220,13 +2218,13 @@ func TestBytes(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusOK)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusOK)
 			t.Logf("status:  %q", resp.Status)
 			t.Logf("headers: %v", resp.Header)
-			assertHeader(t, resp, "Content-Length", strconv.Itoa(test.expectedContentLength))
+			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.expectedContentLength))
 
-			bodyLen := len(mustReadAll(t, resp.Body))
+			bodyLen := len(must.ReadAll(t, resp.Body))
 			if bodyLen != test.expectedContentLength {
 				t.Errorf("expected body of length %d, got %d", test.expectedContentLength, bodyLen)
 			}
@@ -2255,8 +2253,8 @@ func TestBytes(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 }
@@ -2283,13 +2281,13 @@ func TestStreamBytes(t *testing.T) {
 			t.Parallel()
 
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
+			resp := must.DoReq(t, client, req)
 
 			// Expect empty content-length due to streaming response
-			assertHeader(t, resp, "Content-Length", "")
-			assertDeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "incorrect Transfer-Encoding header")
+			assert.Header(t, resp, "Content-Length", "")
+			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "incorrect Transfer-Encoding header")
 
-			if bodySize := len(mustReadAll(t, resp.Body)); bodySize != test.expectedContentLength {
+			if bodySize := len(must.ReadAll(t, resp.Body)); bodySize != test.expectedContentLength {
 				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, bodySize)
 			}
 		})
@@ -2313,8 +2311,8 @@ func TestStreamBytes(t *testing.T) {
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.code)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.code)
 		})
 	}
 }
@@ -2333,9 +2331,9 @@ func TestLinks(t *testing.T) {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusFound)
-			assertHeader(t, resp, "Location", test.expectedLocation)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusFound)
+			assert.Header(t, resp, "Location", test.expectedLocation)
 		})
 	}
 
@@ -2360,8 +2358,8 @@ func TestLinks(t *testing.T) {
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 
@@ -2382,10 +2380,10 @@ func TestLinks(t *testing.T) {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusOK)
-			assertContentType(t, resp, htmlContentType)
-			assertBodyEquals(t, resp, test.expectedContent)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.ContentType(t, resp, htmlContentType)
+			assert.BodyEquals(t, resp, test.expectedContent)
 		})
 	}
 }
@@ -2414,10 +2412,10 @@ func TestImage(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", "/image")
 			req.Header.Set("Accept", test.acceptHeader)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedContentType != "" {
-				assertContentType(t, resp, test.expectedContentType)
+				assert.ContentType(t, resp, test.expectedContentType)
 			}
 		})
 	}
@@ -2441,8 +2439,8 @@ func TestImage(t *testing.T) {
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, test.expectedStatus)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
 }
@@ -2450,9 +2448,9 @@ func TestImage(t *testing.T) {
 func TestXML(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/xml")
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, "application/xml")
-	assertBodyContains(t, resp, `<?xml version='1.0' encoding='us-ascii'?>`)
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, "application/xml")
+	assert.BodyContains(t, resp, `<?xml version='1.0' encoding='us-ascii'?>`)
 }
 
 func isValidUUIDv4(uuid string) error {
@@ -2469,7 +2467,7 @@ func isValidUUIDv4(uuid string) error {
 func TestUUID(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/uuid")
-	resp := mustDoReq(t, req)
+	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[uuidResponse](t, resp)
 	if err := isValidUUIDv4(result.UUID); err != nil {
 		t.Fatalf("Invalid uuid %s: %s", result.UUID, err)
@@ -2518,10 +2516,10 @@ func TestBase64(t *testing.T) {
 		t.Run("ok"+test.requestURL, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusOK)
-			assertContentType(t, resp, "text/plain")
-			assertBodyEquals(t, resp, test.want)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.ContentType(t, resp, "text/plain")
+			assert.BodyEquals(t, resp, test.want)
 		})
 	}
 
@@ -2574,9 +2572,9 @@ func TestBase64(t *testing.T) {
 		t.Run("error"+test.requestURL, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusBadRequest)
-			assertBodyContains(t, resp, test.expectedBodyContains)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusBadRequest)
+			assert.BodyContains(t, resp, test.expectedBodyContains)
 		})
 	}
 }
@@ -2589,17 +2587,17 @@ func TestDumpRequest(t *testing.T) {
 	req.Header.Set("x-test-header2", "Test-Value2")
 	req.Header.Set("x-test-header1", "Test-Value1")
 
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, "text/plain; charset=utf-8")
-	assertBodyEquals(t, resp, "GET /dump/request?foo=bar HTTP/1.1\r\nHost: test-host\r\nAccept-Encoding: gzip\r\nUser-Agent: Go-http-client/1.1\r\nX-Test-Header1: Test-Value1\r\nX-Test-Header2: Test-Value2\r\n\r\n")
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, "text/plain; charset=utf-8")
+	assert.BodyEquals(t, resp, "GET /dump/request?foo=bar HTTP/1.1\r\nHost: test-host\r\nAccept-Encoding: gzip\r\nUser-Agent: Go-http-client/1.1\r\nX-Test-Header1: Test-Value1\r\nX-Test-Header2: Test-Value2\r\n\r\n")
 }
 
 func TestJSON(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/json")
-	resp := mustDoReq(t, req)
-	assertContentType(t, resp, jsonContentType)
-	assertBodyContains(t, resp, `Wake up to WonderWidgets!`)
+	resp := must.DoReq(t, client, req)
+	assert.ContentType(t, resp, jsonContentType)
+	assert.BodyContains(t, resp, `Wake up to WonderWidgets!`)
 }
 
 func TestBearer(t *testing.T) {
@@ -2612,13 +2610,13 @@ func TestBearer(t *testing.T) {
 		req := newTestRequest(t, "GET", requestURL)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[bearerResponse](t, resp)
 		want := bearerResponse{
 			Authenticated: true,
 			Token:         token,
 		}
-		assertDeepEqual(t, result, want, "auth response mismatch")
+		assert.DeepEqual(t, result, want, "auth response mismatch")
 	})
 
 	errorTests := []struct {
@@ -2652,9 +2650,9 @@ func TestBearer(t *testing.T) {
 			if test.authorizationHeader != "" {
 				req.Header.Set("Authorization", test.authorizationHeader)
 			}
-			resp := mustDoReq(t, req)
-			assertHeader(t, resp, "WWW-Authenticate", "Bearer")
-			assertStatusCode(t, resp, http.StatusUnauthorized)
+			resp := must.DoReq(t, client, req)
+			assert.Header(t, resp, "WWW-Authenticate", "Bearer")
+			assert.StatusCode(t, resp, http.StatusUnauthorized)
 		})
 	}
 }
@@ -2670,8 +2668,8 @@ func TestNotImplemented(t *testing.T) {
 		t.Run(test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
-			resp := mustDoReq(t, req)
-			assertStatusCode(t, resp, http.StatusNotImplemented)
+			resp := must.DoReq(t, client, req)
+			assert.StatusCode(t, resp, http.StatusNotImplemented)
 		})
 	}
 }
@@ -2680,9 +2678,9 @@ func TestHostname(t *testing.T) {
 	t.Run("default hostname", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/hostname")
-		resp := mustDoReq(t, req)
+		resp := must.DoReq(t, client, req)
 		result := mustParseResponse[hostnameResponse](t, resp)
-		assertEqual(t, result.Hostname, DefaultHostname, "hostname mismatch")
+		assert.Equal(t, result.Hostname, DefaultHostname, "hostname mismatch")
 	})
 
 	t.Run("real hostname", func(t *testing.T) {
@@ -2694,13 +2692,13 @@ func TestHostname(t *testing.T) {
 		defer srv.Close()
 
 		req, err := http.NewRequest("GET", srv.URL+"/hostname", nil)
-		assertNilError(t, err)
+		assert.NilError(t, err)
 
 		resp, err := client.Do(req)
-		assertNilError(t, err)
+		assert.NilError(t, err)
 
 		result := mustParseResponse[hostnameResponse](t, resp)
-		assertEqual(t, result.Hostname, realHostname, "hostname mismatch")
+		assert.Equal(t, result.Hostname, realHostname, "hostname mismatch")
 	})
 }
 
@@ -2730,99 +2728,7 @@ func newTestRequestWithBody(t *testing.T, verb, path string, body io.Reader) *ht
 
 func mustParseResponse[T any](t *testing.T, resp *http.Response) T {
 	t.Helper()
-	assertStatusCode(t, resp, http.StatusOK)
+	assert.StatusCode(t, resp, http.StatusOK)
 	assert.ContentType(t, resp, jsonContentType)
-	return mustUnmarshal[T](t, resp.Body)
-}
-
-func mustDoReq(t *testing.T, req *http.Request) *http.Response {
-	t.Helper()
-	start := time.Now()
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("error making HTTP request: %s %s: %s", req.Method, req.URL, err)
-	}
-	t.Logf("test request: %s %s => %s (%s)", req.Method, req.URL, resp.Status, time.Since(start))
-	return resp
-}
-
-func mustReadAll(t *testing.T, r io.Reader) string {
-	t.Helper()
-	body, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatalf("error reading: %s", err)
-	}
-	if rc, ok := r.(io.ReadCloser); ok {
-		rc.Close()
-	}
-	return string(body)
-}
-
-func mustUnmarshal[T any](t *testing.T, r io.Reader) T {
-	t.Helper()
-	var v T
-	if err := json.NewDecoder(r).Decode(&v); err != nil {
-		t.Fatal(err)
-	}
-	return v
-}
-
-func assertEqual[T comparable](t *testing.T, want, got T, msg string, arg ...any) {
-	t.Helper()
-	if want != got {
-		if msg == "" {
-			msg = "expected values to match"
-		}
-		msg = fmt.Sprintf(msg, arg...)
-		t.Fatalf("%s:\nwant: %#v\n got: %#v", msg, want, got)
-	}
-}
-
-func assertDeepEqual[T any](t *testing.T, want, got T, msg string, arg ...any) {
-	t.Helper()
-	if !reflect.DeepEqual(want, got) {
-		if msg == "" {
-			msg = "expected values to match"
-		}
-		msg = fmt.Sprintf(msg, arg...)
-		t.Fatalf("%s:\nwant: %#v\n got: %#v", msg, want, got)
-	}
-}
-
-func assertStatusCode(t *testing.T, resp *http.Response, code int) {
-	t.Helper()
-	if resp.StatusCode != code {
-		t.Fatalf("expected status code %d, got %d", code, resp.StatusCode)
-	}
-}
-
-// assertHeader asserts that a header key has a specific value in a
-// response.
-func assertHeader(t *testing.T, resp *http.Response, key, want string) {
-	t.Helper()
-	got := resp.Header.Get(key)
-	if want != got {
-		t.Fatalf("expected header %s=%#v, got %#v", key, want, got)
-	}
-}
-
-func assertContentType(t *testing.T, resp *http.Response, contentType string) {
-	t.Helper()
-	assertHeader(t, resp, "Content-Type", contentType)
-}
-
-func assertBodyContains(t *testing.T, resp *http.Response, needle string) {
-	t.Helper()
-	body := mustReadAll(t, resp.Body)
-	if !strings.Contains(body, needle) {
-		t.Fatalf("expected string %q in body %q", needle, body)
-	}
-}
-
-func assertBodyEquals(t *testing.T, resp *http.Response, want string) {
-	t.Helper()
-	got := mustReadAll(t, resp.Body)
-	if want != got {
-		t.Fatalf("expected body = %q, got %q", want, got)
-	}
+	return must.Unmarshal[T](t, resp.Body)
 }
