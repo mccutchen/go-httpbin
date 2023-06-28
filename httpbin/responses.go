@@ -44,10 +44,10 @@ type bodyResponse struct {
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
-	Data  string              `json:"data"`
-	Files map[string][]string `json:"files"`
-	Form  map[string][]string `json:"form"`
-	JSON  interface{}         `json:"json"`
+	Data  string      `json:"data"`
+	Files url.Values  `json:"files"`
+	Form  url.Values  `json:"form"`
+	JSON  interface{} `json:"json"`
 }
 
 type cookiesResponse map[string]string

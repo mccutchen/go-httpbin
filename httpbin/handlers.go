@@ -17,6 +17,8 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
 )
 
+var nilValues = url.Values{}
+
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not implemented", http.StatusNotImplemented)
 }
@@ -71,6 +73,8 @@ func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
 		Args:    r.URL.Query(),
+		Files:   nilValues,
+		Form:    nilValues,
 		Headers: getRequestHeaders(r),
 		Method:  r.Method,
 		Origin:  getClientIP(r),
