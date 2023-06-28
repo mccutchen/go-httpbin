@@ -17,6 +17,8 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
 )
 
+var nilValues = url.Values{}
+
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not implemented", http.StatusNotImplemented)
 }
@@ -71,6 +73,8 @@ func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
 		Args:    r.URL.Query(),
+		Files:   nilValues,
+		Form:    nilValues,
 		Headers: getRequestHeaders(r),
 		Method:  r.Method,
 		Origin:  getClientIP(r),
@@ -628,24 +632,37 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pause := duration / time.Duration(numBytes)
-	flusher := w.(http.Flusher)
+	pause := duration
+	if numBytes > 1 {
+		// compensate for lack of pause after final write (i.e. if we're
+		// writing 10 bytes, we will only pause 9 times)
+		pause = duration / time.Duration(numBytes-1)
+	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
 	w.WriteHeader(code)
+
+	flusher := w.(http.Flusher)
 	flusher.Flush()
 
+	// wait for initial delay before writing response body
 	select {
 	case <-r.Context().Done():
 		return
 	case <-time.After(delay):
 	}
 
+	// write response body byte-by-byte, pausing between each write
 	b := []byte{'*'}
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)
 		flusher.Flush()
+
+		// don't pause after last byte
+		if i == numBytes-1 {
+			break
+		}
 
 		select {
 		case <-r.Context().Done():
@@ -829,9 +846,10 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 			}
 		}()
 	} else {
+		// if not streaming, we will write the whole response at once
 		chunkSize = numBytes
+		w.Header().Set("Content-Length", strconv.Itoa(numBytes))
 		write = func(chunk []byte) {
-			w.Header().Set("Content-Length", strconv.Itoa(len(chunk)))
 			w.Write(chunk)
 		}
 	}
@@ -878,6 +896,7 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 		offset, err := strconv.Atoi(parts[3])
 		if err != nil {
 			http.Error(w, "Invalid offset", http.StatusBadRequest)
+			return
 		}
 		doLinksPage(w, r, n, offset)
 		return
@@ -937,6 +956,7 @@ func doImage(w http.ResponseWriter, kind string) {
 	img, err := staticAsset("image." + kind)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
+		return
 	}
 	contentType := "image/" + kind
 	if kind == "svg" {

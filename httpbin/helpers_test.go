@@ -8,42 +8,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
-
-func assertNil(t *testing.T, v interface{}) {
-	t.Helper()
-	if v != nil {
-		t.Fatalf("expected nil, got %#v", v)
-	}
-}
-
-func assertNilError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("expected nil error, got %s (%T)", err, err)
-	}
-}
-
-func assertIntEqual(t *testing.T, a, b int) {
-	if a != b {
-		t.Errorf("expected %v == %v", a, b)
-	}
-}
-
-func assertBytesEqual(t *testing.T, a, b []byte) {
-	if !reflect.DeepEqual(a, b) {
-		t.Errorf("expected %v == %v", a, b)
-	}
-}
-
-func assertError(t *testing.T, got, expected error) {
-	if got != expected {
-		t.Errorf("expected error %v, got %v", expected, got)
-	}
-}
 
 func mustParse(s string) *url.URL {
 	u, e := url.Parse(s)
@@ -54,7 +23,7 @@ func mustParse(s string) *url.URL {
 }
 
 func TestGetURL(t *testing.T) {
-	baseUrl, _ := url.Parse("http://example.com/something?foo=bar")
+	baseURL := mustParse("http://example.com/something?foo=bar")
 	tests := []struct {
 		name     string
 		input    *http.Request
@@ -63,7 +32,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"basic test",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{},
 			},
 			mustParse("http://example.com/something?foo=bar"),
@@ -71,7 +40,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if TLS is not nil, scheme is https",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				TLS:    &tls.ConnectionState{},
 				Header: http.Header{},
 			},
@@ -80,7 +49,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Proto is present, scheme is that value",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Proto": {"https"}},
 			},
 			mustParse("https://example.com/something?foo=bar"),
@@ -88,7 +57,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Proto is present, scheme is that value (2)",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Proto": {"bananas"}},
 			},
 			mustParse("bananas://example.com/something?foo=bar"),
@@ -96,7 +65,7 @@ func TestGetURL(t *testing.T) {
 		{
 			"if X-Forwarded-Ssl is 'on', scheme is https",
 			&http.Request{
-				URL:    baseUrl,
+				URL:    baseURL,
 				Header: http.Header{"X-Forwarded-Ssl": {"on"}},
 			},
 			mustParse("https://example.com/something?foo=bar"),
@@ -114,9 +83,7 @@ func TestGetURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res := getURL(test.input)
-			if res.String() != test.expected.String() {
-				t.Fatalf("expected %s, got %s", test.expected, res)
-			}
+			assert.Equal(t, res.String(), test.expected.String(), "URL mismatch")
 		})
 	}
 }
@@ -143,12 +110,8 @@ func TestParseDuration(t *testing.T) {
 		t.Run(fmt.Sprintf("ok/%s", test.input), func(t *testing.T) {
 			t.Parallel()
 			result, err := parseDuration(test.input)
-			if err != nil {
-				t.Fatalf("unexpected error parsing duration %v: %s", test.input, err)
-			}
-			if result != test.expected {
-				t.Fatalf("expected %s, got %s", test.expected, result)
-			}
+			assert.NilError(t, err)
+			assert.Equal(t, result, test.expected, "incorrect duration")
 		})
 	}
 
@@ -186,23 +149,23 @@ func TestSyntheticByteStream(t *testing.T) {
 		// read first half
 		p := make([]byte, 5)
 		count, err := s.Read(p)
-		assertNil(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{0, 1, 2, 3, 4})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
 
 		// read second half
 		p = make([]byte, 5)
 		count, err = s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{5, 6, 7, 8, 9})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
 
 		// can't read any more
 		p = make([]byte, 5)
 		count, err = s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 0)
-		assertBytesEqual(t, p, []byte{0, 0, 0, 0, 0})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 0, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
 	})
 
 	t.Run("read into too-large buffer", func(t *testing.T) {
@@ -210,9 +173,9 @@ func TestSyntheticByteStream(t *testing.T) {
 		s := newSyntheticByteStream(5, factory)
 		p := make([]byte, 10)
 		count, err := s.Read(p)
-		assertError(t, err, io.EOF)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{0, 1, 2, 3, 4, 0, 0, 0, 0, 0})
+		assert.Error(t, err, io.EOF)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4, 0, 0, 0, 0, 0}, "incorrect bytes read")
 	})
 
 	t.Run("seek", func(t *testing.T) {
@@ -222,37 +185,31 @@ func TestSyntheticByteStream(t *testing.T) {
 		p := make([]byte, 5)
 		s.Seek(10, io.SeekStart)
 		count, err := s.Read(p)
-		assertNil(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{10, 11, 12, 13, 14})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{10, 11, 12, 13, 14}, "incorrect bytes read")
 
 		s.Seek(10, io.SeekCurrent)
 		count, err = s.Read(p)
-		assertNil(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{25, 26, 27, 28, 29})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{25, 26, 27, 28, 29}, "incorrect bytes read")
 
 		s.Seek(10, io.SeekEnd)
 		count, err = s.Read(p)
-		assertNil(t, err)
-		assertIntEqual(t, count, 5)
-		assertBytesEqual(t, p, []byte{90, 91, 92, 93, 94})
+		assert.NilError(t, err)
+		assert.Equal(t, count, 5, "incorrect number of bytes read")
+		assert.DeepEqual(t, p, []byte{90, 91, 92, 93, 94}, "incorrect bytes read")
 
-		// invalid whence
 		_, err = s.Seek(10, 666)
-		if err.Error() != "Seek: invalid whence" {
-			t.Errorf("Expected \"Seek: invalid whence\", got %#v", err.Error())
-		}
+		assert.Equal(t, err.Error(), "Seek: invalid whence", "incorrect error for invalid whence")
 
-		// invalid offset
 		_, err = s.Seek(-10, io.SeekStart)
-		if err.Error() != "Seek: invalid offset" {
-			t.Errorf("Expected \"Seek: invalid offset\", got %#v", err.Error())
-		}
+		assert.Equal(t, err.Error(), "Seek: invalid offset", "incorrect error for invalid offset")
 	})
 }
 
-func Test_getClientIP(t *testing.T) {
+func TestGetClientIP(t *testing.T) {
 	t.Parallel()
 
 	makeHeaders := func(m map[string]string) http.Header {
@@ -297,9 +254,7 @@ func Test_getClientIP(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if got := getClientIP(tc.given); got != tc.want {
-				t.Errorf("getClientIP() = %v, want %v", got, tc.want)
-			}
+			assert.Equal(t, getClientIP(tc.given), tc.want, "incorrect client ip")
 		})
 	}
 }
