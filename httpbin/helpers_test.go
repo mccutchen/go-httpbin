@@ -83,9 +83,7 @@ func TestGetURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res := getURL(test.input)
-			if res.String() != test.expected.String() {
-				t.Fatalf("expected %s, got %s", test.expected, res)
-			}
+			assert.Equal(t, res.String(), test.expected.String(), "URL mismatch")
 		})
 	}
 }
@@ -112,12 +110,8 @@ func TestParseDuration(t *testing.T) {
 		t.Run(fmt.Sprintf("ok/%s", test.input), func(t *testing.T) {
 			t.Parallel()
 			result, err := parseDuration(test.input)
-			if err != nil {
-				t.Fatalf("unexpected error parsing duration %v: %s", test.input, err)
-			}
-			if result != test.expected {
-				t.Fatalf("expected %s, got %s", test.expected, result)
-			}
+			assert.NilError(t, err)
+			assert.Equal(t, result, test.expected, "incorrect duration")
 		})
 	}
 
@@ -207,21 +201,15 @@ func TestSyntheticByteStream(t *testing.T) {
 		assert.Equal(t, count, 5, "incorrect number of bytes read")
 		assert.DeepEqual(t, p, []byte{90, 91, 92, 93, 94}, "incorrect bytes read")
 
-		// invalid whence
 		_, err = s.Seek(10, 666)
-		if err.Error() != "Seek: invalid whence" {
-			t.Errorf("Expected \"Seek: invalid whence\", got %#v", err.Error())
-		}
+		assert.Equal(t, err.Error(), "Seek: invalid whence", "incorrect error for invalid whence")
 
-		// invalid offset
 		_, err = s.Seek(-10, io.SeekStart)
-		if err.Error() != "Seek: invalid offset" {
-			t.Errorf("Expected \"Seek: invalid offset\", got %#v", err.Error())
-		}
+		assert.Equal(t, err.Error(), "Seek: invalid offset", "incorrect error for invalid offset")
 	})
 }
 
-func Test_getClientIP(t *testing.T) {
+func TestGetClientIP(t *testing.T) {
 	t.Parallel()
 
 	makeHeaders := func(m map[string]string) http.Header {
@@ -266,9 +254,7 @@ func Test_getClientIP(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if got := getClientIP(tc.given); got != tc.want {
-				t.Errorf("getClientIP() = %v, want %v", got, tc.want)
-			}
+			assert.Equal(t, getClientIP(tc.given), tc.want, "incorrect client ip")
 		})
 	}
 }

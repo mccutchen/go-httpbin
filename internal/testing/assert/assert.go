@@ -40,8 +40,9 @@ func NilError(t *testing.T, err error) {
 }
 
 func Error(t *testing.T, got, expected error) {
+	t.Helper()
 	if got != expected {
-		t.Errorf("expected error %v, got %v", expected, got)
+		t.Fatalf("expected error %v, got %v", expected, got)
 	}
 }
 
