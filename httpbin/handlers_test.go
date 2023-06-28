@@ -122,11 +122,7 @@ func TestGet(t *testing.T) {
 
 		resp := mustDoReq(t, req)
 		assertStatusCode(t, resp, http.StatusOK)
-
-		var result noBodyResponse
-		mustUnmarshal(t, resp.Body, &result)
-
-		return result
+		return mustUnmarshal[noBodyResponse](t, resp.Body)
 	}
 
 	t.Run("basic", func(t *testing.T) {
@@ -397,8 +393,7 @@ func TestHeaders(t *testing.T) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result headersResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[headersResponse](t, resp.Body)
 
 	// Host header requires special treatment, because its an attribute of the
 	// http.Request struct itself, not part of its headers map
@@ -533,8 +528,7 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			assertStatusCode(t, resp, http.StatusOK)
 			assertContentType(t, resp, jsonContentType)
 
-			var result bodyResponse
-			mustUnmarshal(t, resp.Body, &result)
+			result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
 			if result.Data != expected {
@@ -578,8 +572,7 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 			assertStatusCode(t, resp, http.StatusOK)
 			assertContentType(t, resp, jsonContentType)
 
-			var result bodyResponse
-			mustUnmarshal(t, resp.Body, &result)
+			result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 			if result.Data != "" {
 				t.Fatalf("expected empty response data, got %#v", result.Data)
@@ -614,8 +607,7 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if len(result.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", result.Args)
@@ -668,8 +660,7 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if len(result.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", result.Args)
@@ -717,8 +708,7 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if len(result.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", result.Args)
@@ -726,18 +716,7 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	if result.Method != verb {
 		t.Fatalf("expected method to be %s, got %s", verb, result.Method)
 	}
-	if len(result.Form) != len(params) {
-		t.Fatalf("expected %d form values, got %d", len(params), len(result.Form))
-	}
-	for k, expectedValues := range params {
-		values, ok := result.Form[k]
-		if !ok {
-			t.Fatalf("expected form field %#v in response", k)
-		}
-		if !reflect.DeepEqual(expectedValues, values) {
-			t.Fatalf("form value mismatch: %#v != %#v", values, expectedValues)
-		}
-	}
+	assertDeepEqual(t, params, result.Form)
 }
 
 func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
@@ -756,11 +735,13 @@ func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if len(result.Args) > 0 {
 		t.Fatalf("expected no query params, got %#v", result.Args)
+	}
+	if result.Method != verb {
+		t.Fatalf("expected method to be %s, got %s", verb, result.Method)
 	}
 
 	// verify that the file we added is present in the `files` attribute of the
@@ -768,13 +749,7 @@ func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
 	wantFiles := map[string][]string{
 		"fieldname": {"hello world"},
 	}
-	if !reflect.DeepEqual(result.Files, wantFiles) {
-		t.Fatalf("want resp.Files = %#v, got %#v", wantFiles, result.Files)
-	}
-
-	if result.Method != verb {
-		t.Fatalf("expected method to be %s, got %s", verb, result.Method)
-	}
+	assertDeepEqual(t, wantFiles, result.Files)
 }
 
 func testRequestWithBodyInvalidFormEncodedBody(t *testing.T, verb, path string) {
@@ -813,8 +788,7 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if result.Data != string(inputBody) {
 		t.Fatalf("expected data == %#v, got %#v", string(inputBody), result.Data)
@@ -873,8 +847,7 @@ func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if result.Args.Encode() != params.Encode() {
 		t.Fatalf("expected args = %#v in response, got %#v", params.Encode(), result.Args.Encode())
@@ -911,8 +884,7 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	assertStatusCode(t, resp, http.StatusOK)
 	assertContentType(t, resp, jsonContentType)
 
-	var result bodyResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 	if result.Args.Encode() != args.Encode() {
 		t.Fatalf("expected args = %#v in response, got %#v", args.Encode(), result.Args.Encode())
@@ -958,8 +930,7 @@ func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
 			resp := mustDoReq(t, req)
 			assertStatusCode(t, resp, http.StatusOK)
 
-			var result bodyResponse
-			mustUnmarshal(t, resp.Body, &result)
+			result := mustUnmarshal[bodyResponse](t, resp.Body)
 
 			got := result.Headers.Get("Transfer-Encoding")
 			if got != tc.want {
@@ -1382,8 +1353,7 @@ func TestCookies(t *testing.T) {
 				assertStatusCode(t, resp, http.StatusOK)
 				assertContentType(t, resp, jsonContentType)
 
-				var result cookiesResponse
-				mustUnmarshal(t, resp.Body, &result)
+				result := mustUnmarshal[cookiesResponse](t, resp.Body)
 				if !reflect.DeepEqual(tc.cookies, result) {
 					t.Fatalf("expected cookies %#v, got %#v", tc.cookies, result)
 				}
@@ -1465,8 +1435,7 @@ func TestBasicAuth(t *testing.T) {
 		assertStatusCode(t, resp, http.StatusOK)
 		assertContentType(t, resp, jsonContentType)
 
-		var result authResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[authResponse](t, resp.Body)
 
 		expectedResult := authResponse{
 			Authorized: true,
@@ -1486,8 +1455,7 @@ func TestBasicAuth(t *testing.T) {
 		assertContentType(t, resp, jsonContentType)
 		assertHeader(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		var result authResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[authResponse](t, resp.Body)
 
 		expectedResult := authResponse{
 			Authorized: false,
@@ -1509,8 +1477,7 @@ func TestBasicAuth(t *testing.T) {
 		assertContentType(t, resp, jsonContentType)
 		assertHeader(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		var result authResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[authResponse](t, resp.Body)
 
 		expectedResult := authResponse{
 			Authorized: false,
@@ -1552,8 +1519,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		assertStatusCode(t, resp, http.StatusOK)
 		assertContentType(t, resp, jsonContentType)
 
-		var result authResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[authResponse](t, resp.Body)
 
 		expectedResult := authResponse{
 			Authorized: true,
@@ -1659,8 +1625,7 @@ func TestDigestAuth(t *testing.T) {
 		resp := mustDoReq(t, req)
 		assertStatusCode(t, resp, http.StatusOK)
 
-		var result authResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[authResponse](t, resp.Body)
 
 		expectedResult := authResponse{
 			Authorized: true,
@@ -1703,8 +1668,7 @@ func TestGzip(t *testing.T) {
 		t.Fatalf("error reading gzipped body: %s", err)
 	}
 
-	var result noBodyResponse
-	mustUnmarshal(t, bytes.NewBuffer(unzippedBody), &result)
+	result := mustUnmarshal[noBodyResponse](t, bytes.NewBuffer(unzippedBody))
 
 	if result.Gzipped != true {
 		t.Fatalf("expected resp.Gzipped == true")
@@ -1744,8 +1708,7 @@ func TestDeflate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var result noBodyResponse
-	mustUnmarshal(t, bytes.NewBuffer(body), &result)
+	result := mustUnmarshal[noBodyResponse](t, bytes.NewBuffer(body))
 
 	if result.Deflated != true {
 		t.Fatalf("expected resp.Deflated == true")
@@ -1855,8 +1818,7 @@ func TestDelay(t *testing.T) {
 			assertStatusCode(t, resp, http.StatusOK)
 			assertHeader(t, resp, "Content-Type", jsonContentType)
 
-			var result bodyResponse
-			mustUnmarshal(t, resp.Body, &result)
+			_ = mustUnmarshal[bodyResponse](t, resp.Body)
 
 			if elapsed < test.expectedDelay {
 				t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
@@ -2342,9 +2304,7 @@ func TestCache(t *testing.T) {
 		}
 
 		assertHeader(t, resp, "ETag", sha1hash(lastModified))
-
-		var result noBodyResponse
-		mustUnmarshal(t, resp.Body, &result)
+		_ = mustUnmarshal[noBodyResponse](t, resp.Body)
 	})
 
 	tests := []struct {
@@ -2769,8 +2729,7 @@ func TestUUID(t *testing.T) {
 	assertStatusCode(t, resp, http.StatusOK)
 
 	// Test response unmarshalling
-	var result uuidResponse
-	mustUnmarshal(t, resp.Body, &result)
+	result := mustUnmarshal[uuidResponse](t, resp.Body)
 
 	// Test if the value is an actual UUID
 	if err := isValidUUIDv4(result.UUID); err != nil {
@@ -2917,8 +2876,7 @@ func TestBearer(t *testing.T) {
 
 		assertStatusCode(t, resp, http.StatusOK)
 
-		var result bearerResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[bearerResponse](t, resp.Body)
 
 		if result.Authenticated != true {
 			t.Fatalf("expected response key %s=%#v, got %#v",
@@ -2993,8 +2951,7 @@ func TestHostname(t *testing.T) {
 		resp := mustDoReq(t, req)
 		assertStatusCode(t, resp, http.StatusOK)
 
-		var result hostnameResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[hostnameResponse](t, resp.Body)
 		if result.Hostname != DefaultHostname {
 			t.Errorf("expected hostname %q, got %q", DefaultHostname, result.Hostname)
 		}
@@ -3015,8 +2972,7 @@ func TestHostname(t *testing.T) {
 		assertNilError(t, err)
 		assertStatusCode(t, resp, http.StatusOK)
 
-		var result hostnameResponse
-		mustUnmarshal(t, resp.Body, &result)
+		result := mustUnmarshal[hostnameResponse](t, resp.Body)
 		if result.Hostname != realHostname {
 			t.Errorf("expected hostname %q, got %q", realHostname, result.Hostname)
 		}
@@ -3070,11 +3026,13 @@ func mustReadAll(t *testing.T, r io.Reader) string {
 	return string(body)
 }
 
-func mustUnmarshal(t *testing.T, r io.Reader, v interface{}) {
+func mustUnmarshal[T any](t *testing.T, r io.Reader) T {
 	t.Helper()
-	if err := json.NewDecoder(r).Decode(v); err != nil {
+	var v T
+	if err := json.NewDecoder(r).Decode(&v); err != nil {
 		t.Fatal(err)
 	}
+	return v
 }
 
 func assertStatusCode(t *testing.T, resp *http.Response, code int) {
