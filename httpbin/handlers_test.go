@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 const (
@@ -2729,7 +2731,7 @@ func newTestRequestWithBody(t *testing.T, verb, path string, body io.Reader) *ht
 func mustParseResponse[T any](t *testing.T, resp *http.Response) T {
 	t.Helper()
 	assertStatusCode(t, resp, http.StatusOK)
-	assertContentType(t, resp, jsonContentType)
+	assert.ContentType(t, resp, jsonContentType)
 	return mustUnmarshal[T](t, resp.Body)
 }
 
