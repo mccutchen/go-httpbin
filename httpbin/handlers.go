@@ -650,7 +650,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", binaryContentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
 	w.WriteHeader(code)
 
@@ -728,12 +728,12 @@ func (h *HTTPBin) Robots(w http.ResponseWriter, r *http.Request) {
 	robotsTxt := []byte(`User-agent: *
 Disallow: /deny
 `)
-	writeResponse(w, http.StatusOK, "text/plain", robotsTxt)
+	writeResponse(w, http.StatusOK, textContentType, robotsTxt)
 }
 
 // Deny renders a basic page that robots should never access
 func (h *HTTPBin) Deny(w http.ResponseWriter, r *http.Request) {
-	writeResponse(w, http.StatusOK, "text/plain", []byte(`YOU SHOULDN'T BE HERE`))
+	writeResponse(w, http.StatusOK, textContentType, []byte(`YOU SHOULDN'T BE HERE`))
 }
 
 // Cache returns a 304 if an If-Modified-Since or an If-None-Match header is
@@ -875,7 +875,7 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", binaryContentType)
 	w.WriteHeader(http.StatusOK)
 
 	var chunk []byte
@@ -1061,7 +1061,7 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("%s failed: %s", b.operation, base64Error), http.StatusBadRequest)
 		return
 	}
-	writeResponse(w, http.StatusOK, "text/plain", result)
+	writeResponse(w, http.StatusOK, textContentType, result)
 }
 
 // DumpRequest - returns the given request in its HTTP/1.x wire representation.
