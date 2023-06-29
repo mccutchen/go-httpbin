@@ -654,13 +654,11 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
 	w.WriteHeader(code)
 
-	flusher := w.(http.Flusher)
-	flusher.Flush()
-
 	// special case when we do not need to pause between each write
 	if pause == 0 {
-		b := bytes.Repeat([]byte{'*'}, int(numBytes))
-		w.Write(b)
+		for i := int64(0); i < numBytes; i++ {
+			w.Write([]byte{'*'})
+		}
 		return
 	}
 
@@ -669,6 +667,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	defer ticker.Stop()
 
 	b := []byte{'*'}
+	flusher := w.(http.Flusher)
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)
 		flusher.Flush()
