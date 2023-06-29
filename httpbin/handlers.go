@@ -639,35 +639,49 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		pause = duration / time.Duration(numBytes-1)
 	}
 
+	// Initial delay before we send any response data
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+			// ok
+		case <-r.Context().Done():
+			w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
 	w.WriteHeader(code)
 
-	flusher := w.(http.Flusher)
-	flusher.Flush()
-
-	// wait for initial delay before writing response body
-	select {
-	case <-r.Context().Done():
+	// special case when we do not need to pause between each write
+	if pause == 0 {
+		for i := int64(0); i < numBytes; i++ {
+			w.Write([]byte{'*'})
+		}
 		return
-	case <-time.After(delay):
 	}
 
-	// write response body byte-by-byte, pausing between each write
+	// otherwise, write response body byte-by-byte
+	ticker := time.NewTicker(pause)
+	defer ticker.Stop()
+
 	b := []byte{'*'}
+	flusher := w.(http.Flusher)
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)
 		flusher.Flush()
 
 		// don't pause after last byte
 		if i == numBytes-1 {
-			break
+			return
 		}
 
 		select {
+		case <-ticker.C:
+			// ok
 		case <-r.Context().Done():
 			return
-		case <-time.After(pause):
 		}
 	}
 }

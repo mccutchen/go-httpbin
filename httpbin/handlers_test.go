@@ -1693,6 +1693,13 @@ func TestDrip(t *testing.T) {
 			assert.Header(t, resp, "Content-Type", "application/octet-stream")
 			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
 
+			// Note: while the /drip endpoint seems like an ideal use case for
+			// using chunked transfer encoding to stream data to the client, it
+			// is actually intended to simulate a slow connection between
+			// server and client, so it is important to ensure that it writes a
+			// "regular," un-chunked response.
+			assert.DeepEqual(t, resp.TransferEncoding, nil, "unexpected Transfer-Encoding header")
+
 			if len(body) != test.numbytes {
 				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(body))
 			}
@@ -1735,10 +1742,12 @@ func TestDrip(t *testing.T) {
 		t.Parallel()
 
 		var (
-			duration  = 100 * time.Millisecond
-			numBytes  = 3
-			wantDelay = duration / time.Duration(numBytes)
-			endpoint  = fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, wantDelay, numBytes)
+			duration = 100 * time.Millisecond
+			numBytes = 3
+			endpoint = fmt.Sprintf("/drip?duration=%s&numbytes=%d", duration, numBytes)
+
+			// Match server logic for calculating the delay between writes
+			wantPauseBetweenWrites = duration / time.Duration(numBytes-1)
 		)
 		req := newTestRequest(t, "GET", endpoint)
 		resp := must.DoReq(t, client, req)
@@ -1750,49 +1759,50 @@ func TestDrip(t *testing.T) {
 		// wait between writes so that even the first iteration of this loop
 		// expects to wait the same amount of time for a read.
 		buf := make([]byte, 1024)
-		for {
+		gotBody := make([]byte, 0, numBytes)
+		for i := 0; ; i++ {
 			start := time.Now()
 			n, err := resp.Body.Read(buf)
-			gotDelay := time.Since(start)
+			gotPause := time.Since(start)
+
+			// We expect to read exactly one byte on each iteration. On the
+			// last iteration, we expct to hit EOF after reading the final
+			// byte, because the server does not pause after the last write.
+			assert.Equal(t, n, 1, "incorrect number of bytes read")
+			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
+			gotBody = append(gotBody, buf[:n]...)
 
 			if err == io.EOF {
 				break
 			}
 
 			assert.NilError(t, err)
-			assert.Equal(t, n, 1, "incorrect number of bytes read")
-			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
-			if gotDelay < wantDelay {
-				t.Fatalf("to wait at least %s between reads, waited %s", wantDelay, gotDelay)
+
+			// only ensure that we pause for the expected time between writes
+			// (allowing for minor mismatch in local timers and server timers)
+			// after the first byte.
+			if i > 0 {
+				assert.RoughDuration(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
 			}
 		}
+
+		wantBody := bytes.Repeat([]byte{'*'}, numBytes)
+		assert.DeepEqual(t, gotBody, wantBody, "incorrect body")
 	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
 		t.Parallel()
 
 		// For this test, we expect the client to time out and cancel the
-		// request after 10ms.  The handler should immediately write a 200 OK
-		// status before the client timeout, preventing a client error, but it
-		// will wait 500ms to write anything to the response body.
-		//
-		// So, we're testing that a) the client got an immediate 200 OK but
-		// that b) the response body was empty.
+		// request after 10ms.  The handler should still be in its intitial
+		// delay period, so this will result in a request error since no status
+		// code will be written before the cancelation.
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 		defer cancel()
 
-		req := newTestRequest(t, "GET", "/drip?duration=500ms&delay=500ms")
-		req = req.WithContext(ctx)
-
-		resp := must.DoReq(t, client, req)
-		assert.StatusCode(t, resp, http.StatusOK)
-
-		body, err := io.ReadAll(resp.Body)
-		if !os.IsTimeout(err) {
-			t.Fatalf("expected client timeout while reading body, bot %s", err)
-		}
-		if len(body) > 0 {
-			t.Fatalf("expected client timeout before body was written, got body %q", string(body))
+		req := newTestRequest(t, "GET", "/drip?duration=500ms&delay=500ms").WithContext(ctx)
+		if _, err := client.Do(req); !os.IsTimeout(err) {
+			t.Fatalf("expected timeout error, got %s", err)
 		}
 	})
 
@@ -1802,19 +1812,22 @@ func TestDrip(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel()
 
-		req := newTestRequest(t, "GET", "/drip?duration=900ms&delay=100ms")
-		req = req.WithContext(ctx)
-
+		req := newTestRequest(t, "GET", "/drip?duration=900ms&delay=100ms").WithContext(ctx)
 		resp := must.DoReq(t, client, req)
+
+		// In this test, the server should have started an OK response before
+		// our client timeout cancels the request, so we should get an OK here.
 		assert.StatusCode(t, resp, http.StatusOK)
 
-		// in this case, the timeout happens while trying to read the body
+		// But, we should time out while trying to read the whole response
+		// body.
 		body, err := io.ReadAll(resp.Body)
 		if !os.IsTimeout(err) {
 			t.Fatalf("expected timeout reading body, got %s", err)
 		}
 
-		// but we should have received a partial response
+		// And even though the request timed out, we should get a partial
+		// response.
 		assert.DeepEqual(t, body, []byte("**"), "incorrect partial body")
 	})
 
