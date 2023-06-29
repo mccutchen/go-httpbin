@@ -584,6 +584,7 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 // Drip returns data over a duration after an optional initial delay, then
 // (optionally) returns with the given status code.
 func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	q := r.URL.Query()
 
 	var (
@@ -639,21 +640,42 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		pause = duration / time.Duration(numBytes-1)
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
+	w.Header().Add("Trailer", "Server-Timing")
+	defer func() {
+		w.Header().Add("Server-Timing", encodeServerTimings([]serverTiming{
+			{"total", time.Since(start), "total request duration"},
+			{"delay", delay, "requested initial delay"},
+			{"duration", duration, "requested duration"},
+			{"pause", pause, "computed pause between writes"},
+		}))
+	}()
+
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(code)
 
 	flusher := w.(http.Flusher)
 	flusher.Flush()
 
-	// wait for initial delay before writing response body
-	select {
-	case <-r.Context().Done():
-		return
-	case <-time.After(delay):
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+			// ok
+		case <-r.Context().Done():
+			return
+		}
 	}
 
-	// write response body byte-by-byte, pausing between each write
+	// special case when we do not need to pause between each write
+	if pause == 0 {
+		b := bytes.Repeat([]byte{'*'}, int(numBytes))
+		w.Write(b)
+		return
+	}
+
+	// otherwise, write response body byte-by-byte
+	ticker := time.NewTicker(pause)
+	defer ticker.Stop()
+
 	b := []byte{'*'}
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)
@@ -661,13 +683,14 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 		// don't pause after last byte
 		if i == numBytes-1 {
-			break
+			return
 		}
 
 		select {
+		case <-ticker.C:
+			// ok
 		case <-r.Context().Done():
 			return
-		case <-time.After(pause):
 		}
 	}
 }

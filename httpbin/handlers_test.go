@@ -1690,8 +1690,16 @@ func TestDrip(t *testing.T) {
 			elapsed := time.Since(start)
 
 			assert.StatusCode(t, resp, test.code)
-			assert.Header(t, resp, "Content-Type", "application/octet-stream")
-			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
+			assert.Header(t, resp, "Content-Type", "text/plain")
+			assert.Header(t, resp, "Content-Length", "")
+			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "incorrect Transfer-Encoding header")
+
+			timings := decodeServerTimings(resp.Trailer.Get("Server-Timing"))
+			for _, k := range []string{"duration", "delay", "pause", "total"} {
+				if _, ok := timings[k]; !ok {
+					t.Fatalf("expected %q timing, got %v", k, timings)
+				}
+			}
 
 			if len(body) != test.numbytes {
 				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(body))
@@ -1735,9 +1743,12 @@ func TestDrip(t *testing.T) {
 		t.Parallel()
 
 		var (
-			duration  = 100 * time.Millisecond
-			numBytes  = 3
-			wantDelay = duration / time.Duration(numBytes)
+			duration = 100 * time.Millisecond
+			numBytes = 3
+			// compute initial delay using the same logic the endpoint will use
+			// to compute the pause between writes, to simplify the read loop
+			// below
+			wantDelay = duration / time.Duration(numBytes-1)
 			endpoint  = fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, wantDelay, numBytes)
 		)
 		req := newTestRequest(t, "GET", endpoint)
@@ -1750,6 +1761,7 @@ func TestDrip(t *testing.T) {
 		// wait between writes so that even the first iteration of this loop
 		// expects to wait the same amount of time for a read.
 		buf := make([]byte, 1024)
+		gotBody := make([]byte, 0, numBytes)
 		for {
 			start := time.Now()
 			n, err := resp.Body.Read(buf)
@@ -1762,9 +1774,62 @@ func TestDrip(t *testing.T) {
 			assert.NilError(t, err)
 			assert.Equal(t, n, 1, "incorrect number of bytes read")
 			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
-			if gotDelay < wantDelay {
-				t.Fatalf("to wait at least %s between reads, waited %s", wantDelay, gotDelay)
+
+			// allow for minor mismatch in local timers and server timers
+			assert.RoughDuration(t, gotDelay, wantDelay, 3*time.Millisecond)
+
+			gotBody = append(gotBody, buf[:n]...)
+		}
+
+		wantBody := bytes.Repeat([]byte{'*'}, numBytes)
+		assert.DeepEqual(t, gotBody, wantBody, "incorrect body")
+	})
+
+	t.Run("Server-Timings trailers", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			duration = 512 * time.Millisecond
+			delay    = 250 * time.Millisecond
+			numBytes = 256
+			params   = url.Values{
+				"duration": {duration.String()},
+				"delay":    {delay.String()},
+				"numbytes": {strconv.Itoa(numBytes)},
 			}
+		)
+
+		req := newTestRequest(t, "GET", "/drip?"+params.Encode())
+		resp := must.DoReq(t, client, req)
+
+		// need to fully consume body for Server-Timing trailers to arrive
+		body := must.ReadAll(t, resp.Body)
+		assert.Equal(t, body, strings.Repeat("*", numBytes), "incorrect body")
+
+		rawTimings := resp.Trailer.Get("Server-Timing")
+		t.Logf("Server-Timing: %s", rawTimings)
+
+		timings := decodeServerTimings(rawTimings)
+
+		// Ensure total server time makes sense based on duration and delay
+		total := timings["total"]
+		assert.DurationRange(t, total.dur, duration+delay, duration+delay+25*time.Millisecond)
+
+		// Ensure computed pause time makes sense based on duration, delay, and
+		// numbytes (should be exact, but we're re-parsing a truncated float in
+		// the header value)
+		pause := timings["pause"]
+		assert.RoughDuration(t, pause.dur, duration/time.Duration(numBytes-1), 1*time.Millisecond)
+
+		// remaining timings should exactly match request parameters, no need
+		// to adjust for per-run variations
+		wantTimings := map[string]serverTiming{
+			"duration": {"duration", duration, "requested duration"},
+			"delay":    {"delay", delay, "requested initial delay"},
+		}
+		for k, want := range wantTimings {
+			got := timings[k]
+			assert.DeepEqual(t, got, want, "incorrect timing for key %q", k)
 		}
 	})
 

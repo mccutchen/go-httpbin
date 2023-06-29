@@ -415,3 +415,44 @@ func (b *base64Helper) Encode() ([]byte, error) {
 func (b *base64Helper) Decode() ([]byte, error) {
 	return base64.URLEncoding.DecodeString(b.data)
 }
+
+type serverTiming struct {
+	name string
+	dur  time.Duration
+	desc string
+}
+
+func encodeServerTimings(timings []serverTiming) string {
+	var entries []string
+	for _, t := range timings {
+		ms := float64(t.dur) / float64(time.Millisecond)
+		entries = append(entries, fmt.Sprintf("%s;dur=%0.2f;desc=\"%s\"", t.name, ms, t.desc))
+	}
+	return strings.Join(entries, ", ")
+}
+
+func decodeServerTimings(headerVal string) map[string]serverTiming {
+	if headerVal == "" {
+		return nil
+	}
+	timings := map[string]serverTiming{}
+	for _, entry := range strings.Split(headerVal, ",") {
+		var t serverTiming
+		for _, kv := range strings.Split(entry, ";") {
+			kv = strings.TrimSpace(kv)
+			key, val, _ := strings.Cut(kv, "=")
+			switch key {
+			case "dur":
+				t.dur, _ = time.ParseDuration(val + "ms")
+			case "desc":
+				t.desc = strings.Trim(val, "\"")
+			default:
+				t.name = key
+			}
+		}
+		if t.name != "" {
+			timings[t.name] = t
+		}
+	}
+	return timings
+}
