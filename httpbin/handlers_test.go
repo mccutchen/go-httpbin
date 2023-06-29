@@ -497,7 +497,7 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			assert.DeepEqual(t, result.JSON, nil, "expected nil json")
 
 			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
-			assert.Equal(t, expected, result.Data, "expected binary encoded response data")
+			assert.Equal(t, result.Data, expected, "expected binary encoded response data")
 		})
 	}
 }
@@ -545,8 +545,8 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assert.DeepEqual(t, params, result.Form, "form data mismatch")
-	assert.Equal(t, verb, result.Method, "method mismatch")
+	assert.DeepEqual(t, result.Form, params, "form data mismatch")
+	assert.Equal(t, result.Method, verb, "method mismatch")
 	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
 	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
 	assert.DeepEqual(t, result.JSON, nil, "expected nil json")
@@ -582,7 +582,7 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 
 	// Because we did not set an content type, httpbin will return the base64 encoded data.
 	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
-	assert.Equal(t, expectedBody, result.Data, "response data mismatch")
+	assert.Equal(t, result.Data, expectedBody, "response data mismatch")
 }
 
 func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
@@ -699,7 +699,7 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	if err := json.Unmarshal(roundTrippedInputBytes, &roundTrippedInput); err != nil {
 		t.Fatalf("failed to round-trip JSON: coult not re-unmarshal JSON: %s", err)
 	}
-	assert.DeepEqual(t, input, roundTrippedInput, "round-tripped JSON mismatch")
+	assert.DeepEqual(t, roundTrippedInput, input, "round-tripped JSON mismatch")
 }
 
 func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
@@ -752,9 +752,9 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	resp := must.DoReq(t, client, req)
 
 	result := mustParseResponse[bodyResponse](t, resp)
-	assert.Equal(t, verb, result.Method, "method mismatch")
-	assert.Equal(t, args.Encode(), result.Args.Encode(), "args mismatch")
-	assert.Equal(t, form.Encode(), result.Form.Encode(), "form mismatch")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.Equal(t, result.Args.Encode(), args.Encode(), "args mismatch")
+	assert.Equal(t, result.Form.Encode(), form.Encode(), "form mismatch")
 }
 
 func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
@@ -945,11 +945,11 @@ func TestResponseHeaders(t *testing.T) {
 		for k, expectedValues := range wantHeaders {
 			// expected headers should be present in the HTTP response itself
 			respValues := resp.Header[k]
-			assert.DeepEqual(t, expectedValues, respValues, "HTTP response headers mismatch")
+			assert.DeepEqual(t, respValues, expectedValues, "HTTP response headers mismatch")
 
 			// they should also be reflected in the decoded JSON resposne
 			resultValues := result[k]
-			assert.DeepEqual(t, expectedValues, resultValues, "JSON response headers mismatch")
+			assert.DeepEqual(t, resultValues, expectedValues, "JSON response headers mismatch")
 		}
 	})
 
@@ -1194,7 +1194,7 @@ func TestCookies(t *testing.T) {
 			if !ok {
 				t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
 			}
-			assert.Equal(t, c.Value, v, "value mismatch for cookie %q", c.Name)
+			assert.Equal(t, v, c.Value, "value mismatch for cookie %q", c.Name)
 		}
 	})
 
@@ -1751,7 +1751,7 @@ func TestDrip(t *testing.T) {
 
 		n, err := conn.Write(append(reqBytes, []byte("\r\n\r\n")...))
 		assert.NilError(t, err)
-		assert.Equal(t, len(reqBytes)+4, n, "incorrect number of bytes written")
+		assert.Equal(t, n, len(reqBytes)+4, "incorrect number of bytes written")
 
 		resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 		assert.NilError(t, err)
