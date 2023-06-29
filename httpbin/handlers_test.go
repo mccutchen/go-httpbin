@@ -168,7 +168,7 @@ func TestGet(t *testing.T) {
 		resp := must.DoReq(t, client, req)
 
 		assert.StatusCode(t, resp, http.StatusMethodNotAllowed)
-		assert.ContentType(t, resp, "text/plain; charset=utf-8")
+		assert.ContentType(t, resp, textContentType)
 	})
 
 	protoTests := []struct {
@@ -1467,7 +1467,7 @@ func TestDeflate(t *testing.T) {
 	req := newTestRequest(t, "GET", "/deflate")
 	resp := must.DoReq(t, client, req)
 
-	assert.ContentType(t, resp, "application/json; encoding=utf-8")
+	assert.ContentType(t, resp, jsonContentType)
 	assert.Header(t, resp, "Content-Encoding", "deflate")
 	assert.StatusCode(t, resp, http.StatusOK)
 
@@ -1710,7 +1710,7 @@ func TestDrip(t *testing.T) {
 			elapsed := time.Since(start)
 
 			assert.StatusCode(t, resp, test.code)
-			assert.Header(t, resp, "Content-Type", "application/octet-stream")
+			assert.ContentType(t, resp, binaryContentType)
 			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
 
 			// Note: while the /drip endpoint seems like an ideal use case for
@@ -1922,7 +1922,7 @@ func TestRange(t *testing.T) {
 		assert.Header(t, resp, "ETag", fmt.Sprintf("range%d", wantBytes))
 		assert.Header(t, resp, "Accept-Ranges", "bytes")
 		assert.Header(t, resp, "Content-Length", strconv.Itoa(int(wantBytes)))
-		assert.ContentType(t, resp, "text/plain; charset=utf-8")
+		assert.ContentType(t, resp, textContentType)
 
 		body := must.ReadAll(t, resp.Body)
 		if len(body) != int(wantBytes) {
@@ -2066,7 +2066,7 @@ func TestRobots(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/robots.txt")
 	resp := must.DoReq(t, client, req)
-	assert.ContentType(t, resp, "text/plain")
+	assert.ContentType(t, resp, textContentType)
 	assert.BodyContains(t, resp, `Disallow: /deny`)
 }
 
@@ -2074,7 +2074,7 @@ func TestDeny(t *testing.T) {
 	t.Parallel()
 	req := newTestRequest(t, "GET", "/deny")
 	resp := must.DoReq(t, client, req)
-	assert.ContentType(t, resp, "text/plain")
+	assert.ContentType(t, resp, textContentType)
 	assert.BodyContains(t, resp, `YOU SHOULDN'T BE HERE`)
 }
 
@@ -2214,7 +2214,7 @@ func TestBytes(t *testing.T) {
 		req := newTestRequest(t, "GET", url)
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
-		assert.ContentType(t, resp, "application/octet-stream")
+		assert.ContentType(t, resp, binaryContentType)
 
 		body := must.ReadAll(t, resp.Body)
 		if len(body) != 1024 {
@@ -2230,7 +2230,7 @@ func TestBytes(t *testing.T) {
 
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
-		assert.ContentType(t, resp, "application/octet-stream")
+		assert.ContentType(t, resp, binaryContentType)
 
 		want := "\xbf\xcd*\xfa\x15\xa2\xb3r\xc7\a\x98Z\"\x02J\x8e"
 		assert.BodyEquals(t, resp, want)
@@ -2560,7 +2560,7 @@ func TestBase64(t *testing.T) {
 			resp := must.DoReq(t, client, req)
 			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusOK)
-			assert.ContentType(t, resp, "text/plain")
+			assert.ContentType(t, resp, textContentType)
 			assert.BodyEquals(t, resp, test.want)
 		})
 	}
@@ -2631,7 +2631,7 @@ func TestDumpRequest(t *testing.T) {
 	req.Header.Set("x-test-header1", "Test-Value1")
 
 	resp := must.DoReq(t, client, req)
-	assert.ContentType(t, resp, "text/plain; charset=utf-8")
+	assert.ContentType(t, resp, textContentType)
 	assert.BodyEquals(t, resp, "GET /dump/request?foo=bar HTTP/1.1\r\nHost: test-host\r\nAccept-Encoding: gzip\r\nUser-Agent: Go-http-client/1.1\r\nX-Test-Header1: Test-Value1\r\nX-Test-Header2: Test-Value2\r\n\r\n")
 }
 
