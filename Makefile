@@ -70,7 +70,7 @@ lint:
 # run locally
 # =============================================================================
 run: build
-	$(DIST_PATH)/go-httpbin
+	$(DIST_PATH)/go-httpbin -host 127.0.0.1 -port 8080
 .PHONY: run
 
 watch:

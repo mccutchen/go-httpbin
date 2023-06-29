@@ -6,14 +6,15 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
 )
 
 // Equal asserts that two values are equal.
-func Equal[T comparable](t *testing.T, want, got T, msg string, arg ...any) {
+func Equal[T comparable](t *testing.T, got, want T, msg string, arg ...any) {
 	t.Helper()
-	if want != got {
+	if got != want {
 		if msg == "" {
 			msg = "expected values to match"
 		}
@@ -23,9 +24,9 @@ func Equal[T comparable](t *testing.T, want, got T, msg string, arg ...any) {
 }
 
 // DeepEqual asserts that two values are deeply equal.
-func DeepEqual[T any](t *testing.T, want, got T, msg string, arg ...any) {
+func DeepEqual[T any](t *testing.T, got, want T, msg string, arg ...any) {
 	t.Helper()
-	if !reflect.DeepEqual(want, got) {
+	if !reflect.DeepEqual(got, want) {
 		if msg == "" {
 			msg = "expected values to match"
 		}
@@ -88,4 +89,19 @@ func BodyEquals(t *testing.T, resp *http.Response, want string) {
 	t.Helper()
 	got := must.ReadAll(t, resp.Body)
 	Equal(t, got, want, "incorrect response body")
+}
+
+// DurationRange asserts that a duration is within a specific range.
+func DurationRange(t *testing.T, got, min, max time.Duration) {
+	t.Helper()
+	if got < min || got > max {
+		t.Fatalf("expected duration between %s and %s, got %s", min, max, got)
+	}
+}
+
+// RoughDuration asserts that a duration is within a certain tolerance of a
+// given value.
+func RoughDuration(t *testing.T, got, want time.Duration, tolerance time.Duration) {
+	t.Helper()
+	DurationRange(t, got, want-tolerance, want+tolerance)
 }
