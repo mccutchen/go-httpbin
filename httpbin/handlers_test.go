@@ -212,6 +212,7 @@ func TestHead(t *testing.T) {
 
 			req := newTestRequest(t, tc.verb, tc.path)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, tc.wantCode)
 
 			// we only do further validation when we get an OK response
@@ -486,8 +487,9 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			req.Header.Set("Content-Type", test.contentType)
 
 			resp := must.DoReq(t, client, req)
-			result := mustParseResponse[bodyResponse](t, resp)
+			defer consumeAndCloseBody(resp)
 
+			result := mustParseResponse[bodyResponse](t, resp)
 			assert.Equal(t, result.Method, verb, "method mismatch")
 			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
 			assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
@@ -495,7 +497,7 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 			assert.DeepEqual(t, result.JSON, nil, "expected nil json")
 
 			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
-			assert.Equal(t, expected, result.Data, "expected binary encoded response data")
+			assert.Equal(t, result.Data, expected, "expected binary encoded response data")
 		})
 	}
 }
@@ -518,8 +520,9 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 			req.Header.Set("Content-Type", test.contentType)
 
 			resp := must.DoReq(t, client, req)
-			result := mustParseResponse[bodyResponse](t, resp)
+			defer consumeAndCloseBody(resp)
 
+			result := mustParseResponse[bodyResponse](t, resp)
 			assert.Equal(t, result.Data, "", "expected empty response data")
 			assert.Equal(t, result.Method, verb, "method mismatch")
 			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
@@ -542,8 +545,8 @@ func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
 	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[bodyResponse](t, resp)
 
-	assert.DeepEqual(t, params, result.Form, "form data mismatch")
-	assert.Equal(t, verb, result.Method, "method mismatch")
+	assert.DeepEqual(t, result.Form, params, "form data mismatch")
+	assert.Equal(t, result.Method, verb, "method mismatch")
 	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
 	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
 	assert.DeepEqual(t, result.JSON, nil, "expected nil json")
@@ -579,7 +582,7 @@ func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path st
 
 	// Because we did not set an content type, httpbin will return the base64 encoded data.
 	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
-	assert.Equal(t, expectedBody, result.Data, "response data mismatch")
+	assert.Equal(t, result.Data, expectedBody, "response data mismatch")
 }
 
 func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
@@ -696,7 +699,7 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	if err := json.Unmarshal(roundTrippedInputBytes, &roundTrippedInput); err != nil {
 		t.Fatalf("failed to round-trip JSON: coult not re-unmarshal JSON: %s", err)
 	}
-	assert.DeepEqual(t, input, roundTrippedInput, "round-tripped JSON mismatch")
+	assert.DeepEqual(t, roundTrippedInput, input, "round-tripped JSON mismatch")
 }
 
 func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
@@ -749,9 +752,9 @@ func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
 	resp := must.DoReq(t, client, req)
 
 	result := mustParseResponse[bodyResponse](t, resp)
-	assert.Equal(t, verb, result.Method, "method mismatch")
-	assert.Equal(t, args.Encode(), result.Args.Encode(), "args mismatch")
-	assert.Equal(t, form.Encode(), result.Form.Encode(), "form mismatch")
+	assert.Equal(t, result.Method, verb, "method mismatch")
+	assert.Equal(t, result.Args.Encode(), args.Encode(), "args mismatch")
+	assert.Equal(t, result.Form.Encode(), form.Encode(), "form mismatch")
 }
 
 func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
@@ -774,8 +777,9 @@ func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
 			}
 
 			resp := must.DoReq(t, client, req)
-			result := mustParseResponse[bodyResponse](t, resp)
+			defer consumeAndCloseBody(resp)
 
+			result := mustParseResponse[bodyResponse](t, resp)
 			got := result.Headers.Get("Transfer-Encoding")
 			assert.Equal(t, got, tc.want, "Transfer-Encoding header mismatch")
 		})
@@ -826,6 +830,7 @@ func TestStatus(t *testing.T) {
 			t.Parallel()
 			req, _ := http.NewRequest("GET", srv.URL+fmt.Sprintf("/status/%d", test.code), nil)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 			assert.BodyEquals(t, resp, test.body)
 			for key, val := range test.headers {
@@ -851,6 +856,7 @@ func TestStatus(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
@@ -880,6 +886,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
@@ -894,6 +901,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			if resp.StatusCode != 200 && resp.StatusCode != 500 {
 				t.Fatalf("expected status code 200 or 500, got %d", resp.StatusCode)
 			}
@@ -915,6 +923,7 @@ func TestUnstable(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusBadRequest)
 		})
 	}
@@ -936,11 +945,11 @@ func TestResponseHeaders(t *testing.T) {
 		for k, expectedValues := range wantHeaders {
 			// expected headers should be present in the HTTP response itself
 			respValues := resp.Header[k]
-			assert.DeepEqual(t, expectedValues, respValues, "HTTP response headers mismatch")
+			assert.DeepEqual(t, respValues, expectedValues, "HTTP response headers mismatch")
 
 			// they should also be reflected in the decoded JSON resposne
 			resultValues := result[k]
-			assert.DeepEqual(t, expectedValues, resultValues, "JSON response headers mismatch")
+			assert.DeepEqual(t, resultValues, expectedValues, "JSON response headers mismatch")
 		}
 	})
 
@@ -994,6 +1003,7 @@ func TestRedirects(t *testing.T) {
 			req := newTestRequest(t, "GET", test.requestURL)
 			req.Host = "host"
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 
 			assert.StatusCode(t, resp, http.StatusFound)
 			assert.Header(t, resp, "Location", test.expectedLocation)
@@ -1029,6 +1039,7 @@ func TestRedirects(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -1055,6 +1066,7 @@ func TestRedirectTo(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 			assert.Header(t, resp, "Location", test.expectedLocation)
 		})
@@ -1076,6 +1088,7 @@ func TestRedirectTo(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -1105,6 +1118,7 @@ Allowed redirect destinations:
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedStatus >= 400 {
 				assert.BodyEquals(t, resp, allowedDomainsError)
@@ -1149,6 +1163,8 @@ func TestCookies(t *testing.T) {
 				}
 
 				resp := must.DoReq(t, client, req)
+				defer consumeAndCloseBody(resp)
+
 				result := mustParseResponse[cookiesResponse](t, resp)
 				assert.DeepEqual(t, result, tc.cookies, "cookies mismatch")
 			})
@@ -1178,7 +1194,7 @@ func TestCookies(t *testing.T) {
 			if !ok {
 				t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
 			}
-			assert.Equal(t, c.Value, v, "value mismatch for cookie %q", c.Name)
+			assert.Equal(t, v, c.Value, "value mismatch for cookie %q", c.Name)
 		}
 	})
 
@@ -1283,6 +1299,7 @@ func TestBasicAuth(t *testing.T) {
 			req := newTestRequest(t, "GET", test.url)
 			req.SetBasicAuth("foo", "bar")
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
@@ -1333,10 +1350,10 @@ func TestHiddenBasicAuth(t *testing.T) {
 		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			req.SetBasicAuth("foo", "bar")
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
@@ -1367,6 +1384,7 @@ func TestDigestAuth(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
@@ -1503,7 +1521,7 @@ func TestStream(t *testing.T) {
 
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
-			defer resp.Body.Close()
+			defer consumeAndCloseBody(resp)
 
 			// Expect empty content-length due to streaming response
 			assert.Header(t, resp, "Content-Length", "")
@@ -1542,9 +1560,9 @@ func TestStream(t *testing.T) {
 		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 		})
 	}
@@ -1576,6 +1594,7 @@ func TestDelay(t *testing.T) {
 			resp := must.DoReq(t, client, req)
 			elapsed := time.Since(start)
 
+			defer consumeAndCloseBody(resp)
 			_ = mustParseResponse[bodyResponse](t, resp)
 
 			if elapsed < test.expectedDelay {
@@ -1632,9 +1651,9 @@ func TestDelay(t *testing.T) {
 		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 		})
 	}
@@ -1686,6 +1705,7 @@ func TestDrip(t *testing.T) {
 			start := time.Now()
 			req := newTestRequest(t, "GET", url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			body := must.ReadAll(t, resp.Body) // must read body before measuring elapsed time
 			elapsed := time.Since(start)
 
@@ -1731,7 +1751,7 @@ func TestDrip(t *testing.T) {
 
 		n, err := conn.Write(append(reqBytes, []byte("\r\n\r\n")...))
 		assert.NilError(t, err)
-		assert.Equal(t, len(reqBytes)+4, n, "incorrect number of bytes written")
+		assert.Equal(t, n, len(reqBytes)+4, "incorrect number of bytes written")
 
 		resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 		assert.NilError(t, err)
@@ -1751,6 +1771,7 @@ func TestDrip(t *testing.T) {
 		)
 		req := newTestRequest(t, "GET", endpoint)
 		resp := must.DoReq(t, client, req)
+		defer consumeAndCloseBody(resp)
 
 		// Here we read from the response one byte at a time, and ensure that
 		// at least the expected delay occurs for each read.
@@ -1814,6 +1835,7 @@ func TestDrip(t *testing.T) {
 
 		req := newTestRequest(t, "GET", "/drip?duration=900ms&delay=100ms").WithContext(ctx)
 		resp := must.DoReq(t, client, req)
+		defer consumeAndCloseBody(resp)
 
 		// In this test, the server should have started an OK response before
 		// our client timeout cancels the request, so we should get an OK here.
@@ -1865,10 +1887,10 @@ func TestDrip(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
-
 			url := "/drip?" + test.params.Encode()
 			req := newTestRequest(t, "GET", url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 		})
 	}
@@ -2000,9 +2022,9 @@ func TestRange(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("ok_bad_range_header/%s", test.rangeHeader), func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusOK)
 			assert.BodyEquals(t, resp, "abcdefghijklmnopqrstuvwxyz")
 		})
@@ -2024,9 +2046,9 @@ func TestRange(t *testing.T) {
 		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 		})
 	}
@@ -2083,10 +2105,10 @@ func TestCache(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("ok_cache/%s", test.headerKey), func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", "/cache")
 			req.Header.Add(test.headerKey, test.headerVal)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusNotModified)
 		})
 	}
@@ -2116,9 +2138,9 @@ func TestCacheControl(t *testing.T) {
 		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2157,11 +2179,11 @@ func TestETag(t *testing.T) {
 		test := test
 		t.Run("ok_"+test.name, func(t *testing.T) {
 			t.Parallel()
-
 			url := "/etag/" + test.etag
 			req := newTestRequest(t, "GET", url)
 			req.Header.Add(test.headerKey, test.headerVal)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2176,9 +2198,9 @@ func TestETag(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2232,11 +2254,10 @@ func TestBytes(t *testing.T) {
 
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
-			assert.StatusCode(t, resp, http.StatusOK)
-			t.Logf("status:  %q", resp.Status)
-			t.Logf("headers: %v", resp.Header)
-			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.expectedContentLength))
+			defer consumeAndCloseBody(resp)
 
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.expectedContentLength))
 			bodyLen := len(must.ReadAll(t, resp.Body))
 			if bodyLen != test.expectedContentLength {
 				t.Errorf("expected body of length %d, got %d", test.expectedContentLength, bodyLen)
@@ -2264,9 +2285,9 @@ func TestBytes(t *testing.T) {
 		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2295,6 +2316,7 @@ func TestStreamBytes(t *testing.T) {
 
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 
 			// Expect empty content-length due to streaming response
 			assert.Header(t, resp, "Content-Length", "")
@@ -2325,6 +2347,7 @@ func TestStreamBytes(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.code)
 		})
 	}
@@ -2345,6 +2368,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusFound)
 			assert.Header(t, resp, "Location", test.expectedLocation)
 		})
@@ -2372,6 +2396,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2394,6 +2419,7 @@ func TestLinks(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusOK)
 			assert.ContentType(t, resp, htmlContentType)
 			assert.BodyEquals(t, resp, test.expectedContent)
@@ -2426,6 +2452,7 @@ func TestImage(t *testing.T) {
 			req := newTestRequest(t, "GET", "/image")
 			req.Header.Set("Accept", test.acceptHeader)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedContentType != "" {
 				assert.ContentType(t, resp, test.expectedContentType)
@@ -2453,6 +2480,7 @@ func TestImage(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
@@ -2530,6 +2558,7 @@ func TestBase64(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusOK)
 			assert.ContentType(t, resp, "text/plain")
 			assert.BodyEquals(t, resp, test.want)
@@ -2586,6 +2615,7 @@ func TestBase64(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusBadRequest)
 			assert.BodyContains(t, resp, test.expectedBodyContains)
 		})
@@ -2664,6 +2694,7 @@ func TestBearer(t *testing.T) {
 				req.Header.Set("Authorization", test.authorizationHeader)
 			}
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.Header(t, resp, "WWW-Authenticate", "Bearer")
 			assert.StatusCode(t, resp, http.StatusUnauthorized)
 		})
@@ -2682,6 +2713,7 @@ func TestNotImplemented(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
 			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusNotImplemented)
 		})
 	}
@@ -2744,4 +2776,9 @@ func mustParseResponse[T any](t *testing.T, resp *http.Response) T {
 	assert.StatusCode(t, resp, http.StatusOK)
 	assert.ContentType(t, resp, jsonContentType)
 	return must.Unmarshal[T](t, resp.Body)
+}
+
+func consumeAndCloseBody(resp *http.Response) {
+	_, _ = io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 }
