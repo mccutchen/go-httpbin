@@ -102,6 +102,13 @@ func BodyEquals(t *testing.T, resp *http.Response, want string) {
 	Equal(t, got, want, "incorrect response body")
 }
 
+// BodySize asserts that a response body is a specific size.
+func BodySize(t *testing.T, resp *http.Response, want int) {
+	t.Helper()
+	got := must.ReadAll(t, resp.Body)
+	Equal(t, len(got), want, "incorrect response body size")
+}
+
 // DurationRange asserts that a duration is within a specific range.
 func DurationRange(t *testing.T, got, min, max time.Duration) {
 	t.Helper()
