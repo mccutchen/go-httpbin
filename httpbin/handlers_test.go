@@ -1016,18 +1016,21 @@ func TestRedirects(t *testing.T) {
 	}{
 		{"/redirect", http.StatusNotFound},
 		{"/redirect/", http.StatusBadRequest},
+		{"/redirect/-1", http.StatusBadRequest},
 		{"/redirect/3.14", http.StatusBadRequest},
 		{"/redirect/foo", http.StatusBadRequest},
 		{"/redirect/10/foo", http.StatusNotFound},
 
 		{"/relative-redirect", http.StatusNotFound},
 		{"/relative-redirect/", http.StatusBadRequest},
+		{"/relative-redirect/-1", http.StatusBadRequest},
 		{"/relative-redirect/3.14", http.StatusBadRequest},
 		{"/relative-redirect/foo", http.StatusBadRequest},
 		{"/relative-redirect/10/foo", http.StatusNotFound},
 
 		{"/absolute-redirect", http.StatusNotFound},
 		{"/absolute-redirect/", http.StatusBadRequest},
+		{"/absolute-redirect/-1", http.StatusBadRequest},
 		{"/absolute-redirect/3.14", http.StatusBadRequest},
 		{"/absolute-redirect/foo", http.StatusBadRequest},
 		{"/absolute-redirect/10/foo", http.StatusNotFound},

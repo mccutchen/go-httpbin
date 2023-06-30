@@ -361,6 +361,7 @@ func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 		return
 	} else if n < 1 {
 		writeError(w, http.StatusBadRequest, errors.New("redirect count must be > 0"))
+		return
 	}
 
 	w.Header().Set("Location", redirectLocation(r, relative, n-1))
