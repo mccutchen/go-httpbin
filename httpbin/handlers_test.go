@@ -2752,8 +2752,8 @@ func TestBase64(t *testing.T) {
 			"decode failed",
 		},
 		{
-			"/base64/decode/" + strings.Repeat("X", Base64MaxLen+1),
-			"Cannot handle input",
+			"/base64/decode/" + strings.Repeat("X", int(maxBodySize)+1),
+			"input data exceeds max length",
 		},
 		{
 			"/base64/",
@@ -2765,7 +2765,7 @@ func TestBase64(t *testing.T) {
 		},
 		{
 			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n/extra",
-			"invalid URL",
+			"decode failed",
 		},
 		{
 			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
