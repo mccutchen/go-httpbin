@@ -81,3 +81,9 @@ type bearerResponse struct {
 type hostnameResponse struct {
 	Hostname string `json:"hostname"`
 }
+
+type errorRespnose struct {
+	StatusCode int    `json:"status_code"`
+	Error      string `json:"error"`
+	Detail     string `json:"detail,omitempty"`
+}

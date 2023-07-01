@@ -78,6 +78,9 @@ func autohead(h http.Handler) http.Handler {
 	})
 }
 
+// testMode enables additional safety checks to be enabled in the test suite.
+var testMode = false
+
 // metaResponseWriter implements http.ResponseWriter and http.Flusher in order
 // to record a response's status code and body size for logging purposes.
 type metaResponseWriter struct {
@@ -93,6 +96,9 @@ func (mw *metaResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (mw *metaResponseWriter) WriteHeader(s int) {
+	if testMode && mw.status != 0 {
+		panic(fmt.Errorf("HTTP status already set to %d, cannot set to %d", mw.status, s))
+	}
 	mw.w.WriteHeader(s)
 	mw.status = s
 }

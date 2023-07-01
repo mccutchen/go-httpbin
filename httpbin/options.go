@@ -1,6 +1,11 @@
 package httpbin
 
-import "time"
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+)
 
 // OptionFunc uses the "functional options" pattern to customize an HTTPBin
 // instance
@@ -46,9 +51,17 @@ func WithObserver(o Observer) OptionFunc {
 func WithAllowedRedirectDomains(hosts []string) OptionFunc {
 	return func(h *HTTPBin) {
 		hostSet := make(map[string]struct{}, len(hosts))
+		formattedListItems := make([]string, 0, len(hosts))
 		for _, host := range hosts {
 			hostSet[host] = struct{}{}
+			formattedListItems = append(formattedListItems, fmt.Sprintf("- %s", host))
 		}
 		h.AllowedRedirectDomains = hostSet
+
+		sort.Strings(formattedListItems)
+		h.forbiddenRedirectError = fmt.Sprintf(`Forbidden redirect URL. Please be careful with this link.
+
+Allowed redirect destinations:
+%s`, strings.Join(formattedListItems, "\n"))
 	}
 }

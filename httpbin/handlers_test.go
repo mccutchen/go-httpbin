@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -45,6 +44,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// enable additional safety checks
+	testMode = true
+
 	app = New(
 		WithAllowedRedirectDomains([]string{
 			"httpbingo.org",
@@ -82,7 +84,13 @@ func TestIndex(t *testing.T) {
 		req := newTestRequest(t, "GET", "/foo")
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusNotFound)
-		assert.BodyContains(t, resp, "/foo")
+		assert.ContentType(t, resp, jsonContentType)
+		got := must.Unmarshal[errorRespnose](t, resp.Body)
+		want := errorRespnose{
+			StatusCode: http.StatusNotFound,
+			Error:      "Not Found",
+		}
+		assert.DeepEqual(t, got, want, "incorrect error response")
 	})
 }
 
@@ -107,7 +115,7 @@ func TestUTF8(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	doGetRequest := func(t *testing.T, path string, params url.Values, headers *http.Header) noBodyResponse {
+	doGetRequest := func(t *testing.T, path string, params url.Values, headers http.Header) noBodyResponse {
 		t.Helper()
 
 		if params != nil {
@@ -115,11 +123,9 @@ func TestGet(t *testing.T) {
 		}
 		req := newTestRequest(t, "GET", path)
 		req.Header.Set("User-Agent", "test")
-		if headers != nil {
-			for k, vs := range *headers {
-				for _, v := range vs {
-					req.Header.Set(k, v)
-				}
+		for k, vs := range headers {
+			for _, v := range vs {
+				req.Header.Add(k, v)
 			}
 		}
 
@@ -183,7 +189,7 @@ func TestGet(t *testing.T) {
 		test := test
 		t.Run(test.key, func(t *testing.T) {
 			t.Parallel()
-			headers := &http.Header{}
+			headers := http.Header{}
 			headers.Set(test.key, test.value)
 			result := doGetRequest(t, "/get", nil, headers)
 			if !strings.HasPrefix(result.URL, "https://") {
@@ -598,12 +604,9 @@ func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
 	for k, vs := range params {
 		for _, v := range vs {
 			fw, err := mw.CreateFormField(k)
-			if err != nil {
-				t.Fatalf("error creating multipart form field %s: %s", k, err)
-			}
-			if _, err := fw.Write([]byte(v)); err != nil {
-				t.Fatalf("error writing multipart form value %#v for key %s: %s", v, k, err)
-			}
+			assert.NilError(t, err)
+			_, err = fw.Write([]byte(v))
+			assert.NilError(t, err)
 		}
 	}
 	mw.Close()
@@ -695,10 +698,7 @@ func testRequestWithBodyJSON(t *testing.T, verb, path string) {
 	roundTrippedInputBytes, err := json.Marshal(result.JSON)
 	assert.NilError(t, err)
 
-	var roundTrippedInput testInput
-	if err := json.Unmarshal(roundTrippedInputBytes, &roundTrippedInput); err != nil {
-		t.Fatalf("failed to round-trip JSON: coult not re-unmarshal JSON: %s", err)
-	}
+	roundTrippedInput := must.Unmarshal[testInput](t, bytes.NewReader(roundTrippedInputBytes))
 	assert.DeepEqual(t, roundTrippedInput, input, "round-tripped JSON mismatch")
 }
 
@@ -1016,18 +1016,21 @@ func TestRedirects(t *testing.T) {
 	}{
 		{"/redirect", http.StatusNotFound},
 		{"/redirect/", http.StatusBadRequest},
+		{"/redirect/-1", http.StatusBadRequest},
 		{"/redirect/3.14", http.StatusBadRequest},
 		{"/redirect/foo", http.StatusBadRequest},
 		{"/redirect/10/foo", http.StatusNotFound},
 
 		{"/relative-redirect", http.StatusNotFound},
 		{"/relative-redirect/", http.StatusBadRequest},
+		{"/relative-redirect/-1", http.StatusBadRequest},
 		{"/relative-redirect/3.14", http.StatusBadRequest},
 		{"/relative-redirect/foo", http.StatusBadRequest},
 		{"/relative-redirect/10/foo", http.StatusNotFound},
 
 		{"/absolute-redirect", http.StatusNotFound},
 		{"/absolute-redirect/", http.StatusBadRequest},
+		{"/absolute-redirect/-1", http.StatusBadRequest},
 		{"/absolute-redirect/3.14", http.StatusBadRequest},
 		{"/absolute-redirect/foo", http.StatusBadRequest},
 		{"/absolute-redirect/10/foo", http.StatusNotFound},
@@ -1080,6 +1083,7 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?status_code=302", http.StatusBadRequest},                               // missing url
 		{"/redirect-to?url=foo&status_code=201", http.StatusBadRequest},                       // invalid status code
 		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},                       // invalid status code
+		{"/redirect-to?url=foo&status_code=foo", http.StatusBadRequest},                       // invalid status code
 		{"/redirect-to?url=http%3A%2F%2Ffoo%25%25bar&status_code=418", http.StatusBadRequest}, // invalid URL
 	}
 	for _, test := range badTests {
@@ -1092,15 +1096,6 @@ func TestRedirectTo(t *testing.T) {
 			assert.StatusCode(t, resp, test.expectedStatus)
 		})
 	}
-
-	// error message matches redirect configuration in global shared test app
-	allowedDomainsError := `Forbidden redirect URL. Please be careful with this link.
-
-Allowed redirect destinations:
-- example.org
-- httpbingo.org
-- www.example.com
-`
 
 	allowListTests := []struct {
 		url            string
@@ -1121,7 +1116,7 @@ Allowed redirect destinations:
 			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, test.expectedStatus)
 			if test.expectedStatus >= 400 {
-				assert.BodyEquals(t, resp, allowedDomainsError)
+				assert.BodyEquals(t, resp, app.forbiddenRedirectError)
 			}
 		})
 	}
@@ -1436,25 +1431,16 @@ func TestGzip(t *testing.T) {
 	}
 
 	zippedContentLength, err := strconv.Atoi(zippedContentLengthStr)
-	if err != nil {
-		t.Fatalf("error converting Content-Lengh %v to integer: %s", zippedContentLengthStr, err)
-	}
+	assert.NilError(t, err)
 
 	gzipReader, err := gzip.NewReader(resp.Body)
-	if err != nil {
-		t.Fatalf("error creating gzip reader: %s", err)
-	}
+	assert.NilError(t, err)
 
 	unzippedBody, err := io.ReadAll(gzipReader)
-	if err != nil {
-		t.Fatalf("error reading gzipped body: %s", err)
-	}
+	assert.NilError(t, err)
 
 	result := must.Unmarshal[noBodyResponse](t, bytes.NewBuffer(unzippedBody))
-
-	if result.Gzipped != true {
-		t.Fatalf("expected resp.Gzipped == true")
-	}
+	assert.Equal(t, result.Gzipped, true, "expected resp.Gzipped == true")
 
 	if len(unzippedBody) <= zippedContentLength {
 		t.Fatalf("expected compressed body")
@@ -1477,24 +1463,16 @@ func TestDeflate(t *testing.T) {
 	}
 
 	compressedContentLength, err := strconv.Atoi(contentLengthHeader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
 	reader, err := zlib.NewReader(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
+
 	body, err := io.ReadAll(reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
 	result := must.Unmarshal[noBodyResponse](t, bytes.NewBuffer(body))
-
-	if result.Deflated != true {
-		t.Fatalf("expected resp.Deflated == true")
-	}
+	assert.Equal(t, result.Deflated, true, "expected result.Deflated == true")
 
 	if len(body) <= compressedContentLength {
 		t.Fatalf("expected compressed body")
@@ -1527,22 +1505,14 @@ func TestStream(t *testing.T) {
 			assert.Header(t, resp, "Content-Length", "")
 			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
 
-			var sr *streamResponse
-
 			i := 0
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				if err := json.Unmarshal(scanner.Bytes(), &sr); err != nil {
-					t.Fatalf("error unmarshalling response: %s", err)
-				}
-				if sr.ID != i {
-					t.Fatalf("bad id: %v != %v", sr.ID, i)
-				}
+				sr := must.Unmarshal[streamResponse](t, bytes.NewReader(scanner.Bytes()))
+				assert.Equal(t, sr.ID, i, "bad id")
 				i++
 			}
-			if err := scanner.Err(); err != nil {
-				t.Fatalf("error scanning streaming response: %s", err)
-			}
+			assert.NilError(t, scanner.Err())
 		})
 	}
 
@@ -1627,9 +1597,7 @@ func TestDelay(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequestWithContext(ctx, "GET", "/delay/1s", nil)
 		app.ServeHTTP(w, req)
-		if w.Code != 499 {
-			t.Errorf("expected 499, got %d", w.Code)
-		}
+		assert.Equal(t, w.Code, 499, "incorrect status code")
 	})
 
 	badTests := []struct {
@@ -1706,12 +1674,15 @@ func TestDrip(t *testing.T) {
 			req := newTestRequest(t, "GET", url)
 			resp := must.DoReq(t, client, req)
 			defer consumeAndCloseBody(resp)
-			body := must.ReadAll(t, resp.Body) // must read body before measuring elapsed time
+			assert.BodySize(t, resp, test.numbytes) // must read body before measuring elapsed time
 			elapsed := time.Since(start)
 
 			assert.StatusCode(t, resp, test.code)
 			assert.ContentType(t, resp, binaryContentType)
 			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
+			if elapsed < test.duration {
+				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
+			}
 
 			// Note: while the /drip endpoint seems like an ideal use case for
 			// using chunked transfer encoding to stream data to the client, it
@@ -1719,14 +1690,6 @@ func TestDrip(t *testing.T) {
 			// server and client, so it is important to ensure that it writes a
 			// "regular," un-chunked response.
 			assert.DeepEqual(t, resp.TransferEncoding, nil, "unexpected Transfer-Encoding header")
-
-			if len(body) != test.numbytes {
-				t.Fatalf("expected %d bytes, got %d", test.numbytes, len(body))
-			}
-
-			if elapsed < test.duration {
-				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
-			}
 		})
 	}
 
@@ -1897,15 +1860,10 @@ func TestDrip(t *testing.T) {
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
 		t.Parallel()
-
 		req := newTestRequest(t, "HEAD", "/drip?duration=900ms&delay=100ms")
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
-
-		body := must.ReadAll(t, resp.Body)
-		if bodySize := len(body); bodySize > 0 {
-			t.Fatalf("expected empty body from HEAD request, got: %s", string(body))
-		}
+		assert.BodySize(t, resp, 0)
 	})
 }
 
@@ -1923,11 +1881,7 @@ func TestRange(t *testing.T) {
 		assert.Header(t, resp, "Accept-Ranges", "bytes")
 		assert.Header(t, resp, "Content-Length", strconv.Itoa(int(wantBytes)))
 		assert.ContentType(t, resp, textContentType)
-
-		body := must.ReadAll(t, resp.Body)
-		if len(body) != int(wantBytes) {
-			t.Errorf("expected content length %d, got %d", wantBytes, len(body))
-		}
+		assert.BodySize(t, resp, int(wantBytes))
 	})
 
 	t.Run("ok_range", func(t *testing.T) {
@@ -2215,11 +2169,7 @@ func TestBytes(t *testing.T) {
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.ContentType(t, resp, binaryContentType)
-
-		body := must.ReadAll(t, resp.Body)
-		if len(body) != 1024 {
-			t.Errorf("expected content length 1024, got %d", len(body))
-		}
+		assert.BodySize(t, resp, 1024)
 	})
 
 	t.Run("ok_seed", func(t *testing.T) {
@@ -2258,10 +2208,7 @@ func TestBytes(t *testing.T) {
 
 			assert.StatusCode(t, resp, http.StatusOK)
 			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.expectedContentLength))
-			bodyLen := len(must.ReadAll(t, resp.Body))
-			if bodyLen != test.expectedContentLength {
-				t.Errorf("expected body of length %d, got %d", test.expectedContentLength, bodyLen)
-			}
+			assert.BodySize(t, resp, test.expectedContentLength)
 		})
 	}
 
@@ -2321,10 +2268,7 @@ func TestStreamBytes(t *testing.T) {
 			// Expect empty content-length due to streaming response
 			assert.Header(t, resp, "Content-Length", "")
 			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "incorrect Transfer-Encoding header")
-
-			if bodySize := len(must.ReadAll(t, resp.Body)); bodySize != test.expectedContentLength {
-				t.Fatalf("expected body of length %d, got %d", test.expectedContentLength, bodySize)
-			}
+			assert.BodySize(t, resp, test.expectedContentLength)
 		})
 	}
 
@@ -2494,15 +2438,13 @@ func TestXML(t *testing.T) {
 	assert.BodyContains(t, resp, `<?xml version='1.0' encoding='us-ascii'?>`)
 }
 
-func isValidUUIDv4(uuid string) error {
-	if len(uuid) != 36 {
-		return fmt.Errorf("uuid length: %d != 36", len(uuid))
-	}
+func testValidUUIDv4(t *testing.T, uuid string) {
+	t.Helper()
+	assert.Equal(t, len(uuid), 36, "incorrect uuid length")
 	req := regexp.MustCompile("^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[8|9|a|b][a-f0-9]{3}-[a-f0-9]{12}$")
 	if !req.MatchString(uuid) {
-		return errors.New("Failed to match against uuidv4 regex")
+		t.Fatalf("invalid uuid %q", uuid)
 	}
-	return nil
 }
 
 func TestUUID(t *testing.T) {
@@ -2510,9 +2452,7 @@ func TestUUID(t *testing.T) {
 	req := newTestRequest(t, "GET", "/uuid")
 	resp := must.DoReq(t, client, req)
 	result := mustParseResponse[uuidResponse](t, resp)
-	if err := isValidUUIDv4(result.UUID); err != nil {
-		t.Fatalf("Invalid uuid %s: %s", result.UUID, err)
-	}
+	testValidUUIDv4(t, result.UUID)
 }
 
 func TestBase64(t *testing.T) {
@@ -2765,9 +2705,7 @@ func newTestRequest(t *testing.T, verb, path string) *http.Request {
 func newTestRequestWithBody(t *testing.T, verb, path string, body io.Reader) *http.Request {
 	t.Helper()
 	req, err := http.NewRequest(verb, srv.URL+path, body)
-	if err != nil {
-		t.Fatalf("failed to create request: %s", err)
-	}
+	assert.NilError(t, err)
 	return req
 }
 

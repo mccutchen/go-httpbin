@@ -5,11 +5,11 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,14 +20,13 @@ import (
 var nilValues = url.Values{}
 
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	writeError(w, http.StatusNotImplemented, nil)
 }
 
 // Index renders an HTML index page
 func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		msg := fmt.Sprintf("Not Found (go-httpbin does not handle the path %s)", r.URL.Path)
-		http.Error(w, msg, http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
@@ -81,9 +80,8 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		URL:     getURL(r).String(),
 	}
 
-	err := parseBody(w, r, resp)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing request body: %s", err), http.StatusBadRequest)
+	if err := parseBody(w, r, resp); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("error parsing request body: %w", err))
 		return
 	}
 
@@ -253,14 +251,18 @@ var (
 func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	code, err := strconv.Atoi(parts[2])
 	if err != nil {
-		http.Error(w, "Invalid status", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid status %q: %w", parts[2], err))
 		return
 	}
+
+	// default to plain text content type, which may be overriden by headers
+	// for special cases
+	w.Header().Set("Content-Type", textContentType)
 
 	if specialCase, ok := statusSpecialCases[code]; ok {
 		for key, val := range specialCase.headers {
@@ -283,29 +285,29 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 	// rng/seed
 	rng, err := parseSeed(r.URL.Query().Get("seed"))
 	if err != nil {
-		http.Error(w, "invalid seed", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
 		return
 	}
 
 	// failure_rate
-	var failureRate float64
-	rawFailureRate := r.URL.Query().Get("failure_rate")
-	if rawFailureRate != "" {
+	failureRate := 0.5
+	if rawFailureRate := r.URL.Query().Get("failure_rate"); rawFailureRate != "" {
 		failureRate, err = strconv.ParseFloat(rawFailureRate, 64)
-		if err != nil || failureRate < 0 || failureRate > 1 {
-			http.Error(w, "invalid failure_rate", http.StatusBadRequest)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid failure rate: %w", err))
+			return
+		} else if failureRate < 0 || failureRate > 1 {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid failure rate: %d not in interval [0, 1]", err))
 			return
 		}
-	} else {
-		failureRate = 0.5
 	}
 
-	var status int
+	status := http.StatusOK
 	if rng.Float64() < failureRate {
 		status = http.StatusInternalServerError
-	} else {
-		status = http.StatusOK
 	}
+
+	w.Header().Set("Content-Type", textContentType)
 	w.WriteHeader(status)
 }
 
@@ -350,12 +352,15 @@ func redirectLocation(r *http.Request, relative bool, n int) string {
 func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	n, err := strconv.Atoi(parts[2])
-	if err != nil || n < 1 {
-		http.Error(w, "Invalid redirect", http.StatusBadRequest)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid redirect count: %w", err))
+		return
+	} else if n < 1 {
+		writeError(w, http.StatusBadRequest, errors.New("redirect count must be > 0"))
 		return
 	}
 
@@ -389,29 +394,21 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 
 	inputURL := q.Get("url")
 	if inputURL == "" {
-		http.Error(w, "Missing URL", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: url"))
 		return
 	}
 
 	u, err := url.Parse(inputURL)
 	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid url: %w", err))
 		return
 	}
 
 	if u.IsAbs() && len(h.AllowedRedirectDomains) > 0 {
 		if _, ok := h.AllowedRedirectDomains[u.Hostname()]; !ok {
-			domainListItems := make([]string, 0, len(h.AllowedRedirectDomains))
-			for domain := range h.AllowedRedirectDomains {
-				domainListItems = append(domainListItems, fmt.Sprintf("- %s", domain))
-			}
-			sort.Strings(domainListItems)
-			formattedDomains := strings.Join(domainListItems, "\n")
-			msg := fmt.Sprintf(`Forbidden redirect URL. Please be careful with this link.
-
-Allowed redirect destinations:
-%s`, formattedDomains)
-			http.Error(w, msg, http.StatusForbidden)
+			// for this error message we do not use our standard JSON response
+			// because we want it to be more obviously human readable.
+			writeResponse(w, http.StatusForbidden, "text/plain", []byte(h.forbiddenRedirectError))
 			return
 		}
 	}
@@ -420,8 +417,11 @@ Allowed redirect destinations:
 	rawStatusCode := q.Get("status_code")
 	if rawStatusCode != "" {
 		statusCode, err = strconv.Atoi(q.Get("status_code"))
-		if err != nil || statusCode < 300 || statusCode > 399 {
-			http.Error(w, "Invalid status code", http.StatusBadRequest)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid status code: %w", err))
+			return
+		} else if statusCode < 300 || statusCode > 399 {
+			writeError(w, http.StatusBadRequest, errors.New("invalid status code: must be in range [300, 399]"))
 			return
 		}
 	}
@@ -475,7 +475,7 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 4 {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	expectedUser := parts[2]
@@ -501,7 +501,7 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 4 {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	expectedUser := parts[2]
@@ -511,7 +511,7 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 
 	authorized := givenUser == expectedUser && givenPass == expectedPass
 	if !authorized {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
@@ -525,12 +525,12 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	n, err := strconv.Atoi(parts[2])
 	if err != nil {
-		http.Error(w, "Invalid integer", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
 		return
 	}
 
@@ -562,13 +562,13 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	delay, err := parseBoundedDuration(parts[2], 0, h.MaxDuration)
 	if err != nil {
-		http.Error(w, "Invalid duration", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
 		return
 	}
 
@@ -598,7 +598,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	if userDuration := q.Get("duration"); userDuration != "" {
 		duration, err = parseBoundedDuration(userDuration, 0, h.MaxDuration)
 		if err != nil {
-			http.Error(w, "Invalid duration", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
 			return
 		}
 	}
@@ -606,23 +606,29 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	if userDelay := q.Get("delay"); userDelay != "" {
 		delay, err = parseBoundedDuration(userDelay, 0, h.MaxDuration)
 		if err != nil {
-			http.Error(w, "Invalid delay", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid delay: %w", err))
 			return
 		}
 	}
 
 	if userNumBytes := q.Get("numbytes"); userNumBytes != "" {
 		numBytes, err = strconv.ParseInt(userNumBytes, 10, 64)
-		if err != nil || numBytes <= 0 || numBytes > h.MaxBodySize {
-			http.Error(w, "Invalid numbytes", http.StatusBadRequest)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid numbytes: %w", err))
+			return
+		} else if numBytes < 1 || numBytes > h.MaxBodySize {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid numbytes: %d not in interval [1, %d]", numBytes, h.MaxBodySize))
 			return
 		}
 	}
 
 	if userCode := q.Get("code"); userCode != "" {
 		code, err = strconv.Atoi(userCode)
-		if err != nil || code < 100 || code >= 600 {
-			http.Error(w, "Invalid code", http.StatusBadRequest)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid code: %w", err))
+			return
+		} else if code < 100 || code >= 600 {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid code: %d not in interval [100, 599]", code))
 			return
 		}
 	}
@@ -693,13 +699,13 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	numBytes, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
 		return
 	}
 
@@ -707,7 +713,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Accept-Ranges", "bytes")
 
 	if numBytes <= 0 || numBytes > h.MaxBodySize {
-		http.Error(w, "Invalid number of bytes", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %d not in interval [1, %d]", numBytes, h.MaxBodySize))
 		return
 	}
 
@@ -754,13 +760,13 @@ func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	seconds, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seconds: %w", err))
 		return
 	}
 
@@ -773,12 +779,13 @@ func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	etag := parts[2]
 	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, etag))
+	w.Header().Set("Content-Type", textContentType)
 
 	var buf bytes.Buffer
 	mustMarshalJSON(&buf, noBodyResponse{
@@ -811,18 +818,25 @@ func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
 func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	numBytes, err := strconv.Atoi(parts[2])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %w", err))
+		return
+	}
+
+	// rng/seed
+	rng, err := parseSeed(r.URL.Query().Get("seed"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
 		return
 	}
 
 	if numBytes < 0 {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %d must be greater than 0", numBytes))
 		return
 	}
 
@@ -845,7 +859,7 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		if r.URL.Query().Get("chunk_size") != "" {
 			chunkSize, err = strconv.Atoi(r.URL.Query().Get("chunk_size"))
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeError(w, http.StatusBadRequest, fmt.Errorf("invalid chunk_size: %w", err))
 				return
 			}
 		} else {
@@ -868,13 +882,6 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		}
 	}
 
-	// rng/seed
-	rng, err := parseSeed(r.URL.Query().Get("seed"))
-	if err != nil {
-		http.Error(w, "invalid seed", http.StatusBadRequest)
-		return
-	}
-
 	w.Header().Set("Content-Type", binaryContentType)
 	w.WriteHeader(http.StatusOK)
 
@@ -895,13 +902,16 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 && len(parts) != 4 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
 	n, err := strconv.Atoi(parts[2])
-	if err != nil || n < 0 || n > 256 {
-		http.Error(w, "Invalid link count", http.StatusBadRequest)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid link count: %w", err))
+		return
+	} else if n < 0 || n > 256 {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid link count: %d must be in range [0, 256]", n))
 		return
 	}
 
@@ -909,7 +919,7 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 4 {
 		offset, err := strconv.Atoi(parts[3])
 		if err != nil {
-			http.Error(w, "Invalid offset", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid offset: %w", err))
 			return
 		}
 		doLinksPage(w, r, n, offset)
@@ -941,16 +951,21 @@ func doLinksPage(w http.ResponseWriter, r *http.Request, n int, offset int) {
 // ImageAccept responds with an appropriate image based on the Accept header
 func (h *HTTPBin) ImageAccept(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("Accept")
-	if accept == "" || strings.Contains(accept, "image/png") || strings.Contains(accept, "image/*") {
+	switch {
+	case accept == "":
+		fallthrough // default to png
+	case strings.Contains(accept, "image/*"):
+		fallthrough // default to png
+	case strings.Contains(accept, "image/png"):
 		doImage(w, "png")
-	} else if strings.Contains(accept, "image/webp") {
+	case strings.Contains(accept, "image/webp"):
 		doImage(w, "webp")
-	} else if strings.Contains(accept, "image/svg+xml") {
+	case strings.Contains(accept, "image/svg+xml"):
 		doImage(w, "svg")
-	} else if strings.Contains(accept, "image/jpeg") {
+	case strings.Contains(accept, "image/jpeg"):
 		doImage(w, "jpeg")
-	} else {
-		http.Error(w, "Unsupported media type", http.StatusUnsupportedMediaType)
+	default:
+		writeError(w, http.StatusUnsupportedMediaType, nil)
 	}
 }
 
@@ -958,7 +973,7 @@ func (h *HTTPBin) ImageAccept(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	doImage(w, parts[2])
@@ -969,7 +984,7 @@ func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
 func doImage(w http.ResponseWriter, kind string) {
 	img, err := staticAsset("image." + kind)
 	if err != nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 	contentType := "image/" + kind
@@ -994,7 +1009,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	count := len(parts)
 
 	if count != 5 && count != 6 {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, nil)
 		return
 	}
 
@@ -1008,11 +1023,11 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if qop != "auth" {
-		http.Error(w, "Invalid QOP directive", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid QOP directive: %q != \"auth\"", qop))
 		return
 	}
 	if algoName != "MD5" && algoName != "SHA-256" {
-		http.Error(w, "Invalid algorithm", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid algorithm: %s must be one of MD5 or SHA-256", algoName))
 		return
 	}
 
@@ -1023,7 +1038,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 
 	if !digest.Check(r, user, password) {
 		w.Header().Set("WWW-Authenticate", digest.Challenge("go-httpbin", algorithm))
-		w.WriteHeader(http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, nil)
 		return
 	}
 
@@ -1044,21 +1059,19 @@ func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 	b, err := newBase64Helper(r.URL.Path)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("%s", err), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid base64 data: %w", err))
 		return
 	}
 
 	var result []byte
-	var base64Error error
-
 	if b.operation == "decode" {
-		result, base64Error = b.Decode()
+		result, err = b.Decode()
 	} else {
-		result, base64Error = b.Encode()
+		result, err = b.Encode()
 	}
 
-	if base64Error != nil {
-		http.Error(w, fmt.Sprintf("%s failed: %s", b.operation, base64Error), http.StatusBadRequest)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("%s failed: %w", b.operation, err))
 		return
 	}
 	writeResponse(w, http.StatusOK, textContentType, result)
@@ -1072,7 +1085,7 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPBin) DumpRequest(w http.ResponseWriter, r *http.Request) {
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("failed to dump request: %w", err))
 		return
 	}
 	w.Write(dump)
@@ -1091,7 +1104,7 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 	tokenFields := strings.Fields(reqToken)
 	if len(tokenFields) != 2 || tokenFields[0] != "Bearer" {
 		w.Header().Set("WWW-Authenticate", "Bearer")
-		w.WriteHeader(http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, nil)
 		return
 	}
 	writeJSON(http.StatusOK, w, bearerResponse{

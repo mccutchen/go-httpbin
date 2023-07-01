@@ -114,6 +114,17 @@ func writeHTML(w http.ResponseWriter, body []byte, status int) {
 	writeResponse(w, status, htmlContentType, body)
 }
 
+func writeError(w http.ResponseWriter, code int, err error) {
+	resp := errorRespnose{
+		Error:      http.StatusText(code),
+		StatusCode: code,
+	}
+	if err != nil {
+		resp.Detail = err.Error()
+	}
+	writeJSON(code, w, resp)
+}
+
 // parseFiles handles reading the contents of files in a multipart FileHeader
 // and returning a map that can be used as the Files attribute of a response
 func parseFiles(fileHeaders map[string][]*multipart.FileHeader) (map[string][]string, error) {
@@ -344,8 +355,7 @@ func sha1hash(input string) string {
 
 func uuidv4() string {
 	buff := make([]byte, 16)
-	_, err := crypto_rand.Read(buff[:])
-	if err != nil {
+	if _, err := crypto_rand.Read(buff[:]); err != nil {
 		panic(err)
 	}
 	buff[6] = (buff[6] & 0x0f) | 0x40 // Version 4

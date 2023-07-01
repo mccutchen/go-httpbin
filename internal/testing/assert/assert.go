@@ -57,6 +57,17 @@ func StatusCode(t *testing.T, resp *http.Response, code int) {
 	if resp.StatusCode != code {
 		t.Fatalf("expected status code %d, got %d", code, resp.StatusCode)
 	}
+	if resp.StatusCode >= 400 {
+		// Ensure our error responses are never served as HTML, so that we do
+		// not need to worry about XSS or other attacks in error responses.
+		if ct := resp.Header.Get("Content-Type"); !isSafeContentType(ct) {
+			t.Errorf("HTTP %s error served with dangerous content type: %s", resp.Status, ct)
+		}
+	}
+}
+
+func isSafeContentType(ct string) bool {
+	return strings.HasPrefix(ct, "application/json") || strings.HasPrefix(ct, "text/plain") || strings.HasPrefix(ct, "application/octet-stream")
 }
 
 // Header asserts that a header key has a specific value in a response.
@@ -89,6 +100,13 @@ func BodyEquals(t *testing.T, resp *http.Response, want string) {
 	t.Helper()
 	got := must.ReadAll(t, resp.Body)
 	Equal(t, got, want, "incorrect response body")
+}
+
+// BodySize asserts that a response body is a specific size.
+func BodySize(t *testing.T, resp *http.Response, want int) {
+	t.Helper()
+	got := must.ReadAll(t, resp.Body)
+	Equal(t, len(got), want, "incorrect response body size")
 }
 
 // DurationRange asserts that a duration is within a specific range.
