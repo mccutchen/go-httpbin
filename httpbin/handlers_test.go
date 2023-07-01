@@ -1083,6 +1083,7 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?status_code=302", http.StatusBadRequest},                               // missing url
 		{"/redirect-to?url=foo&status_code=201", http.StatusBadRequest},                       // invalid status code
 		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},                       // invalid status code
+		{"/redirect-to?url=foo&status_code=foo", http.StatusBadRequest},                       // invalid status code
 		{"/redirect-to?url=http%3A%2F%2Ffoo%25%25bar&status_code=418", http.StatusBadRequest}, // invalid URL
 	}
 	for _, test := range badTests {
