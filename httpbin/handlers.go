@@ -254,9 +254,9 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, nil)
 		return
 	}
-	code, err := strconv.Atoi(parts[2])
+	code, err := parseStatusCode(parts[2])
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid status %q: %w", parts[2], err))
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -297,7 +297,7 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid failure rate: %w", err))
 			return
 		} else if failureRate < 0 || failureRate > 1 {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid failure rate: %d not in interval [0, 1]", err))
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid failure rate: %d not in range [0, 1]", err))
 			return
 		}
 	}
@@ -414,14 +414,10 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statusCode := http.StatusFound
-	rawStatusCode := q.Get("status_code")
-	if rawStatusCode != "" {
-		statusCode, err = strconv.Atoi(q.Get("status_code"))
+	if userStatusCode := q.Get("status_code"); userStatusCode != "" {
+		statusCode, err = parseBoundedStatusCode(userStatusCode, 300, 399)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid status code: %w", err))
-			return
-		} else if statusCode < 300 || statusCode > 399 {
-			writeError(w, http.StatusBadRequest, errors.New("invalid status code: must be in range [300, 399]"))
+			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -617,18 +613,15 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid numbytes: %w", err))
 			return
 		} else if numBytes < 1 || numBytes > h.MaxBodySize {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid numbytes: %d not in interval [1, %d]", numBytes, h.MaxBodySize))
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid numbytes: %d not in range [1, %d]", numBytes, h.MaxBodySize))
 			return
 		}
 	}
 
 	if userCode := q.Get("code"); userCode != "" {
-		code, err = strconv.Atoi(userCode)
+		code, err = parseStatusCode(userCode)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid code: %w", err))
-			return
-		} else if code < 100 || code >= 600 {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid code: %d not in interval [100, 599]", code))
+			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -713,7 +706,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Accept-Ranges", "bytes")
 
 	if numBytes <= 0 || numBytes > h.MaxBodySize {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %d not in interval [1, %d]", numBytes, h.MaxBodySize))
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %d not in range [1, %d]", numBytes, h.MaxBodySize))
 		return
 	}
 
