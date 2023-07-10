@@ -234,6 +234,21 @@ func encodeData(body []byte, contentType string) string {
 	return string("data:" + contentType + ";base64," + data)
 }
 
+func parseStatusCode(input string) (int, error) {
+	return parseBoundedStatusCode(input, 100, 599)
+}
+
+func parseBoundedStatusCode(input string, min, max int) (int, error) {
+	code, err := strconv.Atoi(input)
+	if err != nil {
+		return 0, fmt.Errorf("invalid status code: %q: %w", input, err)
+	}
+	if code < min || code > max {
+		return 0, fmt.Errorf("invalid status code: %d not in range [%d, %d]", code, min, max)
+	}
+	return code, nil
+}
+
 // parseDuration takes a user's input as a string and attempts to convert it
 // into a time.Duration. If not given as a go-style duration string, the input
 // is assumed to be seconds as a float.

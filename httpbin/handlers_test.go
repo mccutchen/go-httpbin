@@ -799,6 +799,7 @@ func TestStatus(t *testing.T) {
 		headers map[string]string
 		body    string
 	}{
+		// 100 is tested as a special case below
 		{200, nil, ""},
 		{300, map[string]string{"Location": "/image/jpeg"}, `<!doctype html>
 <head>
@@ -822,6 +823,8 @@ func TestStatus(t *testing.T) {
 </html>`},
 		{401, unauthorizedHeaders, ""},
 		{418, nil, "I'm a teapot!"},
+		{500, nil, ""}, // maximum allowed status code
+		{599, nil, ""}, // maximum allowed status code
 	}
 
 	for _, test := range tests {
@@ -848,6 +851,8 @@ func TestStatus(t *testing.T) {
 		{"/status/200/foo", http.StatusNotFound},
 		{"/status/3.14", http.StatusBadRequest},
 		{"/status/foo", http.StatusBadRequest},
+		{"/status/600", http.StatusBadRequest},
+		{"/status/1024", http.StatusBadRequest},
 	}
 
 	for _, test := range errorTests {
@@ -860,6 +865,34 @@ func TestStatus(t *testing.T) {
 			assert.StatusCode(t, resp, test.status)
 		})
 	}
+
+	t.Run("HTTP 100 Continue status code supported", func(t *testing.T) {
+		// The stdlib http client automagically handles 100 Continue responses
+		// by continuing the request until a "final" 200 OK response is
+		// received, which prevents us from confirming that a 100 Continue
+		// response is sent when using the http client directly.
+		//
+		// So, here we instead manally write the request to the wire and read
+		// the initial response, which will give us access to the 100 Continue
+		// indication we need.
+		t.Parallel()
+
+		conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+		assert.NilError(t, err)
+		defer conn.Close()
+
+		req := newTestRequest(t, "GET", "/status/100")
+		reqBytes, err := httputil.DumpRequestOut(req, false)
+		assert.NilError(t, err)
+
+		n, err := conn.Write(reqBytes)
+		assert.NilError(t, err)
+		assert.Equal(t, n, len(reqBytes), "incorrect number of bytes written")
+
+		resp, err := http.ReadResponse(bufio.NewReader(conn), req)
+		assert.NilError(t, err)
+		assert.StatusCode(t, resp, http.StatusContinue)
+	})
 }
 
 func TestUnstable(t *testing.T) {
