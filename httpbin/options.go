@@ -46,6 +46,12 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
+func WithInterceptor(i Interceptor) OptionFunc {
+	return func(h *HTTPBin) {
+		h.Interceptor = i
+	}
+}
+
 // WithAllowedRedirectDomains limits the domains to which the /redirect-to
 // endpoint will redirect traffic.
 func WithAllowedRedirectDomains(hosts []string) OptionFunc {

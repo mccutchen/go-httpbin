@@ -27,6 +27,12 @@ var DefaultDefaultParams = DefaultParams{
 	DripNumBytes: 10,
 }
 
+type HeaderInterceptor func(h http.Header) http.Header
+
+type Interceptor struct {
+	Header HeaderInterceptor
+}
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -44,6 +50,9 @@ type HTTPBin struct {
 
 	// Set of hosts to which the /redirect-to endpoint will allow redirects
 	AllowedRedirectDomains map[string]struct{}
+
+	Interceptor Interceptor
+
 	forbiddenRedirectError string
 
 	// The hostname to expose via /hostname.
