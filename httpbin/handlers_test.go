@@ -202,7 +202,6 @@ func TestGet(t *testing.T) {
 		assertHeader(t, &result.Headers, "X-Ignore-Foo", "")
 		assertHeader(t, &result.Headers, "X-Info-Foo", "bar")
 		assertHeader(t, &result.Headers, "X-Info", "intercepted")
-
 	})
 
 	t.Run("only_allows_gets", func(t *testing.T) {
