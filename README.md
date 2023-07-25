@@ -91,6 +91,7 @@ variables (or a combination of the two):
 | `-max-duration` | `MAX_DURATION` | Maximum duration a response may take | 10s |
 | `-port` | `PORT` | Port to listen on | 8080 |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
+| `-exclude-headers` | `EXCLUDE_HEADERS` | Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching. For example: `"foo,bar,x-fc-*"` | - |
 
 **Notes:**
 - Command line arguments take precedence over environment variables.
