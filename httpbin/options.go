@@ -46,9 +46,9 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
-func WithInterceptor(i Interceptor) OptionFunc {
+func WithExcludeHeaders(excludeHeaders string) OptionFunc {
 	return func(h *HTTPBin) {
-		h.Interceptor = i
+		h.SetExcludeHeaders(excludeHeaders)
 	}
 }
 

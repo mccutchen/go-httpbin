@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,8 @@ import (
 
 // Base64MaxLen - Maximum input length for Base64 functions
 const Base64MaxLen = 2000
+
+type HeaderInterceptor func(h http.Header) http.Header
 
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
@@ -435,4 +438,25 @@ func (b *base64Helper) Encode() ([]byte, error) {
 // Decode - decode data from base64
 func (b *base64Helper) Decode() ([]byte, error) {
 	return base64.URLEncoding.DecodeString(b.data)
+}
+
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
 }
