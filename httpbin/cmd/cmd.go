@@ -142,7 +142,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.StringVar(&cfg.ListenHost, "host", defaultListenHost, "Host to listen on")
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
-	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop. including wildcard prefix matches.")
+	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
