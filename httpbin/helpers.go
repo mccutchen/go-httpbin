@@ -459,11 +459,11 @@ func wildCardToRegexp(pattern string) string {
 	return "^" + result.String() + "$"
 }
 
-func createHeadersProcessor(regex *regexp.Regexp) headersProcessorFunc {
+func createExcludeHeadersProcessor(excludeRegex *regexp.Regexp) headersProcessorFunc {
 	return func(headers http.Header) http.Header {
 		result := make(http.Header)
 		for k, v := range headers {
-			matched := regex.Match([]byte(k))
+			matched := excludeRegex.Match([]byte(k))
 			if matched {
 				continue
 			}

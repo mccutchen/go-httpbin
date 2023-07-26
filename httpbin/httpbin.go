@@ -55,7 +55,7 @@ type HTTPBin struct {
 	// The app's http handler
 	handler http.Handler
 
-	headersProcessor headersProcessorFunc
+	excludeHeadersProcessor headersProcessorFunc
 }
 
 // New creates a new HTTPBin instance
@@ -188,6 +188,6 @@ func (h *HTTPBin) Handler() http.Handler {
 func (h *HTTPBin) setExcludeHeaders(excludeHeaders string) {
 	regex := createFullExcludeRegex(excludeHeaders)
 	if regex != nil {
-		h.headersProcessor = createHeadersProcessor(regex)
+		h.excludeHeadersProcessor = createExcludeHeadersProcessor(regex)
 	}
 }
