@@ -478,10 +478,14 @@ func createFullExcludeRegex(excludeHeaders string) *regexp.Regexp {
 	// comma separated list of headers to exclude from response
 	tmp := strings.Split(excludeHeaders, ",")
 
-	tmpRegexStrings := make([]string, len(tmp))
-	for i, v := range tmp {
-		pattern := wildCardToRegexp(strings.TrimSpace(v))
-		tmpRegexStrings[i] = pattern
+	tmpRegexStrings := make([]string, 0)
+	for _, v := range tmp {
+		s := strings.TrimSpace(v)
+		if len(s) == 0 {
+			continue
+		}
+		pattern := wildCardToRegexp(s)
+		tmpRegexStrings = append(tmpRegexStrings, pattern)
 	}
 
 	if len(tmpRegexStrings) > 0 {

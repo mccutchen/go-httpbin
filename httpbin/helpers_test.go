@@ -313,7 +313,8 @@ func TestWildcardHelpers(t *testing.T) {
 }
 
 func TestCreateFullExcludeRegex(t *testing.T) {
-	excludeHeaders := "x-ignore-*,x-info-this-key"
+	// tolerate unused comma
+	excludeHeaders := "x-ignore-*,x-info-this-key,,"
 	regex := createFullExcludeRegex(excludeHeaders)
 	fmt.Printf("regex: %v\n", regex)
 	tests := []struct {
@@ -354,4 +355,7 @@ func TestCreateFullExcludeRegex(t *testing.T) {
 			assert.Equal(t, matched, test.expected, "incorrect match")
 		})
 	}
+
+	nilReturn := createFullExcludeRegex("")
+	assert.Equal(t, nilReturn, nil, "incorrect match")
 }
