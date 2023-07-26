@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"testing"
 	"time"
 
@@ -274,5 +275,83 @@ func TestParseFileDoesntExist(t *testing.T) {
 	_, err := parseFiles(headers)
 	if _, ok := err.(*fs.PathError); !ok {
 		t.Fatalf("Open(nonexist): error is %T, want *PathError", err)
+	}
+}
+
+func TestWildcardHelpers(t *testing.T) {
+	tmpRegexStr := wildCardToRegexp("info-*")
+	regex := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			"basic test",
+			"info-foo",
+			true,
+		},
+		{
+			"basic test case insensitive",
+			"INFO-bar",
+			true,
+		},
+		{
+			"basic test 3",
+			"foo-bar",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			matched := regex.Match([]byte(test.input))
+			assert.Equal(t, matched, test.expected, "incorrect match")
+		})
+	}
+}
+
+func TestCreateFullExcludeRegex(t *testing.T) {
+	excludeHeaders := "x-ignore-*,x-info-this-key"
+	regex := createFullExcludeRegex(excludeHeaders)
+	fmt.Printf("regex: %v\n", regex)
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			"basic test",
+			"x-ignore-foo",
+			true,
+		},
+		{
+			"basic test case insensitive",
+			"X-IGNORE-bar",
+			true,
+		},
+		{
+			"basic test 3",
+			"x-info-this-key",
+			true,
+		},
+		{
+			"basic test 4",
+			"foo-bar",
+			false,
+		},
+		{
+			"basic test 5",
+			"x-info-this-key-foo",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			matched := regex.Match([]byte(test.input))
+			assert.Equal(t, matched, test.expected, "incorrect match")
+		})
 	}
 }

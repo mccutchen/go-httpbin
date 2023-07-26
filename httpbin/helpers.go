@@ -23,15 +23,13 @@ import (
 // Base64MaxLen - Maximum input length for Base64 functions
 const Base64MaxLen = 2000
 
-type HeaderInterceptor func(h http.Header) http.Header
-
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
 //
 // This is necessary to ensure that the incoming Host and Transfer-Encoding
 // headers are included, because golang only exposes those values on the
 // http.Request struct itself.
-func getRequestHeaders(r *http.Request, fn HeaderInterceptor) http.Header {
+func getRequestHeaders(r *http.Request, fn headersProcessorFunc) http.Header {
 	h := r.Header
 	h.Set("Host", r.Host)
 	if len(r.TransferEncoding) > 0 {
@@ -459,4 +457,38 @@ func wildCardToRegexp(pattern string) string {
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
 	return "^" + result.String() + "$"
+}
+
+func createHeadersProcessor(regex *regexp.Regexp) headersProcessorFunc {
+	return func(headers http.Header) http.Header {
+		result := make(http.Header)
+		for k, v := range headers {
+			matched := regex.Match([]byte(k))
+			if matched {
+				continue
+			}
+			result[k] = v
+		}
+
+		return result
+	}
+}
+
+func createFullExcludeRegex(excludeHeaders string) *regexp.Regexp {
+	// comma separated list of headers to exclude from response
+	tmp := strings.Split(excludeHeaders, ",")
+
+	tmpRegexStrings := make([]string, len(tmp))
+	for i, v := range tmp {
+		pattern := wildCardToRegexp(strings.TrimSpace(v))
+		tmpRegexStrings[i] = pattern
+	}
+
+	if len(tmpRegexStrings) > 0 {
+		tmpRegexStr := strings.Join(tmpRegexStrings, "|")
+		result := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
+		return result
+	}
+
+	return nil
 }

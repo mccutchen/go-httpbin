@@ -48,7 +48,7 @@ func WithObserver(o Observer) OptionFunc {
 
 func WithExcludeHeaders(excludeHeaders string) OptionFunc {
 	return func(h *HTTPBin) {
-		h.SetExcludeHeaders(excludeHeaders)
+		h.setExcludeHeaders(excludeHeaders)
 	}
 }
 

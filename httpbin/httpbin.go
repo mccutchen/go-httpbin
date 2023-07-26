@@ -2,8 +2,6 @@ package httpbin
 
 import (
 	"net/http"
-	"regexp"
-	"strings"
 	"time"
 )
 
@@ -28,6 +26,8 @@ var DefaultDefaultParams = DefaultParams{
 	DripDelay:    2 * time.Second,
 	DripNumBytes: 10,
 }
+
+type headersProcessorFunc func(h http.Header) http.Header
 
 // HTTPBin contains the business logic
 type HTTPBin struct {
@@ -55,8 +55,7 @@ type HTTPBin struct {
 	// The app's http handler
 	handler http.Handler
 
-	// regex patterns for headers to exclude from response
-	excludeHeadersPatterns []*regexp.Regexp
+	headersProcessor headersProcessorFunc
 }
 
 // New creates a new HTTPBin instance
@@ -186,37 +185,9 @@ func (h *HTTPBin) Handler() http.Handler {
 	return handler
 }
 
-func (h *HTTPBin) HeadersProcessor(headers http.Header) http.Header {
-	result := make(http.Header)
-	for k, v := range headers {
-		lowerCase := strings.ToLower(k)
-		skipped := false
-		for _, pattern := range h.excludeHeadersPatterns {
-			matched := pattern.Match([]byte(lowerCase))
-			if matched {
-				skipped = true
-				break
-			}
-		}
-		if skipped {
-			continue
-		}
-		result[k] = v
+func (h *HTTPBin) setExcludeHeaders(excludeHeaders string) {
+	regex := createFullExcludeRegex(excludeHeaders)
+	if regex != nil {
+		h.headersProcessor = createHeadersProcessor(regex)
 	}
-
-	return result
-}
-
-func (h *HTTPBin) SetExcludeHeaders(excludeHeaders string) {
-	// comma separated list of headers to exclude from response
-	tmp := strings.Split(excludeHeaders, ",")
-	result := make([]*regexp.Regexp, len(tmp))
-
-	for i, v := range tmp {
-		pattern := wildCardToRegexp(strings.TrimSpace(strings.ToLower(v)))
-		compiled, _ := regexp.Compile(pattern)
-		result[i] = compiled
-	}
-
-	h.excludeHeadersPatterns = result
 }
