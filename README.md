@@ -160,6 +160,13 @@ public internet, consider tuning it appropriately:
      logging using [zerolog] and further hardens the HTTP server against
      malicious clients by tuning lower-level timeouts and limits.
 
+5. **Prevent leaking sensitive headers**
+
+  By default, go-httpbin will return any headers sent by the client in the response.
+  But if you want to deploy go-httpbin in some serverless environment, you may want to drop some headers.
+  You can use the `-exclude-headers` CLI argument or the `EXCLUDE_HEADERS` env var to configure an appropriate allowlist.
+  For example, Alibaba Cloud Function Compute will [add some headers like `x-fc-*` to the request](https://www.alibabacloud.com/help/en/fc/user-guide/specification-details). if you want to drop these `x-fc-*` headers, you can set `EXCLUDE_HEADERS=x-fc-*`.
+
 ## Development
 
 ```bash
