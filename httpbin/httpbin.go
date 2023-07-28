@@ -27,6 +27,8 @@ var DefaultDefaultParams = DefaultParams{
 	DripNumBytes: 10,
 }
 
+type headersProcessorFunc func(h http.Header) http.Header
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -44,6 +46,7 @@ type HTTPBin struct {
 
 	// Set of hosts to which the /redirect-to endpoint will allow redirects
 	AllowedRedirectDomains map[string]struct{}
+
 	forbiddenRedirectError string
 
 	// The hostname to expose via /hostname.
@@ -51,6 +54,8 @@ type HTTPBin struct {
 
 	// The app's http handler
 	handler http.Handler
+
+	excludeHeadersProcessor headersProcessorFunc
 }
 
 // New creates a new HTTPBin instance
@@ -178,4 +183,11 @@ func (h *HTTPBin) Handler() http.Handler {
 	}
 
 	return handler
+}
+
+func (h *HTTPBin) setExcludeHeaders(excludeHeaders string) {
+	regex := createFullExcludeRegex(excludeHeaders)
+	if regex != nil {
+		h.excludeHeadersProcessor = createExcludeHeadersProcessor(regex)
+	}
 }

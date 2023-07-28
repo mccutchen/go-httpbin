@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"testing"
 	"time"
 
@@ -275,4 +276,112 @@ func TestParseFileDoesntExist(t *testing.T) {
 	if _, ok := err.(*fs.PathError); !ok {
 		t.Fatalf("Open(nonexist): error is %T, want *PathError", err)
 	}
+}
+
+func TestWildcardHelpers(t *testing.T) {
+	tests := []struct {
+		pattern  string
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			"info-*",
+			"basic test",
+			"info-foo",
+			true,
+		},
+		{
+			"info-*",
+			"basic test case insensitive",
+			"INFO-bar",
+			true,
+		},
+		{
+			"info-*-foo",
+			"a single wildcard in the middle of the string",
+			"INFO-bar-foo",
+			true,
+		},
+		{
+			"info-*-foo",
+			"a single wildcard in the middle of the string",
+			"INFO-bar-baz",
+			false,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo--bar",
+			true,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo-a-bar",
+			true,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo--bar123",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tmpRegexStr := wildCardToRegexp(test.pattern)
+			regex := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
+			matched := regex.Match([]byte(test.input))
+			assert.Equal(t, matched, test.expected, "incorrect match")
+		})
+	}
+}
+
+func TestCreateFullExcludeRegex(t *testing.T) {
+	// tolerate unused comma
+	excludeHeaders := "x-ignore-*,x-info-this-key,,"
+	regex := createFullExcludeRegex(excludeHeaders)
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			"basic test",
+			"x-ignore-foo",
+			true,
+		},
+		{
+			"basic test case insensitive",
+			"X-IGNORE-bar",
+			true,
+		},
+		{
+			"basic test 3",
+			"x-info-this-key",
+			true,
+		},
+		{
+			"basic test 4",
+			"foo-bar",
+			false,
+		},
+		{
+			"basic test 5",
+			"x-info-this-key-foo",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			matched := regex.Match([]byte(test.input))
+			assert.Equal(t, matched, test.expected, "incorrect match")
+		})
+	}
+
+	nilReturn := createFullExcludeRegex("")
+	assert.Equal(t, nilReturn, nil, "incorrect match")
 }

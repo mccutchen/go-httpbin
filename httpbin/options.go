@@ -46,6 +46,12 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
+func WithExcludeHeaders(excludeHeaders string) OptionFunc {
+	return func(h *HTTPBin) {
+		h.setExcludeHeaders(excludeHeaders)
+	}
+}
+
 // WithAllowedRedirectDomains limits the domains to which the /redirect-to
 // endpoint will redirect traffic.
 func WithAllowedRedirectDomains(hosts []string) OptionFunc {

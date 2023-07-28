@@ -91,6 +91,7 @@ variables (or a combination of the two):
 | `-max-duration` | `MAX_DURATION` | Maximum duration a response may take | 10s |
 | `-port` | `PORT` | Port to listen on | 8080 |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
+| `-exclude-headers` | `EXCLUDE_HEADERS` | Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard suffix matching. For example: `"foo,bar,x-fc-*"` | - |
 
 **Notes:**
 - Command line arguments take precedence over environment variables.
@@ -158,6 +159,13 @@ public internet, consider tuning it appropriately:
      go-httpbin deployed to [httpbingo.org], which adds customized structured
      logging using [zerolog] and further hardens the HTTP server against
      malicious clients by tuning lower-level timeouts and limits.
+
+5. **Prevent leaking sensitive headers**
+
+  By default, go-httpbin will return any headers sent by the client in the response.
+  But if you want to deploy go-httpbin in some serverless environment, you may want to drop some headers.
+  You can use the `-exclude-headers` CLI argument or the `EXCLUDE_HEADERS` env var to configure an appropriate allowlist.
+  For example, Alibaba Cloud Function Compute will [add some headers like `x-fc-*` to the request](https://www.alibabacloud.com/help/en/fc/user-guide/specification-details). if you want to drop these `x-fc-*` headers, you can set `EXCLUDE_HEADERS=x-fc-*`.
 
 ## Development
 

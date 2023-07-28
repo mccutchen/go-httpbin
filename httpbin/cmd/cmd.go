@@ -69,6 +69,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 		httpbin.WithMaxBodySize(cfg.MaxBodySize),
 		httpbin.WithMaxDuration(cfg.MaxDuration),
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
+		httpbin.WithExcludeHeaders(cfg.ExcludeHeaders),
 	}
 	if cfg.RealHostname != "" {
 		opts = append(opts, httpbin.WithHostname(cfg.RealHostname))
@@ -99,6 +100,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 type config struct {
 	AllowedRedirectDomains []string
 	ListenHost             string
+	ExcludeHeaders         string
 	ListenPort             int
 	MaxBodySize            int64
 	MaxDuration            time.Duration
@@ -140,6 +142,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.StringVar(&cfg.ListenHost, "host", defaultListenHost, "Host to listen on")
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
+	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
@@ -188,6 +191,9 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	}
 	if cfg.ListenHost == defaultListenHost && getEnv("HOST") != "" {
 		cfg.ListenHost = getEnv("HOST")
+	}
+	if cfg.ExcludeHeaders == "" && getEnv("EXCLUDE_HEADERS") != "" {
+		cfg.ExcludeHeaders = getEnv("EXCLUDE_HEADERS")
 	}
 	if cfg.ListenPort == defaultListenPort && getEnv("PORT") != "" {
 		cfg.ListenPort, err = strconv.Atoi(getEnv("PORT"))

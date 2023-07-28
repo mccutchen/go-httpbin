@@ -61,6 +61,7 @@ func TestMain(m *testing.M) {
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration),
 		WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
+		WithExcludeHeaders("x-ignore-*,x-info-this-key"),
 	)
 	srv, client = newTestServer(app)
 	defer srv.Close()
@@ -165,6 +166,28 @@ func TestGet(t *testing.T) {
 		result := doGetRequest(t, "/get", params, nil)
 		assert.Equal(t, result.Args.Encode(), params.Encode(), "args mismatch")
 		assert.Equal(t, result.Method, "GET", "method mismatch")
+	})
+
+	t.Run("will ignore specific headers", func(t *testing.T) {
+		t.Parallel()
+
+		params := url.Values{}
+		params.Set("foo", "foo")
+		params.Add("bar", "bar1")
+		params.Add("bar", "bar2")
+
+		header := http.Header{}
+
+		header.Set("X-Ignore-Foo", "foo")
+		header.Set("X-Info-Foo", "bar")
+		header.Set("x-info-this-key", "baz")
+
+		result := doGetRequest(t, "/get", params, header)
+		assert.Equal(t, result.Args.Encode(), params.Encode(), "args mismatch")
+		assert.Equal(t, result.Method, "GET", "method mismatch")
+		assertHeaderEqual(t, &result.Headers, "X-Ignore-Foo", "")
+		assertHeaderEqual(t, &result.Headers, "x-info-this-key", "")
+		assertHeaderEqual(t, &result.Headers, "X-Info-Foo", "bar")
 	})
 
 	t.Run("only_allows_gets", func(t *testing.T) {
@@ -2919,4 +2942,12 @@ func mustParseResponse[T any](t *testing.T, resp *http.Response) T {
 func consumeAndCloseBody(resp *http.Response) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
+}
+
+func assertHeaderEqual(t *testing.T, header *http.Header, key, want string) {
+	t.Helper()
+	got := header.Get(key)
+	if want != got {
+		t.Fatalf("expected header %s=%#v, got %#v", key, want, got)
+	}
 }
