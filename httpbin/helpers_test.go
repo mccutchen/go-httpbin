@@ -279,33 +279,60 @@ func TestParseFileDoesntExist(t *testing.T) {
 }
 
 func TestWildcardHelpers(t *testing.T) {
-	tmpRegexStr := wildCardToRegexp("info-*")
-	regex := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
-
 	tests := []struct {
+		pattern  string
 		name     string
 		input    string
 		expected bool
 	}{
 		{
+			"info-*",
 			"basic test",
 			"info-foo",
 			true,
 		},
 		{
+			"info-*",
 			"basic test case insensitive",
 			"INFO-bar",
 			true,
 		},
 		{
-			"basic test 3",
-			"foo-bar",
+			"info-*-foo",
+			"a single wildcard in the middle of the string",
+			"INFO-bar-foo",
+			true,
+		},
+		{
+			"info-*-foo",
+			"a single wildcard in the middle of the string",
+			"INFO-bar-baz",
+			false,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo--bar",
+			true,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo-a-bar",
+			true,
+		},
+		{
+			"info-*-foo-*-bar",
+			"multiple wildcards in the string",
+			"info-aaa-foo--bar123",
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			tmpRegexStr := wildCardToRegexp(test.pattern)
+			regex := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
 			matched := regex.Match([]byte(test.input))
 			assert.Equal(t, matched, test.expected, "incorrect match")
 		})
@@ -316,7 +343,6 @@ func TestCreateFullExcludeRegex(t *testing.T) {
 	// tolerate unused comma
 	excludeHeaders := "x-ignore-*,x-info-this-key,,"
 	regex := createFullExcludeRegex(excludeHeaders)
-	fmt.Printf("regex: %v\n", regex)
 	tests := []struct {
 		name     string
 		input    string
