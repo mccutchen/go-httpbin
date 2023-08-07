@@ -1163,7 +1163,18 @@ func TestResponseHeaders(t *testing.T) {
 
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/response-headers?%s", srv.URL, wantHeaders.Encode()), nil)
 		resp := must.DoReq(t, client, req)
-		result := mustParseResponse[http.Header](t, resp)
+
+		type bodyResponse struct {
+			Foo           string   `json:"Foo"`
+			Bar           []string `json:"Bar"`
+			ContentType   string   `json:"Content-Type"`
+			ContentLength int      `json:"Content-Length"`
+		}
+
+		result := mustParseResponse[bodyResponse](t, resp)
+
+		assert.ContentType(t, resp, result.ContentType)
+		assert.Equal[bool](t, result.ContentLength > 0, true, "JSON response Content-Length mismatch")
 
 		for k, expectedValues := range wantHeaders {
 			// expected headers should be present in the HTTP response itself
@@ -1171,8 +1182,13 @@ func TestResponseHeaders(t *testing.T) {
 			assert.DeepEqual(t, respValues, expectedValues, "HTTP response headers mismatch")
 
 			// they should also be reflected in the decoded JSON resposne
-			resultValues := result[k]
-			assert.DeepEqual(t, resultValues, expectedValues, "JSON response headers mismatch")
+			if len(expectedValues) == 1 {
+				value := reflect.ValueOf(result).FieldByName(k).String()
+				assert.Equal[string](t, value, expectedValues[0], "JSON response headers mismatch")
+			} else {
+				value := reflect.ValueOf(result).FieldByName(k).Interface().([]string)
+				assert.DeepEqual(t, value, expectedValues, "JSON response headers mismatch")
+			}
 		}
 	})
 

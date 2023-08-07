@@ -314,15 +314,26 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 // ResponseHeaders responds with a map of header values
 func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
+	body := make(map[string]interface{})
 	for k, vs := range args {
 		for _, v := range vs {
 			w.Header().Add(k, v)
+		}
+		if len(vs) == 1 {
+			body[k] = vs[0]
+		} else {
+			body[k] = vs
 		}
 	}
 	if contentType := w.Header().Get("Content-Type"); contentType == "" {
 		w.Header().Set("Content-Type", jsonContentType)
 	}
-	mustMarshalJSON(w, args)
+	body["Content-Type"] = w.Header().Get("Content-Type")
+	body["Content-Length"] = 0
+	buf := &bytes.Buffer{}
+	json.NewEncoder(buf).Encode(body)
+	body["Content-Length"] = buf.Len()
+	mustMarshalJSON(w, body)
 }
 
 func redirectLocation(r *http.Request, relative bool, n int) string {
