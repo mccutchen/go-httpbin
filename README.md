@@ -23,6 +23,14 @@ $ docker run -P mccutchen/go-httpbin
 $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
 ```
 
+### Kubernetes
+
+```
+$ kubectl apply -k github.com/mccutchen/go-httpbin/kustomize
+```
+
+See `./kustomize` directory for further information
+
 ### Standalone binary
 
 Follow the [Installation](#installation) instructions to install go-httpbin as
