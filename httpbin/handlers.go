@@ -68,6 +68,11 @@ func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 	h.RequestWithBody(w, r)
 }
 
+// Healthz used for k8s readiness probe
+func (h *HTTPBin) Healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 // RequestWithBody handles POST, PUT, and PATCH requests
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
