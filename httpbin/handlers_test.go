@@ -76,7 +76,7 @@ func TestIndex(t *testing.T) {
 		resp := must.DoReq(t, client, req)
 
 		assert.ContentType(t, resp, htmlContentType)
-		assert.Header(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
+		assert.Header(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' github.blog")
 		assert.BodyContains(t, resp, "go-httpbin")
 	})
 

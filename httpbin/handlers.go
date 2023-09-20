@@ -29,7 +29,7 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, nil)
 		return
 	}
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' github.blog")
 	writeHTML(w, mustStaticAsset("index.html"), http.StatusOK)
 }
 
