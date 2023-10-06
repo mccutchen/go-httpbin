@@ -235,6 +235,16 @@ func TestGetClientIP(t *testing.T) {
 			},
 			want: "9.9.9.9",
 		},
+		"custom cloudflare header take precedence": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"CF-Connecting-IP": "9.9.9.9",
+					"X-Forwarded-For":  "1.1.1.1,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "9.9.9.9",
+		},
 		"x-forwarded-for is parsed": {
 			given: &http.Request{
 				Header: makeHeaders(map[string]string{
