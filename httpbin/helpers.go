@@ -49,6 +49,9 @@ func getClientIP(r *http.Request) string {
 	if clientIP := r.Header.Get("Fly-Client-IP"); clientIP != "" {
 		return clientIP
 	}
+	if clientIP := r.Header.Get("CF-Connecting-IP"); clientIP != "" {
+		return clientIP
+	}
 
 	// Try to pull a reasonable value from the X-Forwarded-For header, if
 	// present, by taking the first entry in a comma-separated list of IPs.
