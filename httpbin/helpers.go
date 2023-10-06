@@ -50,6 +50,11 @@ func getClientIP(r *http.Request) string {
 		return clientIP
 	}
 
+	// Special case Cloudflare for the value directly.
+	if cfClientIP := r.Header.Get("CF-Connecting-IP"); cfClientIP != "" {
+		return cfClientIP
+	}
+
 	// Try to pull a reasonable value from the X-Forwarded-For header, if
 	// present, by taking the first entry in a comma-separated list of IPs.
 	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
