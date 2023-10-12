@@ -499,3 +499,45 @@ func createFullExcludeRegex(excludeHeaders string) *regexp.Regexp {
 
 	return nil
 }
+
+// weightedItem represents a string value with an associate weight.
+type weightedItem struct {
+	Value  string
+	Weight float64
+}
+
+// weightedChoice returns a weighted random choice from the given slice of
+// "$ID:$WEIGHT" choices.
+func weightedChoice(rng *rand.Rand, choices []string) string {
+	weightedItems := make([]weightedItem, len(choices))
+	totalWeight := 0.0
+
+	for i, itemStr := range choices {
+		value, weightStr, found := strings.Cut(itemStr, ":")
+		if !found {
+			weightedItems[i] = weightedItem{value, 1.0}
+			continue
+		}
+
+		weight, err := strconv.ParseFloat(weightStr, 64)
+		if err != nil {
+			weight = 1.0
+		}
+
+		weightedItems = append(weightedItems, weightedItem{Value: value, Weight: weight})
+		totalWeight += weight
+	}
+
+	// Generate a random number within the total weight range
+	randomWeight := rand.Float64() * totalWeight
+
+	// Select the ID based on the weighted random number
+	for _, item := range weightedItems {
+		if randomWeight <= item.Weight {
+			return item.Value
+		}
+		randomWeight -= item.Weight
+	}
+
+	panic("weightedChoice: unreachable")
+}

@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -394,4 +396,30 @@ func TestCreateFullExcludeRegex(t *testing.T) {
 
 	nilReturn := createFullExcludeRegex("")
 	assert.Equal(t, nilReturn, nil, "incorrect match")
+}
+
+func TestWeightedChoice(t *testing.T) {
+	seed := int64(12345)
+	iterations := 100
+
+	testCases := []struct {
+		given    []string
+		expected map[string]int
+	}{
+		{
+			given:    []string{"foo", "bar", "baz"},
+			expected: map[string]int{"foo": 33, "bar": 33, "baz": 33},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(strings.Join(tc.given, ","), func(t *testing.T) {
+			rng := rand.New(rand.NewSource(seed + time.Now().Unix()))
+			results := make(map[string]int)
+			for i := 0; i < iterations; i++ {
+				results[weightedChoice(rng, tc.given)]++
+			}
+			assert.DeepEqual(t, results, tc.expected, "incorrect results")
+		})
+	}
 }
