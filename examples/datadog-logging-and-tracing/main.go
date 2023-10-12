@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog"
 	ddhttp "gopkg.in/DataDog/dd-trace-go.v1/contrib/net/http"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -32,12 +32,18 @@ func main() {
 		listenAddr = net.JoinHostPort("", port)
 	}
 
-	app := httpbin.New()
-	mux := ddhttp.NewServeMux()
-	mux.Handle("/", app)
+	serviceName := os.Getenv("DD_SERVICE")
+	if serviceName == "" {
+		serviceName = "go-httpbin"
+	}
 
 	logger := newLogger()
-	handler := loggingHandler(logger, mux)
+
+	var handler http.Handler = httpbin.New()
+	handler = loggingHandler(logger, handler)
+	handler = ddhttp.WrapHandler(handler, serviceName, "", ddhttp.WithResourceNamer(func(r *http.Request) string {
+		return r.Method + " " + r.URL.Path
+	}))
 
 	srv := &http.Server{
 		Handler:           handler,
