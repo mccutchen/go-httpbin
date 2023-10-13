@@ -42,7 +42,7 @@ func main() {
 	var handler http.Handler = httpbin.New()
 	handler = loggingHandler(logger, handler)
 	handler = ddhttp.WrapHandler(handler, serviceName, "", ddhttp.WithResourceNamer(func(r *http.Request) string {
-		return r.Method + " " + r.URL.Path
+		return r.Method + " " + r.URL.String()
 	}))
 
 	srv := &http.Server{
