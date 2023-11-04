@@ -1,8 +1,10 @@
 package httpbin
 
 import (
+	"bufio"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -121,6 +123,14 @@ func (mw *metaResponseWriter) Status() int {
 
 func (mw *metaResponseWriter) Size() int64 {
 	return mw.size
+}
+
+func (mw *metaResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := mw.w.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("connection cannot be hijacked")
+	}
+	return hj.Hijack()
 }
 
 func observe(o Observer, h http.Handler) http.Handler {

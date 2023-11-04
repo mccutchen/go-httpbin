@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
+	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 )
 
 var nilValues = url.Values{}
@@ -1111,4 +1113,39 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(http.StatusOK, w, hostnameResponse{
 		Hostname: h.hostname,
 	})
+}
+
+func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
+	for k, vv := range r.Header {
+		for _, v := range vv {
+			log.Printf("XXX header: %s=%q", k, v)
+		}
+	}
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Printf("XXX connection cannot be hijacked")
+		writeError(w, http.StatusInternalServerError, nil)
+		return
+	}
+
+	if err := websocket.Prepare(w, r); err != nil {
+		log.Printf("XXX websocket.Prepare: %v", err)
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	conn, buf, err := hj.Hijack()
+	if err != nil {
+		log.Printf("XXX failed to hijack connection: %s", err)
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer conn.Close()
+
+	if err := websocket.Serve(buf); err != nil {
+		// at this point, we can't do anything about an error aside from log it
+		log.Printf("XXX websocket.Serve: %v", err)
+		return
+	}
 }
