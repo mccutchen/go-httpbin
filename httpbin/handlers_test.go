@@ -2708,6 +2708,13 @@ func TestBase64(t *testing.T) {
 			"abc123!?$*&()'-=@~",
 		},
 		{
+			// Std base64 is also supported for decoding (+ instead of - in
+			// encoded input string). See also:
+			// https://github.com/mccutchen/go-httpbin/issues/152
+			"/base64/decode/8J+Ziywg8J+MjSEK4oCm",
+			"🙋, 🌍!\n…",
+		},
+		{
 			// URL-safe base64 is used for encoding (note the - instead of + in
 			// encoded output string)
 			"/base64/encode/abc123%21%3F%24%2A%26%28%29%27-%3D%40~",
@@ -2763,12 +2770,6 @@ func TestBase64(t *testing.T) {
 		{
 			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
 			"invalid operation: unknown",
-		},
-		{
-			// we only support URL-safe base64 encoded strings (note the +
-			// instead of - in encoded input string)
-			"/base64/decode/YWJjMTIzIT8kKiYoKSctPUB+",
-			"illegal base64 data",
 		},
 	}
 

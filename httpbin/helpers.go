@@ -429,16 +429,20 @@ func newBase64Helper(path string) (*base64Helper, error) {
 	return &b, nil
 }
 
-// Encode - encode data as base64
+// Encode - encode data as URL-safe base64
 func (b *base64Helper) Encode() ([]byte, error) {
 	buff := make([]byte, base64.URLEncoding.EncodedLen(len(b.data)))
 	base64.URLEncoding.Encode(buff, []byte(b.data))
 	return buff, nil
 }
 
-// Decode - decode data from base64
+// Decode - decode data from base64, attempting both URL-safe and standard
+// encodings.
 func (b *base64Helper) Decode() ([]byte, error) {
-	return base64.URLEncoding.DecodeString(b.data)
+	if result, err := base64.URLEncoding.DecodeString(b.data); err == nil {
+		return result, nil
+	}
+	return base64.StdEncoding.DecodeString(b.data)
 }
 
 func wildCardToRegexp(pattern string) string {
