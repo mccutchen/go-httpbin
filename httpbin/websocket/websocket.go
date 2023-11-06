@@ -163,28 +163,21 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 func encodeFrame(frame *Frame) []byte {
 	var header []byte
 
-	// Fin and OpCode
+	// encode FIN and OPCODE
 	header = append(header, byte(frame.Fin|uint8(frame.OpCode)))
 
-	// Payload length
-	payloadLen := len(frame.Payload)
+	// encode payload length
+	payloadLen := int64(len(frame.Payload))
 	switch {
 	case payloadLen <= 125:
 		header = append(header, byte(payloadLen))
 	case payloadLen <= 0xFFFF:
 		header = append(header, 126)
-		header = append(header, byte(payloadLen>>8), byte(payloadLen&0xFF))
+		header = binary.BigEndian.AppendUint16(header, uint16(payloadLen))
 	default:
 		header = append(header, 127)
-		for i := 0; i < 8; i++ {
-			header = append(header, byte(payloadLen>>(56-8*i)))
-		}
+		header = binary.BigEndian.AppendUint64(header, uint64(payloadLen))
 	}
-
-	// log.Printf("XXX ENCODED FRAME %#v", frame)
-	// log.Printf("XXX ENCODED BYTES: %v", append(header, frame.Payload...))
-
-	// Combine header and payload to form the frame
 	return append(header, frame.Payload...)
 }
 
