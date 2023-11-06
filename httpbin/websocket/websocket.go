@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // See RFC 6455 section 1.3: Opening Handshake
@@ -35,10 +37,10 @@ type Frame struct {
 }
 
 func Prepare(w http.ResponseWriter, r *http.Request) error {
-	if r.Header.Get("Connection") != "Upgrade" {
-		return fmt.Errorf("missing required `Connection: Upgrade` header")
+	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
+		return fmt.Errorf("missing required `Connection: upgrade` header")
 	}
-	if r.Header.Get("Upgrade") != "websocket" {
+	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
 		return fmt.Errorf("missing required `Upgrade: websocket` header")
 	}
 	if v := r.Header.Get("Sec-Websocket-Version"); v != requiredVersion {
@@ -68,33 +70,21 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter) error {
 				return err
 			}
 			log.Printf("XXX got frame: %+v", frame)
-			log.Printf("XXX got frame: %v", encodeFrame(frame))
-			if frame.OpCode == OpCodeText {
-				log.Printf("XXX got text frame: %s", string(frame.Payload))
-			}
 			switch frame.OpCode {
-			case OpCodePing:
-				log.Printf("XXX handling ping frame")
-				frame.OpCode = OpCodePong
-				if _, err := buf.Write(encodeFrame(frame)); err != nil {
+			case OpCodeBinary, OpCodeText, OpCodeContinuation:
+				if err := writeFrame(buf, frame); err != nil {
 					return err
 				}
-				if err := buf.Flush(); err != nil {
+			case OpCodePing:
+				frame.OpCode = OpCodePong
+				if err := writeFrame(buf, frame); err != nil {
 					return err
 				}
 			case OpCodeClose:
-				log.Printf("XXX handling close frame")
+				if err := writeFrame(buf, frame); err != nil {
+					return err
+				}
 				return nil
-			case OpCodeContinuation:
-				return fmt.Errorf("continuation frames are not supported")
-			case OpCodeBinary, OpCodeText:
-				log.Printf("XXX echoing frame")
-				if _, err := buf.Write(encodeFrame(frame)); err != nil {
-					return err
-				}
-				if err := buf.Flush(); err != nil {
-					return err
-				}
 			default:
 				return fmt.Errorf("unsupported opcode: %v", frame.OpCode)
 			}
@@ -107,10 +97,9 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("XXX read byte %v %x %b", b1, b1, b1)
 
 	fin := b1 & 0b10000000
-	log.Printf("XXX FIN: %v", fin)
+	log.Printf("XXX FIN: %v", fin != 0)
 
 	opcode := OpCode(b1 & 0b00001111)
 	log.Printf("XXX opcode: %v", opcode)
@@ -126,60 +115,28 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 		return nil, fmt.Errorf("received unmasked client frame")
 	}
 
-	// Extract the payload length based on the opcode and payload length
-	// information in the first byte
 	var payloadLength uint64
 	switch {
 	case b2-128 <= 125:
 		// Payload length is directly represented in the second byte
 		payloadLength = uint64(b2 - 128)
+		log.Printf("XXX 1 byte payload length: %v", payloadLength)
 	case b2-128 == 126:
 		// Payload length is represented in the next 2 bytes (16-bit unsigned integer)
-		b3, err := buf.ReadByte()
-		if err != nil {
+		lenBytes := make([]byte, 2)
+		if _, err := io.ReadFull(buf, lenBytes); err != nil {
 			return nil, err
 		}
-		b4, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		payloadLength = uint64(b3)<<8 + uint64(b4)
+		payloadLength = uint64(binary.BigEndian.Uint16(lenBytes))
+		log.Printf("XXX 2 byte payload length: %v %v", payloadLength, lenBytes)
 	case b2-128 == 127:
 		// Payload length is represented in the next 8 bytes (64-bit unsigned integer)
-		b3, err := buf.ReadByte()
-		if err != nil {
+		lenBytes := make([]byte, 8)
+		if _, err := io.ReadFull(buf, lenBytes); err != nil {
 			return nil, err
 		}
-		b4, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b5, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b6, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b7, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b8, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b9, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		b10, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		payloadLength = uint64(b3)<<56 + uint64(b4)<<48 + uint64(b5)<<40 + uint64(b6)<<32 +
-			uint64(b7)<<24 + uint64(b8)<<16 + uint64(b9)<<8 + uint64(b10)
+		payloadLength = binary.BigEndian.Uint64(lenBytes)
+		log.Printf("XXX 8 byte payload length: %v %v", payloadLength, lenBytes)
 	}
 
 	mask := make([]byte, 4)
@@ -207,24 +164,35 @@ func encodeFrame(frame *Frame) []byte {
 	var header []byte
 
 	// Fin and OpCode
-	header = append(header, byte((frame.Fin<<7)|uint8(frame.OpCode)))
+	header = append(header, byte(frame.Fin|uint8(frame.OpCode)))
 
 	// Payload length
 	payloadLen := len(frame.Payload)
-	if payloadLen <= 125 {
+	switch {
+	case payloadLen <= 125:
 		header = append(header, byte(payloadLen))
-	} else if payloadLen <= 0xFFFF {
+	case payloadLen <= 0xFFFF:
 		header = append(header, 126)
 		header = append(header, byte(payloadLen>>8), byte(payloadLen&0xFF))
-	} else {
+	default:
 		header = append(header, 127)
 		for i := 0; i < 8; i++ {
 			header = append(header, byte(payloadLen>>(56-8*i)))
 		}
 	}
 
+	// log.Printf("XXX ENCODED FRAME %#v", frame)
+	// log.Printf("XXX ENCODED BYTES: %v", append(header, frame.Payload...))
+
 	// Combine header and payload to form the frame
 	return append(header, frame.Payload...)
+}
+
+func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
+	if _, err := buf.Write(encodeFrame(frame)); err != nil {
+		return err
+	}
+	return buf.Flush()
 }
 
 func acceptKey(clientKey string) string {
