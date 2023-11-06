@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,11 +14,13 @@ import (
 	"strings"
 )
 
-// See RFC 6455 section 1.3: Opening Handshake
-// https://www.rfc-editor.org/rfc/rfc6455#section-1.3
-const magicGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
 const requiredVersion = "13"
+
+const (
+	maxControlFrameSize = 125
+	maxFragmentSize     = 1024 * 1024
+	maxMessageSize      = 1024 * 1024 * 2
+)
 
 type OpCode uint8
 
@@ -60,8 +63,19 @@ func Handshake(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+type Message struct {
+	Binary bool
+	Data   []byte
+}
+
+type Handler func(ctx context.Context, msg Message) (Message, error)
+
 // Serve handles a websocket connection after the handshake has been completed.
-func Serve(ctx context.Context, buf *bufio.ReadWriter) error {
+func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
+	var (
+		msgFinished bool
+		msg         Message
+	)
 	for {
 		select {
 		case <-ctx.Done():
@@ -72,21 +86,48 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter) error {
 				return err
 			}
 			log.Printf("XXX got frame: %+v", frame)
+
+			if err := validateFrame(frame); err != nil {
+				return err
+			}
+
 			switch frame.OpCode {
-			case OpCodeBinary, OpCodeText, OpCodeContinuation:
-				if err := writeFrame(buf, frame); err != nil {
-					return err
+			case OpCodeBinary, OpCodeText:
+				msg.Binary = frame.OpCode == OpCodeBinary
+				msg.Data = frame.Payload
+				msgFinished = frame.Fin
+				if msgFinished {
+					resp, err := handler(ctx, msg)
+					if err != nil {
+						return err
+					}
+					log.Printf("XXX got resp: %+v", resp)
+					for _, respFrame := range frameMessage(resp) {
+						if err := writeFrame(buf, respFrame); err != nil {
+							return err
+						}
+					}
 				}
-			case OpCodePing:
-				frame.OpCode = OpCodePong
-				if err := writeFrame(buf, frame); err != nil {
-					return err
+			case OpCodeContinuation:
+				if !msgFinished {
+					return errors.New("received unexpected continuation frame")
+				}
+				msg.Data = append(msg.Data, frame.Payload...)
+				if len(msg.Data) > maxMessageSize {
+					return fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize)
 				}
 			case OpCodeClose:
 				if err := writeFrame(buf, frame); err != nil {
 					return err
 				}
 				return nil
+			case OpCodePing:
+				frame.OpCode = OpCodePong
+				if err := writeFrame(buf, frame); err != nil {
+					return err
+				}
+			case OpCodePong:
+				// no-op
 			default:
 				return fmt.Errorf("unsupported opcode: %v", frame.OpCode)
 			}
@@ -101,10 +142,7 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 	}
 
 	fin := b1&0b10000000 != 0
-	log.Printf("XXX FIN: %v", fin)
-
 	opcode := OpCode(b1 & 0b00001111)
-	log.Printf("XXX opcode: %v", opcode)
 
 	b2, err := buf.ReadByte()
 	if err != nil {
@@ -122,7 +160,6 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 	case b2-128 <= 125:
 		// Payload length is directly represented in the second byte
 		payloadLength = uint64(b2 - 128)
-		log.Printf("XXX 1 byte payload length: %v", payloadLength)
 	case b2-128 == 126:
 		// Payload length is represented in the next 2 bytes (16-bit unsigned integer)
 		lenBytes := make([]byte, 2)
@@ -130,7 +167,6 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 			return nil, err
 		}
 		payloadLength = uint64(binary.BigEndian.Uint16(lenBytes))
-		log.Printf("XXX 2 byte payload length: %v %v", payloadLength, lenBytes)
 	case b2-128 == 127:
 		// Payload length is represented in the next 8 bytes (64-bit unsigned integer)
 		lenBytes := make([]byte, 8)
@@ -138,7 +174,6 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 			return nil, err
 		}
 		payloadLength = binary.BigEndian.Uint64(lenBytes)
-		log.Printf("XXX 8 byte payload length: %v %v", payloadLength, lenBytes)
 	}
 
 	mask := make([]byte, 4)
@@ -165,14 +200,14 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 func encodeFrame(frame *Frame) []byte {
 	var header []byte
 
-	// encode FIN and OPCODE
+	// FIN and OPCODE
 	var fin uint8 = 0
 	if frame.Fin {
 		fin = 1 << 7
 	}
 	header = append(header, byte(fin|uint8(frame.OpCode)))
 
-	// encode payload length
+	// payload length
 	payloadLen := int64(len(frame.Payload))
 	switch {
 	case payloadLen <= 125:
@@ -190,14 +225,69 @@ func encodeFrame(frame *Frame) []byte {
 }
 
 func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
+	log.Printf("XXX writing frame: %+v", frame)
 	if _, err := buf.Write(encodeFrame(frame)); err != nil {
 		return err
 	}
 	return buf.Flush()
 }
 
+// frameMessage splits a message into N frames with payloads of at most
+// fragmentSize bytes.
+func frameMessage(msg Message) []*Frame {
+	var result []*Frame
+
+	fin := false
+	opcode := OpCodeText
+	if msg.Binary {
+		opcode = OpCodeBinary
+	}
+
+	offset := 0
+	dataLen := len(msg.Data)
+	for {
+		if offset > 0 {
+			opcode = OpCodeContinuation
+		}
+		end := offset + maxFragmentSize
+		if end >= dataLen {
+			fin = true
+			end = dataLen
+		}
+		log.Printf("ZZZ fragment: %d:%d of %d", offset, end, dataLen)
+		result = append(result, &Frame{
+			Fin:     fin,
+			OpCode:  opcode,
+			Payload: msg.Data[offset:end],
+		})
+		if fin {
+			break
+		}
+	}
+	return result
+}
+
 func acceptKey(clientKey string) string {
+	// Magic value comes from RFC 6455 section 1.3: Opening Handshake
+	// https://www.rfc-editor.org/rfc/rfc6455#section-1.3
 	h := sha1.New()
-	io.WriteString(h, clientKey+magicGUID)
+	io.WriteString(h, clientKey+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+func validateFrame(frame *Frame) error {
+	switch frame.OpCode {
+	case OpCodeContinuation, OpCodeText, OpCodeBinary:
+		if len(frame.Payload) > maxFragmentSize {
+			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxFragmentSize)
+		}
+	case OpCodeClose, OpCodePing, OpCodePong:
+		if len(frame.Payload) > maxControlFrameSize {
+			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxControlFrameSize)
+		}
+		if !frame.Fin {
+			return fmt.Errorf("control frame %v must not be fragmented", frame.OpCode)
+		}
+	}
+	return nil
 }

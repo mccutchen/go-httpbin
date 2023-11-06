@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1143,7 +1144,11 @@ func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	if err := websocket.Serve(r.Context(), buf); err != nil {
+	echoHandler := websocket.Handler(func(ctx context.Context, msg websocket.Message) (websocket.Message, error) {
+		return msg, nil
+	})
+
+	if err := websocket.Serve(r.Context(), buf, echoHandler); err != nil {
 		// at this point, we can't do anything about an error aside from log it
 		log.Printf("XXX websocket.Serve: %v", err)
 		return
