@@ -2,11 +2,17 @@
     "url": "ws://host.docker.internal:8080/ws",
     "servers": [
         {
+            "agent": "go-httpbin",
             "url": "ws://host.docker.internal:8080/ws"
         }
     ],
     "outdir": "./reports",
     "cases": [
-        "13.1.1"
-    ]
+        "1.*",
+        "2.*",
+        "3.*",
+        "4.*",
+        "5.*"
+    ],
+    "excluded-cases": []
 }
