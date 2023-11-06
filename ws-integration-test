@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -euo pipefail
+
+docker run \
+    --net=host \
+    --rm \
+    -v "${PWD}/config:/config" \
+    -v "${PWD}/reports:/reports" \
+    crossbario/autobahn-testsuite wstest -m fuzzingclient --spec /config/fuzzingclient.json

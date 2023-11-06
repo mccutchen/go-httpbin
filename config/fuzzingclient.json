@@ -1,0 +1,12 @@
+{
+    "url": "ws://host.docker.internal:8080/ws",
+    "servers": [
+        {
+            "url": "ws://host.docker.internal:8080/ws"
+        }
+    ],
+    "outdir": "./reports",
+    "cases": [
+        "13.1.1"
+    ]
+}
