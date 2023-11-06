@@ -1129,7 +1129,7 @@ func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := websocket.Prepare(w, r); err != nil {
+	if err := websocket.Handshake(w, r); err != nil {
 		log.Printf("XXX websocket.Prepare: %v", err)
 		writeError(w, http.StatusBadRequest, err)
 		return

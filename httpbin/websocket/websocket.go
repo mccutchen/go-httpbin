@@ -31,12 +31,13 @@ const (
 )
 
 type Frame struct {
-	Fin     uint8
+	Fin     bool
 	OpCode  OpCode
 	Payload []byte
 }
 
-func Prepare(w http.ResponseWriter, r *http.Request) error {
+// Handshake validates the request and performs the WebSocket handshake.
+func Handshake(w http.ResponseWriter, r *http.Request) error {
 	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
 		return fmt.Errorf("missing required `Connection: upgrade` header")
 	}
@@ -59,6 +60,7 @@ func Prepare(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// Serve handles a websocket connection after the handshake has been completed.
 func Serve(ctx context.Context, buf *bufio.ReadWriter) error {
 	for {
 		select {
@@ -98,8 +100,8 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 		return nil, err
 	}
 
-	fin := b1 & 0b10000000
-	log.Printf("XXX FIN: %v", fin != 0)
+	fin := b1&0b10000000 != 0
+	log.Printf("XXX FIN: %v", fin)
 
 	opcode := OpCode(b1 & 0b00001111)
 	log.Printf("XXX opcode: %v", opcode)
@@ -164,7 +166,11 @@ func encodeFrame(frame *Frame) []byte {
 	var header []byte
 
 	// encode FIN and OPCODE
-	header = append(header, byte(frame.Fin|uint8(frame.OpCode)))
+	var fin uint8 = 0
+	if frame.Fin {
+		fin = 1 << 7
+	}
+	header = append(header, byte(fin|uint8(frame.OpCode)))
 
 	// encode payload length
 	payloadLen := int64(len(frame.Payload))
@@ -178,6 +184,8 @@ func encodeFrame(frame *Frame) []byte {
 		header = append(header, 127)
 		header = binary.BigEndian.AppendUint64(header, uint64(payloadLen))
 	}
+
+	// frame is header + payload
 	return append(header, frame.Payload...)
 }
 
