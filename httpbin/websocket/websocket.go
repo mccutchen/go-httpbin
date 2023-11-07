@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 const requiredVersion = "13"
@@ -113,6 +114,9 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				if needContinuation {
 					return writeCloseFrame(buf, StatusProtocolError, errors.New("expected continuation frame"))
 				}
+				if frame.OpCode == OpCodeText && !utf8.Valid(frame.Payload) {
+					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
+				}
 				msg = &Message{
 					Binary: frame.OpCode == OpCodeBinary,
 					Data:   frame.Payload,
@@ -122,6 +126,9 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			case OpCodeContinuation:
 				if !needContinuation {
 					return writeCloseFrame(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
+				}
+				if !msg.Binary && !utf8.Valid(frame.Payload) {
+					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
@@ -379,9 +386,14 @@ func validateFrame(frame *Frame) error {
 		if code < 1000 || code >= 5000 {
 			return fmt.Errorf("close frame status code %d out of range", code)
 		}
-
 		if reservedStatusCodes[code] {
 			return fmt.Errorf("close frame status code %d is reserved", code)
+		}
+
+		if len(frame.Payload) > 2 {
+			if !utf8.Valid(frame.Payload[2:]) {
+				return errors.New("close frame payload must be vaid UTF-8")
+			}
 		}
 	}
 
