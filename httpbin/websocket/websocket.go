@@ -17,9 +17,8 @@ import (
 const requiredVersion = "13"
 
 const (
-	maxControlFrameSize = 125
-	maxFragmentSize     = 1024 * 1024
-	maxMessageSize      = 1024 * 1024 * 2
+	maxFragmentSize = 1024 * 500      // 500 KB
+	maxMessageSize  = 1024 * 1024 * 5 // 5 MB
 )
 
 type OpCode uint8
@@ -106,13 +105,13 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			log.Printf("XXX got frame: %+v", frame)
 
 			if err := validateFrame(frame); err != nil {
-				return err
+				return writeCloseFrame(buf, StatusProtocolError, err)
 			}
 
 			switch frame.OpCode {
 			case OpCodeBinary, OpCodeText:
 				if needContinuation {
-					return closeWithError(buf, StatusProtocolError, errors.New("expected continuation frame"))
+					return writeCloseFrame(buf, StatusProtocolError, errors.New("expected continuation frame"))
 				}
 				msg = &Message{
 					Binary: frame.OpCode == OpCodeBinary,
@@ -122,19 +121,16 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				needContinuation = !frame.Fin
 			case OpCodeContinuation:
 				if !needContinuation {
-					return closeWithError(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
+					return writeCloseFrame(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
 				msg.Data = append(msg.Data, frame.Payload...)
 				if len(msg.Data) > maxMessageSize {
-					return closeWithError(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize))
+					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize))
 				}
 			case OpCodeClose:
-				if err := writeFrame(buf, frame); err != nil {
-					return err
-				}
-				return nil
+				return writeCloseFrame(buf, StatusNormalClosure, nil)
 			case OpCodePing:
 				frame.OpCode = OpCodePong
 				if err := writeFrame(buf, frame); err != nil {
@@ -300,7 +296,9 @@ func frameMessage(msg *Message) []*Frame {
 	return result
 }
 
-func closeWithError(buf *bufio.ReadWriter, code StatusCode, err error) error {
+// writeCloseFrame writes a close frame to the wire, with an optional error
+// message.
+func writeCloseFrame(buf *bufio.ReadWriter, code StatusCode, err error) error {
 	var payload []byte
 	payload = binary.BigEndian.AppendUint16(payload, uint16(code))
 	if err != nil {
@@ -344,8 +342,11 @@ func validateFrame(frame *Frame) error {
 			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxFragmentSize)
 		}
 	case OpCodeClose, OpCodePing, OpCodePong:
-		if len(frame.Payload) > maxControlFrameSize {
-			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxControlFrameSize)
+		// All control frames MUST have a payload length of 125 bytes or less
+		// and MUST NOT be fragmented.
+		// https://datatracker.ietf.org/doc/html/rfc6455#section-5.5
+		if len(frame.Payload) > 125 {
+			return fmt.Errorf("frame payload size %d exceeds 125 bytes", len(frame.Payload))
 		}
 		if !frame.Fin {
 			return fmt.Errorf("control frame %v must not be fragmented", frame.OpCode)
@@ -353,8 +354,11 @@ func validateFrame(frame *Frame) error {
 	}
 
 	if frame.OpCode == OpCodeClose {
-		if len(frame.Payload) < 2 {
+		if len(frame.Payload) == 0 {
 			return nil
+		}
+		if len(frame.Payload) == 1 {
+			return fmt.Errorf("close frame payload must be at least 2 bytes")
 		}
 
 		code := binary.BigEndian.Uint16(frame.Payload[:2])
