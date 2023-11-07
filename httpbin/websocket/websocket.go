@@ -68,14 +68,15 @@ type Message struct {
 	Data   []byte
 }
 
-type Handler func(ctx context.Context, msg Message) (Message, error)
+type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
 // Serve handles a websocket connection after the handshake has been completed.
 func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 	var (
 		msgFinished bool
-		msg         Message
+		msg         *Message
 	)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -93,25 +94,16 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 
 			switch frame.OpCode {
 			case OpCodeBinary, OpCodeText:
-				msg.Binary = frame.OpCode == OpCodeBinary
-				msg.Data = frame.Payload
-				msgFinished = frame.Fin
-				if msgFinished {
-					resp, err := handler(ctx, msg)
-					if err != nil {
-						return err
-					}
-					log.Printf("XXX got resp: %+v", resp)
-					for _, respFrame := range frameMessage(resp) {
-						if err := writeFrame(buf, respFrame); err != nil {
-							return err
-						}
-					}
+				msg = &Message{
+					Binary: frame.OpCode == OpCodeBinary,
+					Data:   frame.Payload,
 				}
+				msgFinished = frame.Fin
 			case OpCodeContinuation:
-				if !msgFinished {
+				if msgFinished {
 					return errors.New("received unexpected continuation frame")
 				}
+				msgFinished = frame.Fin
 				msg.Data = append(msg.Data, frame.Payload...)
 				if len(msg.Data) > maxMessageSize {
 					return fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize)
@@ -131,6 +123,23 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			default:
 				return fmt.Errorf("unsupported opcode: %v", frame.OpCode)
 			}
+		}
+
+		if msgFinished {
+			resp, err := handler(ctx, msg)
+			if err != nil {
+				return err
+			}
+			log.Printf("XXX got resp: %+v", resp)
+			if resp == nil {
+				return nil
+			}
+			for _, respFrame := range frameMessage(resp) {
+				if err := writeFrame(buf, respFrame); err != nil {
+					return err
+				}
+			}
+			msg = nil
 		}
 	}
 }
@@ -234,7 +243,7 @@ func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
 
 // frameMessage splits a message into N frames with payloads of at most
 // fragmentSize bytes.
-func frameMessage(msg Message) []*Frame {
+func frameMessage(msg *Message) []*Frame {
 	var result []*Frame
 
 	fin := false
