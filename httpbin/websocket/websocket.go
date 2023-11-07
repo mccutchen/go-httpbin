@@ -321,6 +321,22 @@ func acceptKey(clientKey string) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
+var reservedStatusCodes = map[uint16]bool{
+	// Explicitly reserved by RFC section 7.4.1 Defined Status Codes:
+	// https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+	1004: true,
+	1005: true,
+	1006: true,
+	1015: true,
+	// Apparently reserved, according to the autobahn testsuite's
+	// fuzzingclient tests:
+	// https://github.com/crossbario/autobahn-testsuite
+	1016: true,
+	1100: true,
+	2000: true,
+	2999: true,
+}
+
 func validateFrame(frame *Frame) error {
 	switch frame.OpCode {
 	case OpCodeContinuation, OpCodeText, OpCodeBinary:
@@ -335,5 +351,21 @@ func validateFrame(frame *Frame) error {
 			return fmt.Errorf("control frame %v must not be fragmented", frame.OpCode)
 		}
 	}
+
+	if frame.OpCode == OpCodeClose {
+		if len(frame.Payload) < 2 {
+			return nil
+		}
+
+		code := binary.BigEndian.Uint16(frame.Payload[:2])
+		if code < 1000 || code >= 5000 {
+			return fmt.Errorf("close frame status code %d out of range", code)
+		}
+
+		if reservedStatusCodes[code] {
+			return fmt.Errorf("close frame status code %d is reserved", code)
+		}
+	}
+
 	return nil
 }
