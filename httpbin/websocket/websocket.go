@@ -73,8 +73,9 @@ type Handler func(ctx context.Context, msg *Message) (*Message, error)
 // Serve handles a websocket connection after the handshake has been completed.
 func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 	var (
-		msgFinished bool
-		msg         *Message
+		msgReady         = false
+		needContinuation = false
+		msg              *Message
 	)
 
 	for {
@@ -94,16 +95,21 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 
 			switch frame.OpCode {
 			case OpCodeBinary, OpCodeText:
+				if needContinuation {
+					return errors.New("received unexpected data frame")
+				}
 				msg = &Message{
 					Binary: frame.OpCode == OpCodeBinary,
 					Data:   frame.Payload,
 				}
-				msgFinished = frame.Fin
+				msgReady = frame.Fin
+				needContinuation = !frame.Fin
 			case OpCodeContinuation:
-				if msgFinished {
+				if !needContinuation {
 					return errors.New("received unexpected continuation frame")
 				}
-				msgFinished = frame.Fin
+				msgReady = frame.Fin
+				needContinuation = !frame.Fin
 				msg.Data = append(msg.Data, frame.Payload...)
 				if len(msg.Data) > maxMessageSize {
 					return fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize)
@@ -125,7 +131,7 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			}
 		}
 
-		if msgFinished {
+		if msgReady {
 			resp, err := handler(ctx, msg)
 			if err != nil {
 				return err
@@ -140,6 +146,8 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				}
 			}
 			msg = nil
+			msgReady = false
+			needContinuation = false
 		}
 	}
 }
