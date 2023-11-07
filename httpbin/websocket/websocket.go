@@ -22,15 +22,15 @@ const (
 	maxMessageSize  = 1024 * 1024 * 5 // 5 MB
 )
 
-type OpCode uint8
+type Opcode uint8
 
 const (
-	OpCodeContinuation OpCode = 0x0
-	OpCodeText         OpCode = 0x1
-	OpCodeBinary       OpCode = 0x2
-	OpCodeClose        OpCode = 0x8
-	OpCodePing         OpCode = 0x9
-	OpCodePong         OpCode = 0xA
+	OpcodeContinuation Opcode = 0x0
+	OpcodeText         Opcode = 0x1
+	OpcodeBinary       Opcode = 0x2
+	OpcodeClose        Opcode = 0x8
+	OpcodePing         Opcode = 0x9
+	OpcodePong         Opcode = 0xA
 )
 
 type StatusCode uint16
@@ -49,11 +49,24 @@ const (
 	StatusServerError        StatusCode = 1011
 )
 
+// Frame is a websocket frame.
 type Frame struct {
 	Fin     bool
-	OpCode  OpCode
+	Opcode  Opcode
 	Payload []byte
 }
+
+// Message is a message from the client, which may be constructed from one or
+// more individual frames.
+type Message struct {
+	Binary bool
+	Data   []byte
+}
+
+// Handler handles a single websocket message. If the returned message is
+// non-nil, it will be sent to the client. If an error is returned, the
+// connection will be closed.
+type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
 // Handshake validates the request and performs the WebSocket handshake.
 func Handshake(w http.ResponseWriter, r *http.Request) error {
@@ -79,13 +92,6 @@ func Handshake(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-type Message struct {
-	Binary bool
-	Data   []byte
-}
-
-type Handler func(ctx context.Context, msg *Message) (*Message, error)
-
 // Serve handles a websocket connection after the handshake has been completed.
 func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 	var (
@@ -109,21 +115,21 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				return writeCloseFrame(buf, StatusProtocolError, err)
 			}
 
-			switch frame.OpCode {
-			case OpCodeBinary, OpCodeText:
+			switch frame.Opcode {
+			case OpcodeBinary, OpcodeText:
 				if needContinuation {
 					return writeCloseFrame(buf, StatusProtocolError, errors.New("expected continuation frame"))
 				}
-				if frame.OpCode == OpCodeText && !utf8.Valid(frame.Payload) {
+				if frame.Opcode == OpcodeText && !utf8.Valid(frame.Payload) {
 					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
 				}
 				msg = &Message{
-					Binary: frame.OpCode == OpCodeBinary,
+					Binary: frame.Opcode == OpcodeBinary,
 					Data:   frame.Payload,
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
-			case OpCodeContinuation:
+			case OpcodeContinuation:
 				if !needContinuation {
 					return writeCloseFrame(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
 				}
@@ -136,17 +142,17 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				if len(msg.Data) > maxMessageSize {
 					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize))
 				}
-			case OpCodeClose:
+			case OpcodeClose:
 				return writeCloseFrame(buf, StatusNormalClosure, nil)
-			case OpCodePing:
-				frame.OpCode = OpCodePong
+			case OpcodePing:
+				frame.Opcode = OpcodePong
 				if err := writeFrame(buf, frame); err != nil {
 					return err
 				}
-			case OpCodePong:
+			case OpcodePong:
 				// no-op
 			default:
-				return fmt.Errorf("unsupported opcode: %v", frame.OpCode)
+				return fmt.Errorf("unsupported opcode: %v", frame.Opcode)
 			}
 		}
 
@@ -182,11 +188,11 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 		rsv1   = b1&0b01000000 != 0
 		rsv2   = b1&0b00100000 != 0
 		rsv3   = b1&0b00010000 != 0
-		opcode = OpCode(b1 & 0b00001111)
+		opcode = Opcode(b1 & 0b00001111)
 	)
 
 	// [RSV1-3] MUST be 0 unless an extension is negotiated that defines
-	// meanings for non-zero values.  If a nonzero value is received and none
+	// meanings for non-zero values. If a nonzero value is received and none
 	// of the negotiated extensions defines the meaning of such a nonzero
 	// value, the receiving endpoint MUST _Fail the WebSocket Connection_.
 	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
@@ -242,7 +248,7 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 
 	return &Frame{
 		Fin:     fin,
-		OpCode:  opcode,
+		Opcode:  opcode,
 		Payload: payload,
 	}, nil
 }
@@ -255,7 +261,7 @@ func encodeFrame(frame *Frame) []byte {
 	if frame.Fin {
 		fin = 1 << 7
 	}
-	header = append(header, byte(fin|uint8(frame.OpCode)))
+	header = append(header, byte(fin|uint8(frame.Opcode)))
 
 	// payload length
 	payloadLen := int64(len(frame.Payload))
@@ -288,16 +294,16 @@ func frameMessage(msg *Message) []*Frame {
 	var result []*Frame
 
 	fin := false
-	opcode := OpCodeText
+	opcode := OpcodeText
 	if msg.Binary {
-		opcode = OpCodeBinary
+		opcode = OpcodeBinary
 	}
 
 	offset := 0
 	dataLen := len(msg.Data)
 	for {
 		if offset > 0 {
-			opcode = OpCodeContinuation
+			opcode = OpcodeContinuation
 		}
 		end := offset + maxFragmentSize
 		if end >= dataLen {
@@ -307,7 +313,7 @@ func frameMessage(msg *Message) []*Frame {
 		log.Printf("ZZZ fragment: %d:%d of %d", offset, end, dataLen)
 		result = append(result, &Frame{
 			Fin:     fin,
-			OpCode:  opcode,
+			Opcode:  opcode,
 			Payload: msg.Data[offset:end],
 		})
 		if fin {
@@ -327,7 +333,7 @@ func writeCloseFrame(buf *bufio.ReadWriter, code StatusCode, err error) error {
 	}
 	return writeFrame(buf, &Frame{
 		Fin:     true,
-		OpCode:  OpCodeClose,
+		Opcode:  OpcodeClose,
 		Payload: payload,
 	})
 }
@@ -348,7 +354,7 @@ var reservedStatusCodes = map[uint16]bool{
 	1006: true,
 	1015: true,
 	// Apparently reserved, according to the autobahn testsuite's
-	// fuzzingclient tests:
+	// fuzzingclient tests, though it's not 100% clear why:
 	// https://github.com/crossbario/autobahn-testsuite
 	1016: true,
 	1100: true,
@@ -357,12 +363,12 @@ var reservedStatusCodes = map[uint16]bool{
 }
 
 func validateFrame(frame *Frame) error {
-	switch frame.OpCode {
-	case OpCodeContinuation, OpCodeText, OpCodeBinary:
+	switch frame.Opcode {
+	case OpcodeContinuation, OpcodeText, OpcodeBinary:
 		if len(frame.Payload) > maxFragmentSize {
 			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxFragmentSize)
 		}
-	case OpCodeClose, OpCodePing, OpCodePong:
+	case OpcodeClose, OpcodePing, OpcodePong:
 		// All control frames MUST have a payload length of 125 bytes or less
 		// and MUST NOT be fragmented.
 		// https://datatracker.ietf.org/doc/html/rfc6455#section-5.5
@@ -370,11 +376,11 @@ func validateFrame(frame *Frame) error {
 			return fmt.Errorf("frame payload size %d exceeds 125 bytes", len(frame.Payload))
 		}
 		if !frame.Fin {
-			return fmt.Errorf("control frame %v must not be fragmented", frame.OpCode)
+			return fmt.Errorf("control frame %v must not be fragmented", frame.Opcode)
 		}
 	}
 
-	if frame.OpCode == OpCodeClose {
+	if frame.Opcode == OpcodeClose {
 		if len(frame.Payload) == 0 {
 			return nil
 		}
