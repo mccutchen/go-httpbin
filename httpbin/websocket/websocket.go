@@ -33,6 +33,22 @@ const (
 	OpCodePong         OpCode = 0xA
 )
 
+type StatusCode uint16
+
+const (
+	StatusNormalClosure      StatusCode = 1000
+	StatusGoingAway          StatusCode = 1001
+	StatusProtocolError      StatusCode = 1002
+	StatusUnsupported        StatusCode = 1003
+	StatusNoStatusRcvd       StatusCode = 1005
+	StatusAbnormalClose      StatusCode = 1006
+	StatusUnsupportedPayload StatusCode = 1007
+	StatusPolicyViolation    StatusCode = 1008
+	StatusTooLarge           StatusCode = 1009
+	StatusTlsHandshake       StatusCode = 1015
+	StatusServerError        StatusCode = 1011
+)
+
 type Frame struct {
 	Fin     bool
 	OpCode  OpCode
@@ -96,7 +112,7 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			switch frame.OpCode {
 			case OpCodeBinary, OpCodeText:
 				if needContinuation {
-					return errors.New("received unexpected data frame")
+					return closeWithError(buf, StatusProtocolError, errors.New("expected continuation frame"))
 				}
 				msg = &Message{
 					Binary: frame.OpCode == OpCodeBinary,
@@ -106,13 +122,13 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				needContinuation = !frame.Fin
 			case OpCodeContinuation:
 				if !needContinuation {
-					return errors.New("received unexpected continuation frame")
+					return closeWithError(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
 				msg.Data = append(msg.Data, frame.Payload...)
 				if len(msg.Data) > maxMessageSize {
-					return fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize)
+					return closeWithError(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize))
 				}
 			case OpCodeClose:
 				if err := writeFrame(buf, frame); err != nil {
@@ -282,6 +298,19 @@ func frameMessage(msg *Message) []*Frame {
 		}
 	}
 	return result
+}
+
+func closeWithError(buf *bufio.ReadWriter, code StatusCode, err error) error {
+	var payload []byte
+	payload = binary.BigEndian.AppendUint16(payload, uint16(code))
+	if err != nil {
+		payload = append(payload, []byte(err.Error())...)
+	}
+	return writeFrame(buf, &Frame{
+		Fin:     true,
+		OpCode:  OpCodeClose,
+		Payload: payload,
+	})
 }
 
 func acceptKey(clientKey string) string {

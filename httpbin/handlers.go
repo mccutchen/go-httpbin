@@ -1131,14 +1131,12 @@ func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := websocket.Handshake(w, r); err != nil {
-		log.Printf("XXX websocket.Prepare: %v", err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	conn, buf, err := hj.Hijack()
 	if err != nil {
-		log.Printf("XXX failed to hijack connection: %s", err)
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
