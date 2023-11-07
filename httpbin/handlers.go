@@ -1144,7 +1144,7 @@ func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	echoHandler := websocket.Handler(func(ctx context.Context, msg websocket.Message) (websocket.Message, error) {
+	echoHandler := websocket.Handler(func(ctx context.Context, msg *websocket.Message) (*websocket.Message, error) {
 		return msg, nil
 	})
 
