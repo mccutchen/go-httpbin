@@ -170,8 +170,22 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 		return nil, err
 	}
 
-	fin := b1&0b10000000 != 0
-	opcode := OpCode(b1 & 0b00001111)
+	var (
+		fin    = b1&0b10000000 != 0
+		rsv1   = b1&0b01000000 != 0
+		rsv2   = b1&0b00100000 != 0
+		rsv3   = b1&0b00010000 != 0
+		opcode = OpCode(b1 & 0b00001111)
+	)
+
+	// [RSV1-3] MUST be 0 unless an extension is negotiated that defines
+	// meanings for non-zero values.  If a nonzero value is received and none
+	// of the negotiated extensions defines the meaning of such a nonzero
+	// value, the receiving endpoint MUST _Fail the WebSocket Connection_.
+	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
+	if rsv1 || rsv2 || rsv3 {
+		return nil, fmt.Errorf("received frame with unsupported reserve bits set")
+	}
 
 	b2, err := buf.ReadByte()
 	if err != nil {
