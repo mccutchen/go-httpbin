@@ -1,5 +1,4 @@
 {
-    "url": "ws://host.docker.internal:8080/ws",
     "servers": [
         {
             "agent": "go-httpbin",

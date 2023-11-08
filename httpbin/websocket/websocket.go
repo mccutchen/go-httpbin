@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -53,6 +52,9 @@ const (
 type Frame struct {
 	Fin     bool
 	Opcode  Opcode
+	RSV1    uint8
+	RSV2    uint8
+	RSV3    uint8
 	Payload []byte
 }
 
@@ -107,9 +109,9 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 		default:
 			frame, err := nextFrame(buf)
 			if err != nil {
-				return err
+				return writeCloseFrame(buf, StatusServerError, err)
 			}
-			log.Printf("XXX got frame: %+v", frame)
+			// log.Printf("XXX got frame: %+v", frame)
 
 			if err := validateFrame(frame); err != nil {
 				return writeCloseFrame(buf, StatusProtocolError, err)
@@ -152,16 +154,16 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			case OpcodePong:
 				// no-op
 			default:
-				return fmt.Errorf("unsupported opcode: %v", frame.Opcode)
+				return writeCloseFrame(buf, StatusProtocolError, fmt.Errorf("unsupported opcode: %v", frame.Opcode))
 			}
 		}
 
 		if msgReady {
 			resp, err := handler(ctx, msg)
 			if err != nil {
-				return err
+				return writeCloseFrame(buf, StatusServerError, err)
 			}
-			log.Printf("XXX got resp: %+v", resp)
+			// log.Printf("XXX got resp: %+v", resp)
 			if resp == nil {
 				return nil
 			}
@@ -185,20 +187,11 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 
 	var (
 		fin    = b1&0b10000000 != 0
-		rsv1   = b1&0b01000000 != 0
-		rsv2   = b1&0b00100000 != 0
-		rsv3   = b1&0b00010000 != 0
+		rsv1   = uint8(b1 & 0b01000000)
+		rsv2   = uint8(b1 & 0b00100000)
+		rsv3   = uint8(b1 & 0b00010000)
 		opcode = Opcode(b1 & 0b00001111)
 	)
-
-	// [RSV1-3] MUST be 0 unless an extension is negotiated that defines
-	// meanings for non-zero values. If a nonzero value is received and none
-	// of the negotiated extensions defines the meaning of such a nonzero
-	// value, the receiving endpoint MUST _Fail the WebSocket Connection_.
-	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
-	if rsv1 || rsv2 || rsv3 {
-		return nil, fmt.Errorf("received frame with unsupported reserve bits set")
-	}
 
 	b2, err := buf.ReadByte()
 	if err != nil {
@@ -248,6 +241,9 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 
 	return &Frame{
 		Fin:     fin,
+		RSV1:    rsv1,
+		RSV2:    rsv2,
+		RSV3:    rsv3,
 		Opcode:  opcode,
 		Payload: payload,
 	}, nil
@@ -281,7 +277,7 @@ func encodeFrame(frame *Frame) []byte {
 }
 
 func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
-	log.Printf("XXX writing frame: %+v", frame)
+	// log.Printf("XXX writing frame: %+v", frame)
 	if _, err := buf.Write(encodeFrame(frame)); err != nil {
 		return err
 	}
@@ -310,7 +306,6 @@ func frameMessage(msg *Message) []*Frame {
 			fin = true
 			end = dataLen
 		}
-		log.Printf("ZZZ fragment: %d:%d of %d", offset, end, dataLen)
 		result = append(result, &Frame{
 			Fin:     fin,
 			Opcode:  opcode,
@@ -363,6 +358,12 @@ var reservedStatusCodes = map[uint16]bool{
 }
 
 func validateFrame(frame *Frame) error {
+	// We do not support any extensions, per the spec all RSV bits must be 0:
+	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
+	if (frame.RSV1 + frame.RSV2 + frame.RSV3) > 0 {
+		return fmt.Errorf("frame has unsupported RSV bits set")
+	}
+
 	switch frame.Opcode {
 	case OpcodeContinuation, OpcodeText, OpcodeBinary:
 		if len(frame.Payload) > maxFragmentSize {

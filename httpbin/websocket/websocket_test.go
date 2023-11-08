@@ -7,6 +7,7 @@ import (
 )
 
 func TestAcceptKey(t *testing.T) {
+	t.Parallel()
 	clientKey := "dGhlIHNhbXBsZSBub25jZQ=="
 	wantAcceptKey := "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
 	gotAcceptKey := acceptKey(clientKey)
