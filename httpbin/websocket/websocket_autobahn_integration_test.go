@@ -1,3 +1,10 @@
+// package webocket_test allows us to test the package via the concrete
+// implementation in httpbin's /websocket/echo handler, ensuring that
+//
+// a) the httpbin handler works as expected and
+//
+// b) we still get code coverage for the websocket package without duplicating
+// tests.
 package websocket_test
 
 import (
@@ -47,7 +54,7 @@ func TestWebsocketServer(t *testing.T) {
 	t.Logf("test dir: %s", testDir)
 
 	u, _ := url.Parse(srv.URL)
-	targetURL := "ws://host.docker.internal:" + u.Port() + "/ws"
+	targetURL := "ws://host.docker.internal:" + u.Port() + "/websocket/echo"
 
 	autobahnCfg := map[string]any{
 		"servers": []map[string]string{
