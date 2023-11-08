@@ -1117,12 +1117,6 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
-	for k, vv := range r.Header {
-		for _, v := range vv {
-			log.Printf("XXX header: %s=%q", k, v)
-		}
-	}
-
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		log.Printf("XXX connection cannot be hijacked")
