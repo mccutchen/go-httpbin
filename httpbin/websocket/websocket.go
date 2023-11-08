@@ -197,9 +197,8 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 			if err != nil {
 				return writeCloseFrame(buf, StatusServerError, err)
 			}
-			// log.Printf("XXX got resp: %+v", resp)
 			if resp == nil {
-				return nil
+				continue
 			}
 			for _, respFrame := range frameResponse(resp, s.maxFragmentSize) {
 				if err := writeFrame(buf, respFrame); err != nil {

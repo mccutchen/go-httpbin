@@ -1,3 +1,10 @@
+// package webocket_test allows us to test the package via the concrete
+// implementation in httpbin's /websocket/echo handler, ensuring that
+//
+// a) the httpbin handler works as expected and
+//
+// b) we still get code coverage for the websocket package without duplicating
+// tests.
 package websocket_test
 
 import (
@@ -115,7 +122,7 @@ func TestHandshake(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 			defer cancel()
 
-			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/ws", nil)
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/websocket/echo", nil)
 			for k, v := range tc.reqHeaders {
 				req.Header.Set(k, v)
 			}

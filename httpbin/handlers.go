@@ -1115,7 +1115,7 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	// TODO: allow clients to specify max fragment and message sizes to better
 	// test client implementations
 	ws := websocket.New(
