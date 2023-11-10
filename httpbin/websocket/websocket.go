@@ -16,11 +16,6 @@ import (
 
 const requiredVersion = "13"
 
-const (
-	maxFragmentSize = 1024 * 500      // 500 KB
-	maxMessageSize  = 1024 * 1024 * 5 // 5 MB
-)
-
 type Opcode uint8
 
 const (
@@ -70,8 +65,23 @@ type Message struct {
 // connection will be closed.
 type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
+// WebSocket is a websocket connection.
+type WebSocket struct {
+	maxFragmentSize int
+	maxMessageSize  int
+	handshook       bool
+}
+
+// New creates a new websocket.
+func New(maxFragmentSize int, maxMessageSize int) *WebSocket {
+	return &WebSocket{
+		maxFragmentSize: maxFragmentSize,
+		maxMessageSize:  maxMessageSize,
+	}
+}
+
 // Handshake validates the request and performs the WebSocket handshake.
-func Handshake(w http.ResponseWriter, r *http.Request) error {
+func (s *WebSocket) Handshake(w http.ResponseWriter, r *http.Request) error {
 	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
 		return fmt.Errorf("missing required `Connection: upgrade` header")
 	}
@@ -91,11 +101,35 @@ func Handshake(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Upgrade", "websocket")
 	w.Header().Set("Sec-Websocket-Accept", acceptKey(clientKey))
 	w.WriteHeader(http.StatusSwitchingProtocols)
+
+	s.handshook = true
 	return nil
 }
 
 // Serve handles a websocket connection after the handshake has been completed.
-func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
+func (s *WebSocket) Serve(w http.ResponseWriter, r *http.Request, handler Handler) {
+	if !s.handshook {
+		panic("websocket: serve: handshake not completed")
+	}
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		panic("websocket: serve: server does not support hijacking")
+	}
+
+	conn, buf, err := hj.Hijack()
+	if err != nil {
+		panic(fmt.Errorf("websocket: serve: hijack failed: %s", err))
+	}
+	defer conn.Close()
+
+	// errors intentionally ignored here. it's serverLoop's responsibility to
+	// properly close the websocket connection with a useful error message, and
+	// any unexpected error returned from serverLoop is not actionable.
+	_ = s.serveLoop(r.Context(), buf, handler)
+}
+
+func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 	var (
 		msgReady         = false
 		needContinuation = false
@@ -113,7 +147,7 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			}
 			// log.Printf("XXX got frame: %+v", frame)
 
-			if err := validateFrame(frame); err != nil {
+			if err := s.validateFrame(frame); err != nil {
 				return writeCloseFrame(buf, StatusProtocolError, err)
 			}
 
@@ -141,8 +175,8 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
 				msg.Data = append(msg.Data, frame.Payload...)
-				if len(msg.Data) > maxMessageSize {
-					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), maxMessageSize))
+				if len(msg.Data) > s.maxMessageSize {
+					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), s.maxMessageSize))
 				}
 			case OpcodeClose:
 				return writeCloseFrame(buf, StatusNormalClosure, nil)
@@ -167,7 +201,7 @@ func Serve(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
 			if resp == nil {
 				return nil
 			}
-			for _, respFrame := range frameMessage(resp) {
+			for _, respFrame := range s.frameMessage(resp) {
 				if err := writeFrame(buf, respFrame); err != nil {
 					return err
 				}
@@ -277,7 +311,6 @@ func encodeFrame(frame *Frame) []byte {
 }
 
 func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
-	// log.Printf("XXX writing frame: %+v", frame)
 	if _, err := buf.Write(encodeFrame(frame)); err != nil {
 		return err
 	}
@@ -286,7 +319,7 @@ func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
 
 // frameMessage splits a message into N frames with payloads of at most
 // fragmentSize bytes.
-func frameMessage(msg *Message) []*Frame {
+func (s *WebSocket) frameMessage(msg *Message) []*Frame {
 	var result []*Frame
 
 	fin := false
@@ -301,7 +334,7 @@ func frameMessage(msg *Message) []*Frame {
 		if offset > 0 {
 			opcode = OpcodeContinuation
 		}
-		end := offset + maxFragmentSize
+		end := offset + s.maxFragmentSize
 		if end >= dataLen {
 			fin = true
 			end = dataLen
@@ -357,7 +390,7 @@ var reservedStatusCodes = map[uint16]bool{
 	2999: true,
 }
 
-func validateFrame(frame *Frame) error {
+func (s *WebSocket) validateFrame(frame *Frame) error {
 	// We do not support any extensions, per the spec all RSV bits must be 0:
 	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
 	if (frame.RSV1 + frame.RSV2 + frame.RSV3) > 0 {
@@ -366,8 +399,8 @@ func validateFrame(frame *Frame) error {
 
 	switch frame.Opcode {
 	case OpcodeContinuation, OpcodeText, OpcodeBinary:
-		if len(frame.Payload) > maxFragmentSize {
-			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxFragmentSize)
+		if len(frame.Payload) > s.maxFragmentSize {
+			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), s.maxFragmentSize)
 		}
 	case OpcodeClose, OpcodePing, OpcodePong:
 		// All control frames MUST have a payload length of 125 bytes or less
