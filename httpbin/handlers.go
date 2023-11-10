@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -1117,32 +1116,17 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *HTTPBin) WebSocket(w http.ResponseWriter, r *http.Request) {
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		log.Printf("XXX connection cannot be hijacked")
-		writeError(w, http.StatusInternalServerError, nil)
-		return
-	}
-
-	if err := websocket.Handshake(w, r); err != nil {
+	// TODO: allow clients to specify max fragment and message sizes to better
+	// test client implementations
+	ws := websocket.New(
+		1024*100, // 100KB
+		int(h.MaxBodySize),
+	)
+	if err := ws.Handshake(w, r); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-
-	conn, buf, err := hj.Hijack()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-	defer conn.Close()
-
-	echoHandler := websocket.Handler(func(ctx context.Context, msg *websocket.Message) (*websocket.Message, error) {
+	ws.Serve(w, r, func(ctx context.Context, msg *websocket.Message) (*websocket.Message, error) {
 		return msg, nil
 	})
-
-	if err := websocket.Serve(r.Context(), buf, echoHandler); err != nil {
-		// at this point, we can't do anything about an error aside from log it
-		log.Printf("XXX websocket.Serve: %v", err)
-		return
-	}
 }
