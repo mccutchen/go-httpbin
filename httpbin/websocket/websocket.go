@@ -147,7 +147,7 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 			}
 			// log.Printf("XXX got frame: %+v", frame)
 
-			if err := s.validateFrame(frame); err != nil {
+			if err := validateFrame(frame, s.maxFragmentSize); err != nil {
 				return writeCloseFrame(buf, StatusProtocolError, err)
 			}
 
@@ -201,7 +201,7 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 			if resp == nil {
 				return nil
 			}
-			for _, respFrame := range s.frameMessage(resp) {
+			for _, respFrame := range frameResponse(resp, s.maxFragmentSize) {
 				if err := writeFrame(buf, respFrame); err != nil {
 					return err
 				}
@@ -317,9 +317,9 @@ func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
 	return buf.Flush()
 }
 
-// frameMessage splits a message into N frames with payloads of at most
+// frameResponse splits a message into N frames with payloads of at most
 // fragmentSize bytes.
-func (s *WebSocket) frameMessage(msg *Message) []*Frame {
+func frameResponse(msg *Message, fragmentSize int) []*Frame {
 	var result []*Frame
 
 	fin := false
@@ -334,7 +334,7 @@ func (s *WebSocket) frameMessage(msg *Message) []*Frame {
 		if offset > 0 {
 			opcode = OpcodeContinuation
 		}
-		end := offset + s.maxFragmentSize
+		end := offset + fragmentSize
 		if end >= dataLen {
 			fin = true
 			end = dataLen
@@ -390,7 +390,7 @@ var reservedStatusCodes = map[uint16]bool{
 	2999: true,
 }
 
-func (s *WebSocket) validateFrame(frame *Frame) error {
+func validateFrame(frame *Frame, maxFragmentSize int) error {
 	// We do not support any extensions, per the spec all RSV bits must be 0:
 	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
 	if (frame.RSV1 + frame.RSV2 + frame.RSV3) > 0 {
@@ -399,8 +399,8 @@ func (s *WebSocket) validateFrame(frame *Frame) error {
 
 	switch frame.Opcode {
 	case OpcodeContinuation, OpcodeText, OpcodeBinary:
-		if len(frame.Payload) > s.maxFragmentSize {
-			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), s.maxFragmentSize)
+		if len(frame.Payload) > maxFragmentSize {
+			return fmt.Errorf("frame payload size %d exceeds maximum of %d bytes", len(frame.Payload), maxFragmentSize)
 		}
 	case OpcodeClose, OpcodePing, OpcodePong:
 		// All control frames MUST have a payload length of 125 bytes or less
