@@ -46,7 +46,7 @@ test:
 .PHONY: test
 
 autobahntests:
-	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v $(TEST_ARGS) $(COVERAGE_ARGS) ./httpbin/websocket
+	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test $(TEST_ARGS) $(COVERAGE_ARGS) ./httpbin/websocket
 .PHONY: autobahntests
 
 # Test command to run for continuous integration, which includes code coverage

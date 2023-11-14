@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -47,10 +46,10 @@ const (
 // Frame is a websocket frame.
 type Frame struct {
 	Fin     bool
+	RSV1    bool
+	RSV3    bool
+	RSV2    bool
 	Opcode  Opcode
-	RSV1    uint8
-	RSV2    uint8
-	RSV3    uint8
 	Payload []byte
 }
 
@@ -230,9 +229,9 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 
 	var (
 		fin    = b1&0b10000000 != 0
-		rsv1   = uint8(b1 & 0b01000000)
-		rsv2   = uint8(b1 & 0b00100000)
-		rsv3   = uint8(b1 & 0b00010000)
+		rsv1   = b1&0b01000000 != 0
+		rsv2   = b1&0b00100000 != 0
+		rsv3   = b1&0b00010000 != 0
 		opcode = Opcode(b1 & 0b00001111)
 	)
 
@@ -295,19 +294,29 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 func encodeFrame(frame *Frame) []byte {
 	var header []byte
 
-	// FIN and OPCODE
-	var fin uint8 = 0
+	// FIN, RSV1-3, OPCODE
+	var b1 byte
 	if frame.Fin {
-		fin = 1 << 7
+		b1 |= 0b10000000
 	}
-	header = append(header, byte(fin|uint8(frame.Opcode)))
+	if frame.RSV1 {
+		b1 |= 0b01000000
+	}
+	if frame.RSV2 {
+		b1 |= 0b00100000
+	}
+	if frame.RSV3 {
+		b1 |= 0b00010000
+	}
+	b1 |= uint8(frame.Opcode) & 0b00001111
+	header = append(header, b1)
 
 	// payload length
 	payloadLen := int64(len(frame.Payload))
 	switch {
 	case payloadLen <= 125:
 		header = append(header, byte(payloadLen))
-	case payloadLen <= 0xFFFF:
+	case payloadLen <= 65535:
 		header = append(header, 126)
 		header = binary.BigEndian.AppendUint16(header, uint16(payloadLen))
 	default:
@@ -319,9 +328,6 @@ func encodeFrame(frame *Frame) []byte {
 }
 
 func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
-	log.Printf("XXX send frame: %+v", frame)
-	log.Printf("XXX send bytes: %v", encodeFrame(frame))
-	log.Printf("XXX send hex:   %x", encodeFrame(frame))
 	if _, err := buf.Write(encodeFrame(frame)); err != nil {
 		return err
 	}
@@ -397,7 +403,7 @@ var reservedStatusCodes = map[uint16]bool{
 func validateFrame(frame *Frame, maxFragmentSize int) error {
 	// We do not support any extensions, per the spec all RSV bits must be 0:
 	// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
-	if (frame.RSV1 + frame.RSV2 + frame.RSV3) > 0 {
+	if frame.RSV1 || frame.RSV2 || frame.RSV3 {
 		return fmt.Errorf("frame has unsupported RSV bits set")
 	}
 
