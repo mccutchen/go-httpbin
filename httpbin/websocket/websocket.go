@@ -65,6 +65,12 @@ type Message struct {
 // connection will be closed.
 type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
+// EchoHandler is a Handler that echoes each incoming message back to the
+// client.
+var EchoHandler Handler = func(ctx context.Context, msg *Message) (*Message, error) {
+	return msg, nil
+}
+
 // Limits defines the limits imposed on a websocket connections.
 type Limits struct {
 	MaxFragmentSize int
