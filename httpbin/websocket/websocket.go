@@ -89,7 +89,7 @@ func New(limits Limits) *WebSocket {
 // Handshake validates the request and performs the WebSocket handshake.
 func (s *WebSocket) Handshake(w http.ResponseWriter, r *http.Request) error {
 	if s.handshook {
-		panic("websocket: handshake: handshake already completed")
+		panic("websocket: handshake already completed")
 	}
 
 	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
@@ -149,7 +149,7 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		default:
 			frame, err := nextFrame(buf)
 			if err != nil {

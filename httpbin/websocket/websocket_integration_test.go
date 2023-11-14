@@ -8,13 +8,17 @@
 package websocket_test
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
@@ -137,3 +141,97 @@ func TestHandshake(t *testing.T) {
 		})
 	}
 }
+
+func TestHandshakeOrder(t *testing.T) {
+	handshakeReq := httptest.NewRequest(http.MethodGet, "/websocket/echo", nil)
+	for k, v := range map[string]string{
+		"Connection":            "upgrade",
+		"Upgrade":               "websocket",
+		"Sec-WebSocket-Key":     "dGhlIHNhbXBsZSBub25jZQ==",
+		"Sec-WebSocket-Version": "13",
+	} {
+		handshakeReq.Header.Set(k, v)
+	}
+
+	t.Run("double handshake", func(t *testing.T) {
+		ws := websocket.New(websocket.Limits{})
+
+		// first handshake succeeds
+		w1 := httptest.NewRecorder()
+		assert.NilError(t, ws.Handshake(w1, handshakeReq))
+		assert.Equal(t, w1.Code, http.StatusSwitchingProtocols, "incorrect status code")
+
+		// second handshake fails
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected to catch panic on double handshake")
+			}
+			assert.Equal(t, fmt.Sprint(r), "websocket: handshake already completed", "incorrect panic message")
+		}()
+		w2 := httptest.NewRecorder()
+		ws.Handshake(w2, handshakeReq)
+	})
+
+	t.Run("handshake not completed", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected to catch panic on Serve before Handshake")
+			}
+			assert.Equal(t, fmt.Sprint(r), "websocket: serve: handshake not completed", "incorrect panic message")
+		}()
+		w := httptest.NewRecorder()
+		websocket.New(websocket.Limits{}).Serve(w, handshakeReq, nil)
+	})
+
+	t.Run("http.Hijack not implemented", func(t *testing.T) {
+		ws := websocket.New(websocket.Limits{})
+
+		w1 := httptest.NewRecorder()
+		assert.NilError(t, ws.Handshake(w1, handshakeReq))
+		assert.Equal(t, w1.Code, http.StatusSwitchingProtocols, "incorrect status code")
+
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected to catch panic on when http.Hijack not implemented")
+			}
+			assert.Equal(t, fmt.Sprint(r), "websocket: serve: server does not support hijacking", "incorrect panic message")
+		}()
+		ws.Serve(nilResponseWriter{}, handshakeReq, nil)
+	})
+
+	t.Run("hijack failed", func(t *testing.T) {
+		ws := websocket.New(websocket.Limits{})
+
+		w1 := httptest.NewRecorder()
+		assert.NilError(t, ws.Handshake(w1, handshakeReq))
+		assert.Equal(t, w1.Code, http.StatusSwitchingProtocols, "incorrect status code")
+
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected to catch panic on Serve before Handshake")
+			}
+			assert.Equal(t, fmt.Sprint(r), "websocket: serve: hijack failed: error hijacking connection", "incorrect panic message")
+		}()
+		ws.Serve(brokenHijackResponseWriter{}, handshakeReq, nil)
+	})
+}
+
+type nilResponseWriter struct {
+	http.ResponseWriter
+}
+
+var _ http.ResponseWriter = nilResponseWriter{}
+
+type brokenHijackResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (brokenHijackResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, fmt.Errorf("error hijacking connection")
+}
+
+var _ http.ResponseWriter = brokenHijackResponseWriter{}
