@@ -1119,7 +1119,7 @@ func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	// TODO: allow clients to specify max fragment and message sizes to better
 	// test client implementations
 	ws := websocket.New(websocket.Limits{
-		MaxFragmentSize: int(h.MaxBodySize / 2),
+		MaxFragmentSize: int(h.MaxBodySize),
 		MaxMessageSize:  int(h.MaxBodySize),
 	})
 	if err := ws.Handshake(w, r); err != nil {

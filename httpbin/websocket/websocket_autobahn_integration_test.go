@@ -31,6 +31,8 @@ var defaultAutobahnTestCases = []string{
 	"5.*",
 	"6.*",
 	"7.*",
+	"9.*",
+	"10.*",
 }
 
 var autobahnExcludedTestCases = []string{
@@ -40,6 +42,10 @@ var autobahnExcludedTestCases = []string{
 	"6.2.3",
 	"6.2.4",
 	"6.4.2",
+
+	// Compression extensions are not supported
+	"12.*",
+	"13.*",
 }
 
 func TestWebsocketServer(t *testing.T) {
@@ -55,7 +61,7 @@ func TestWebsocketServer(t *testing.T) {
 		autobahnTestCases = strings.Split(userTestCases, ",")
 	}
 
-	app := httpbin.New()
+	app := httpbin.New(httpbin.WithMaxBodySize(1024 * 1024 * 16))
 	srv := httptest.NewServer(app)
 	defer srv.Close()
 
