@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
@@ -22,7 +23,7 @@ import (
 
 const autobahnImage = "crossbario/autobahn-testsuite:0.8.2"
 
-var autobahnTestCases = []string{
+var defaultAutobahnTestCases = []string{
 	"1.*",
 	"2.*",
 	"3.*",
@@ -43,6 +44,16 @@ var autobahnExcludedTestCases = []string{
 
 func TestWebsocketServer(t *testing.T) {
 	t.Parallel()
+
+	if os.Getenv("AUTOBAHN_TESTS") == "" {
+		t.Skipf("set AUTOBAHN_TESTS=1 to run autobahn integration tests")
+	}
+
+	autobahnTestCases := defaultAutobahnTestCases
+	if userTestCases := os.Getenv("AUTOBAHN_CASES"); userTestCases != "" {
+		t.Logf("using AUTOBAHN_CASES=%q", userTestCases)
+		autobahnTestCases = strings.Split(userTestCases, ",")
+	}
 
 	app := httpbin.New()
 	srv := httptest.NewServer(app)
@@ -70,10 +81,8 @@ func TestWebsocketServer(t *testing.T) {
 
 	autobahnCfgFile, err := os.Create(path.Join(testDir, "autobahn.json"))
 	assert.NilError(t, err)
-	defer autobahnCfgFile.Close()
-	enc := json.NewEncoder(autobahnCfgFile)
-	enc.SetIndent("", "  ")
-	assert.NilError(t, enc.Encode(autobahnCfg))
+	assert.NilError(t, json.NewEncoder(autobahnCfgFile).Encode(autobahnCfg))
+	autobahnCfgFile.Close()
 
 	pullCmd := exec.Command("docker", "pull", autobahnImage)
 	runCmd(t, pullCmd)
@@ -115,7 +124,7 @@ func TestWebsocketServer(t *testing.T) {
 	}
 
 	t.Logf("autobahn test report: %s", path.Join(testDir, "report/index.html"))
-	if failed {
+	if failed && os.Getenv("AUTOBAHN_OPEN_REPORT") != "" {
 		runCmd(t, exec.Command("open", path.Join(testDir, "report/index.html")))
 	}
 }

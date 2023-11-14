@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -56,14 +57,20 @@ type Frame struct {
 // Message is a message from the client, which may be constructed from one or
 // more individual frames.
 type Message struct {
-	Binary bool
-	Data   []byte
+	Binary  bool
+	Payload []byte
 }
 
 // Handler handles a single websocket message. If the returned message is
 // non-nil, it will be sent to the client. If an error is returned, the
 // connection will be closed.
 type Handler func(ctx context.Context, msg *Message) (*Message, error)
+
+// Limits defines the limits imposed on a websocket connections.
+type Limits struct {
+	MaxFragmentSize int
+	MaxMessageSize  int
+}
 
 // WebSocket is a websocket connection.
 type WebSocket struct {
@@ -73,15 +80,19 @@ type WebSocket struct {
 }
 
 // New creates a new websocket.
-func New(maxFragmentSize int, maxMessageSize int) *WebSocket {
+func New(limits Limits) *WebSocket {
 	return &WebSocket{
-		maxFragmentSize: maxFragmentSize,
-		maxMessageSize:  maxMessageSize,
+		maxFragmentSize: limits.MaxFragmentSize,
+		maxMessageSize:  limits.MaxMessageSize,
 	}
 }
 
 // Handshake validates the request and performs the WebSocket handshake.
 func (s *WebSocket) Handshake(w http.ResponseWriter, r *http.Request) error {
+	if s.handshook {
+		panic("websocket: handshake: handshake already completed")
+	}
+
 	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
 		return fmt.Errorf("missing required `Connection: upgrade` header")
 	}
@@ -145,7 +156,6 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 			if err != nil {
 				return writeCloseFrame(buf, StatusServerError, err)
 			}
-			// log.Printf("XXX got frame: %+v", frame)
 
 			if err := validateFrame(frame, s.maxFragmentSize); err != nil {
 				return writeCloseFrame(buf, StatusProtocolError, err)
@@ -160,8 +170,8 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
 				}
 				msg = &Message{
-					Binary: frame.Opcode == OpcodeBinary,
-					Data:   frame.Payload,
+					Binary:  frame.Opcode == OpcodeBinary,
+					Payload: frame.Payload,
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
@@ -174,9 +184,9 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 				}
 				msgReady = frame.Fin
 				needContinuation = !frame.Fin
-				msg.Data = append(msg.Data, frame.Payload...)
-				if len(msg.Data) > s.maxMessageSize {
-					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Data), s.maxMessageSize))
+				msg.Payload = append(msg.Payload, frame.Payload...)
+				if len(msg.Payload) > s.maxMessageSize {
+					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Payload), s.maxMessageSize))
 				}
 			case OpcodeClose:
 				return writeCloseFrame(buf, StatusNormalClosure, nil)
@@ -305,11 +315,13 @@ func encodeFrame(frame *Frame) []byte {
 		header = binary.BigEndian.AppendUint64(header, uint64(payloadLen))
 	}
 
-	// frame is header + payload
 	return append(header, frame.Payload...)
 }
 
 func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
+	log.Printf("XXX send frame: %+v", frame)
+	log.Printf("XXX send bytes: %v", encodeFrame(frame))
+	log.Printf("XXX send hex:   %x", encodeFrame(frame))
 	if _, err := buf.Write(encodeFrame(frame)); err != nil {
 		return err
 	}
@@ -328,7 +340,7 @@ func frameResponse(msg *Message, fragmentSize int) []*Frame {
 	}
 
 	offset := 0
-	dataLen := len(msg.Data)
+	dataLen := len(msg.Payload)
 	for {
 		if offset > 0 {
 			opcode = OpcodeContinuation
@@ -341,7 +353,7 @@ func frameResponse(msg *Message, fragmentSize int) []*Frame {
 		result = append(result, &Frame{
 			Fin:     fin,
 			Opcode:  opcode,
-			Payload: msg.Data[offset:end],
+			Payload: msg.Payload[offset:end],
 		})
 		if fin {
 			break
@@ -365,14 +377,6 @@ func writeCloseFrame(buf *bufio.ReadWriter, code StatusCode, err error) error {
 	})
 }
 
-func acceptKey(clientKey string) string {
-	// Magic value comes from RFC 6455 section 1.3: Opening Handshake
-	// https://www.rfc-editor.org/rfc/rfc6455#section-1.3
-	h := sha1.New()
-	io.WriteString(h, clientKey+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
-}
-
 var reservedStatusCodes = map[uint16]bool{
 	// Explicitly reserved by RFC section 7.4.1 Defined Status Codes:
 	// https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
@@ -380,9 +384,10 @@ var reservedStatusCodes = map[uint16]bool{
 	1005: true,
 	1006: true,
 	1015: true,
-	// Apparently reserved, according to the autobahn testsuite's
-	// fuzzingclient tests, though it's not 100% clear why:
-	// https://github.com/crossbario/autobahn-testsuite
+	// Apparently reserved, according to the autobahn testsuite's fuzzingclient
+	// tests, though it's not clear to me why, based on the RFC.
+	//
+	// See: https://github.com/crossbario/autobahn-testsuite
 	1016: true,
 	1100: true,
 	2000: true,
@@ -437,4 +442,12 @@ func validateFrame(frame *Frame, maxFragmentSize int) error {
 	}
 
 	return nil
+}
+
+func acceptKey(clientKey string) string {
+	// Magic value comes from RFC 6455 section 1.3: Opening Handshake
+	// https://www.rfc-editor.org/rfc/rfc6455#section-1.3
+	h := sha1.New()
+	io.WriteString(h, clientKey+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }

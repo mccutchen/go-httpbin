@@ -2,7 +2,7 @@
     "servers": [
         {
             "agent": "go-httpbin",
-            "url": "ws://host.docker.internal:8080/ws"
+            "url": "ws://host.docker.internal:8080/websocket/echo"
         }
     ],
     "outdir": "./reports",
