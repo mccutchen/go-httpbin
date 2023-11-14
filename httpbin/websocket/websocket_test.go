@@ -1,32 +1,18 @@
-// package webocket_test allows us to test the package via the concrete
-// implementation in httpbin's /websocket/echo handler, ensuring that
-//
-// a) the httpbin handler works as expected and
-//
-// b) we still get code coverage for the websocket package without duplicating
-// tests.
 package websocket_test
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/mccutchen/go-httpbin/v2/httpbin"
 	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 func TestHandshake(t *testing.T) {
-	app := httpbin.New()
-	srv := httptest.NewServer(app)
-	defer srv.Close()
-
 	testCases := map[string]struct {
 		reqHeaders      map[string]string
 		wantStatus      int
@@ -123,10 +109,19 @@ func TestHandshake(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-			defer cancel()
+			t.Parallel()
 
-			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/websocket/echo", nil)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ws := websocket.New(w, r, websocket.Limits{})
+				if err := ws.Handshake(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				ws.Serve(websocket.EchoHandler)
+			}))
+			defer srv.Close()
+
+			req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 			for k, v := range tc.reqHeaders {
 				req.Header.Set(k, v)
 			}
@@ -185,6 +180,12 @@ func TestHandshakeOrder(t *testing.T) {
 	})
 
 	t.Run("http.Hijack not implemented", func(t *testing.T) {
+		// confirm that httptest.ResponseRecorder does not implmeent
+		// http.Hjijacker
+		var rw http.ResponseWriter = httptest.NewRecorder()
+		_, ok := rw.(http.Hijacker)
+		assert.Equal(t, ok, false, "expected httptest.ResponseRecorder not to implement http.Hijacker")
+
 		w := httptest.NewRecorder()
 		ws := websocket.New(w, handshakeReq, websocket.Limits{})
 
@@ -219,9 +220,11 @@ func TestHandshakeOrder(t *testing.T) {
 	})
 }
 
+// brokenHijackResponseWriter implements just enough to satisfy the
+// http.ResponseWriter and http.Hijacker interfaces and get through the
+// handshake before failing to actually hijack the connection.
 type brokenHijackResponseWriter struct {
 	http.ResponseWriter
-
 	Code int
 }
 
@@ -237,4 +240,7 @@ func (brokenHijackResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) 
 	return nil, nil, fmt.Errorf("error hijacking connection")
 }
 
-var _ http.ResponseWriter = &brokenHijackResponseWriter{}
+var (
+	_ http.ResponseWriter = &brokenHijackResponseWriter{}
+	_ http.Hijacker       = &brokenHijackResponseWriter{}
+)

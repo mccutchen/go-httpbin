@@ -1,14 +1,8 @@
-// package webocket_test allows us to test the package via the concrete
-// implementation in httpbin's /websocket/echo handler, ensuring that
-//
-// a) the httpbin handler works as expected and
-//
-// b) we still get code coverage for the websocket package without duplicating
-// tests.
 package websocket_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -17,22 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 const autobahnImage = "crossbario/autobahn-testsuite:0.8.2"
 
 var defaultAutobahnTestCases = []string{
-	"1.*",
-	"2.*",
-	"3.*",
-	"4.*",
-	"5.*",
-	"6.*",
-	"7.*",
-	"9.*",
-	"10.*",
+	"*",
 }
 
 var autobahnExcludedTestCases = []string{
@@ -61,8 +47,17 @@ func TestWebsocketServer(t *testing.T) {
 		autobahnTestCases = strings.Split(userTestCases, ",")
 	}
 
-	app := httpbin.New(httpbin.WithMaxBodySize(1024 * 1024 * 16))
-	srv := httptest.NewServer(app)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws := websocket.New(w, r, websocket.Limits{
+			MaxFragmentSize: 1024 * 1024 * 16,
+			MaxMessageSize:  1024 * 1024 * 16,
+		})
+		if err := ws.Handshake(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ws.Serve(websocket.EchoHandler)
+	}))
 	defer srv.Close()
 
 	testDir, err := os.MkdirTemp("", "go-httpbin-autobahn-test")
