@@ -2911,6 +2911,76 @@ func TestHostname(t *testing.T) {
 	})
 }
 
+func TestWebSocketEcho(t *testing.T) {
+	// ========================================================================
+	// Note: see websocket/*_test.go for in-depth integration tests of the
+	// actual websocket implementation.
+	// ========================================================================
+
+	handshakeHeaders := map[string]string{
+		"Connection":            "upgrade",
+		"Upgrade":               "websocket",
+		"Sec-WebSocket-Key":     "dGhlIHNhbXBsZSBub25jZQ==",
+		"Sec-WebSocket-Version": "13",
+	}
+
+	t.Run("handshake ok", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequest(t, http.MethodGet, "/websocket/echo")
+		for k, v := range handshakeHeaders {
+			req.Header.Set(k, v)
+		}
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+	})
+
+	t.Run("handshake failed", func(t *testing.T) {
+		t.Parallel()
+		req := newTestRequest(t, http.MethodGet, "/websocket/echo")
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
+
+	paramTests := []struct {
+		query      string
+		wantStatus int
+	}{
+		// ok
+		{"max_fragment_size=1&max_message_size=2", http.StatusSwitchingProtocols},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=%d", app.MaxBodySize, app.MaxBodySize), http.StatusSwitchingProtocols},
+
+		// bad max_framgent_size
+		{"max_fragment_size=-1&max_message_size=2", http.StatusBadRequest},
+		{"max_fragment_size=0&max_message_size=2", http.StatusBadRequest},
+		{"max_fragment_size=3&max_message_size=2", http.StatusBadRequest},
+		{"max_fragment_size=foo&max_message_size=2", http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", app.MaxBodySize+1), http.StatusBadRequest},
+
+		// bad max_framgent_size
+		{"max_fragment_size=1&max_message_size=0", http.StatusBadRequest},
+		{"max_fragment_size=1&max_message_size=-1", http.StatusBadRequest},
+		{"max_fragment_size=1&max_message_size=bar", http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", app.MaxBodySize+1), http.StatusBadRequest},
+	}
+	for _, tc := range paramTests {
+		tc := tc
+		t.Run(tc.query, func(t *testing.T) {
+			t.Parallel()
+			req := newTestRequest(t, http.MethodGet, "/websocket/echo?"+tc.query)
+			for k, v := range handshakeHeaders {
+				req.Header.Set(k, v)
+			}
+			resp, err := client.Do(req)
+			assert.NilError(t, err)
+			assert.StatusCode(t, resp, tc.wantStatus)
+		})
+	}
+}
+
 func newTestServer(handler http.Handler) (*httptest.Server, *http.Client) {
 	srv := httptest.NewServer(handler)
 	client := srv.Client()
