@@ -49,11 +49,15 @@ test:
 	go test $(TEST_ARGS) ./...
 .PHONY: test
 
+autobahntests:
+	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v $(TEST_ARGS) $(COVERAGE_ARGS) ./httpbin/websocket
+.PHONY: autobahntests
+
 # Test command to run for continuous integration, which includes code coverage
 # based on codecov.io's documentation:
 # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
 testci: build buildexamples
-	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
+	AUTOBAHN_TESTS=1 go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 	git diff --exit-code
 .PHONY: testci
 
