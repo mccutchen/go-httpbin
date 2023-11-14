@@ -1118,15 +1118,15 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	// TODO: allow clients to specify max fragment and message sizes to better
 	// test client implementations
-	ws := websocket.New(websocket.Limits{
+	ws := websocket.New(w, r, websocket.Limits{
 		MaxFragmentSize: int(h.MaxBodySize),
 		MaxMessageSize:  int(h.MaxBodySize),
 	})
-	if err := ws.Handshake(w, r); err != nil {
+	if err := ws.Handshake(); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	ws.Serve(w, r, func(ctx context.Context, msg *websocket.Message) (*websocket.Message, error) {
+	ws.Serve(func(ctx context.Context, msg *websocket.Message) (*websocket.Message, error) {
 		return msg, nil
 	})
 }

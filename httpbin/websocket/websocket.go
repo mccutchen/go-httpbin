@@ -73,56 +73,60 @@ type Limits struct {
 
 // WebSocket is a websocket connection.
 type WebSocket struct {
+	w               http.ResponseWriter
+	r               *http.Request
 	maxFragmentSize int
 	maxMessageSize  int
 	handshook       bool
 }
 
 // New creates a new websocket.
-func New(limits Limits) *WebSocket {
+func New(w http.ResponseWriter, r *http.Request, limits Limits) *WebSocket {
 	return &WebSocket{
+		w:               w,
+		r:               r,
 		maxFragmentSize: limits.MaxFragmentSize,
 		maxMessageSize:  limits.MaxMessageSize,
 	}
 }
 
 // Handshake validates the request and performs the WebSocket handshake.
-func (s *WebSocket) Handshake(w http.ResponseWriter, r *http.Request) error {
+func (s *WebSocket) Handshake() error {
 	if s.handshook {
 		panic("websocket: handshake already completed")
 	}
 
-	if strings.ToLower(r.Header.Get("Connection")) != "upgrade" {
+	if strings.ToLower(s.r.Header.Get("Connection")) != "upgrade" {
 		return fmt.Errorf("missing required `Connection: upgrade` header")
 	}
-	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
+	if strings.ToLower(s.r.Header.Get("Upgrade")) != "websocket" {
 		return fmt.Errorf("missing required `Upgrade: websocket` header")
 	}
-	if v := r.Header.Get("Sec-Websocket-Version"); v != requiredVersion {
+	if v := s.r.Header.Get("Sec-Websocket-Version"); v != requiredVersion {
 		return fmt.Errorf("only websocket version %q is supported, got %q", requiredVersion, v)
 	}
 
-	clientKey := r.Header.Get("Sec-Websocket-Key")
+	clientKey := s.r.Header.Get("Sec-Websocket-Key")
 	if clientKey == "" {
 		return fmt.Errorf("missing required `Sec-Websocket-Key` header")
 	}
 
-	w.Header().Set("Connection", "upgrade")
-	w.Header().Set("Upgrade", "websocket")
-	w.Header().Set("Sec-Websocket-Accept", acceptKey(clientKey))
-	w.WriteHeader(http.StatusSwitchingProtocols)
+	s.w.Header().Set("Connection", "upgrade")
+	s.w.Header().Set("Upgrade", "websocket")
+	s.w.Header().Set("Sec-Websocket-Accept", acceptKey(clientKey))
+	s.w.WriteHeader(http.StatusSwitchingProtocols)
 
 	s.handshook = true
 	return nil
 }
 
 // Serve handles a websocket connection after the handshake has been completed.
-func (s *WebSocket) Serve(w http.ResponseWriter, r *http.Request, handler Handler) {
+func (s *WebSocket) Serve(handler Handler) {
 	if !s.handshook {
 		panic("websocket: serve: handshake not completed")
 	}
 
-	hj, ok := w.(http.Hijacker)
+	hj, ok := s.w.(http.Hijacker)
 	if !ok {
 		panic("websocket: serve: server does not support hijacking")
 	}
@@ -136,7 +140,7 @@ func (s *WebSocket) Serve(w http.ResponseWriter, r *http.Request, handler Handle
 	// errors intentionally ignored here. it's serverLoop's responsibility to
 	// properly close the websocket connection with a useful error message, and
 	// any unexpected error returned from serverLoop is not actionable.
-	_ = s.serveLoop(r.Context(), buf, handler)
+	_ = s.serveLoop(s.r.Context(), buf, handler)
 }
 
 func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
