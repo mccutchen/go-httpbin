@@ -150,69 +150,63 @@ func (s *WebSocket) Serve(handler Handler) {
 }
 
 func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handler Handler) error {
-	var (
-		msgReady         = false
-		needContinuation = false
-		msg              *Message
-	)
+	var currentMsg *Message
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			frame, err := nextFrame(buf)
-			if err != nil {
-				return writeCloseFrame(buf, StatusServerError, err)
-			}
-
-			if err := validateFrame(frame, s.maxFragmentSize); err != nil {
-				return writeCloseFrame(buf, StatusProtocolError, err)
-			}
-
-			switch frame.Opcode {
-			case OpcodeBinary, OpcodeText:
-				if needContinuation {
-					return writeCloseFrame(buf, StatusProtocolError, errors.New("expected continuation frame"))
-				}
-				if frame.Opcode == OpcodeText && !utf8.Valid(frame.Payload) {
-					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
-				}
-				msg = &Message{
-					Binary:  frame.Opcode == OpcodeBinary,
-					Payload: frame.Payload,
-				}
-				msgReady = frame.Fin
-				needContinuation = !frame.Fin
-			case OpcodeContinuation:
-				if !needContinuation {
-					return writeCloseFrame(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
-				}
-				if !msg.Binary && !utf8.Valid(frame.Payload) {
-					return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
-				}
-				msgReady = frame.Fin
-				needContinuation = !frame.Fin
-				msg.Payload = append(msg.Payload, frame.Payload...)
-				if len(msg.Payload) > s.maxMessageSize {
-					return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(msg.Payload), s.maxMessageSize))
-				}
-			case OpcodeClose:
-				return writeCloseFrame(buf, StatusNormalClosure, nil)
-			case OpcodePing:
-				frame.Opcode = OpcodePong
-				if err := writeFrame(buf, frame); err != nil {
-					return err
-				}
-			case OpcodePong:
-				// no-op
-			default:
-				return writeCloseFrame(buf, StatusProtocolError, fmt.Errorf("unsupported opcode: %v", frame.Opcode))
-			}
 		}
 
-		if msgReady {
-			resp, err := handler(ctx, msg)
+		frame, err := nextFrame(buf)
+		if err != nil {
+			return writeCloseFrame(buf, StatusServerError, err)
+		}
+
+		if err := validateFrame(frame, s.maxFragmentSize); err != nil {
+			return writeCloseFrame(buf, StatusProtocolError, err)
+		}
+
+		switch frame.Opcode {
+		case OpcodeBinary, OpcodeText:
+			if currentMsg != nil {
+				return writeCloseFrame(buf, StatusProtocolError, errors.New("expected continuation frame"))
+			}
+			if frame.Opcode == OpcodeText && !utf8.Valid(frame.Payload) {
+				return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
+			}
+			currentMsg = &Message{
+				Binary:  frame.Opcode == OpcodeBinary,
+				Payload: frame.Payload,
+			}
+		case OpcodeContinuation:
+			if currentMsg == nil {
+				return writeCloseFrame(buf, StatusProtocolError, errors.New("unexpected continuation frame"))
+			}
+			if !currentMsg.Binary && !utf8.Valid(frame.Payload) {
+				return writeCloseFrame(buf, StatusUnsupportedPayload, errors.New("invalid UTF-8"))
+			}
+			currentMsg.Payload = append(currentMsg.Payload, frame.Payload...)
+			if len(currentMsg.Payload) > s.maxMessageSize {
+				return writeCloseFrame(buf, StatusTooLarge, fmt.Errorf("message size %d exceeds maximum of %d bytes", len(currentMsg.Payload), s.maxMessageSize))
+			}
+		case OpcodeClose:
+			return writeCloseFrame(buf, StatusNormalClosure, nil)
+		case OpcodePing:
+			frame.Opcode = OpcodePong
+			if err := writeFrame(buf, frame); err != nil {
+				return err
+			}
+			continue
+		case OpcodePong:
+			continue
+		default:
+			return writeCloseFrame(buf, StatusProtocolError, fmt.Errorf("unsupported opcode: %v", frame.Opcode))
+		}
+
+		if frame.Fin {
+			resp, err := handler(ctx, currentMsg)
 			if err != nil {
 				return writeCloseFrame(buf, StatusServerError, err)
 			}
@@ -224,9 +218,7 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 					return err
 				}
 			}
-			msg = nil
-			msgReady = false
-			needContinuation = false
+			currentMsg = nil
 		}
 	}
 }
