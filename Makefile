@@ -60,6 +60,7 @@ testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
 .PHONY: testcover
 
+# Run the autobahn fuzzingclient test suite
 testautobahn:
 	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v -run TestWebSocketServer$$ $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 .PHONY: autobahntests
