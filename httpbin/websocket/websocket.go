@@ -224,43 +224,41 @@ func (s *WebSocket) serveLoop(ctx context.Context, buf *bufio.ReadWriter, handle
 }
 
 func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
-	b1, err := buf.ReadByte()
-	if err != nil {
+	bb := make([]byte, 2)
+	if _, err := io.ReadFull(buf, bb); err != nil {
 		return nil, err
 	}
+
+	b0 := bb[0]
+	b1 := bb[1]
 
 	var (
-		fin    = b1&0b10000000 != 0
-		rsv1   = b1&0b01000000 != 0
-		rsv2   = b1&0b00100000 != 0
-		rsv3   = b1&0b00010000 != 0
-		opcode = Opcode(b1 & 0b00001111)
+		fin    = b0&0b10000000 != 0
+		rsv1   = b0&0b01000000 != 0
+		rsv2   = b0&0b00100000 != 0
+		rsv3   = b0&0b00010000 != 0
+		opcode = Opcode(b0 & 0b00001111)
 	)
-
-	b2, err := buf.ReadByte()
-	if err != nil {
-		return nil, err
-	}
 
 	// Per https://datatracker.ietf.org/doc/html/rfc6455#section-5.2, all
 	// client frames must be masked.
-	if masked := b2 & 0b10000000; masked == 0 {
+	if masked := b1 & 0b10000000; masked == 0 {
 		return nil, fmt.Errorf("received unmasked client frame")
 	}
 
 	var payloadLength uint64
 	switch {
-	case b2-128 <= 125:
+	case b1-128 <= 125:
 		// Payload length is directly represented in the second byte
-		payloadLength = uint64(b2 - 128)
-	case b2-128 == 126:
+		payloadLength = uint64(b1 - 128)
+	case b1-128 == 126:
 		// Payload length is represented in the next 2 bytes (16-bit unsigned integer)
 		var l uint16
 		if err := binary.Read(buf, binary.BigEndian, &l); err != nil {
 			return nil, err
 		}
 		payloadLength = uint64(l)
-	case b2-128 == 127:
+	case b1-128 == 127:
 		// Payload length is represented in the next 8 bytes (64-bit unsigned integer)
 		if err := binary.Read(buf, binary.BigEndian, &payloadLength); err != nil {
 			return nil, err
