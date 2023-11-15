@@ -34,7 +34,7 @@ var defaultExcludedTestCases = []string{
 	"13.*",
 }
 
-func TestWebsocketServer(t *testing.T) {
+func TestWebSocketServer(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv("AUTOBAHN_TESTS") == "" {
