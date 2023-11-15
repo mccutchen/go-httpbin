@@ -17,11 +17,11 @@ import (
 
 const autobahnImage = "crossbario/autobahn-testsuite:0.8.2"
 
-var defaultAutobahnTestCases = []string{
+var defaultIncludedTestCases = []string{
 	"*",
 }
 
-var autobahnExcludedTestCases = []string{
+var defaultExcludedTestCases = []string{
 	// These cases all seem to rely on the server accepting fragmented text
 	// frames with invalid utf8 payloads, but the spec seems to indicate that
 	// every text fragment must be valid utf8 on its own.
@@ -41,10 +41,12 @@ func TestWebsocketServer(t *testing.T) {
 		t.Skipf("set AUTOBAHN_TESTS=1 to run autobahn integration tests")
 	}
 
-	autobahnTestCases := defaultAutobahnTestCases
+	includedTestCases := defaultIncludedTestCases
+	excludedTestCases := defaultExcludedTestCases
 	if userTestCases := os.Getenv("AUTOBAHN_CASES"); userTestCases != "" {
 		t.Logf("using AUTOBAHN_CASES=%q", userTestCases)
-		autobahnTestCases = strings.Split(userTestCases, ",")
+		includedTestCases = strings.Split(userTestCases, ",")
+		excludedTestCases = nil
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +78,8 @@ func TestWebsocketServer(t *testing.T) {
 			},
 		},
 		"outdir":        "/testdir/report",
-		"cases":         autobahnTestCases,
-		"exclude-cases": autobahnExcludedTestCases,
+		"cases":         includedTestCases,
+		"exclude-cases": excludedTestCases,
 	}
 
 	autobahnCfgFile, err := os.Create(path.Join(testDir, "autobahn.json"))
