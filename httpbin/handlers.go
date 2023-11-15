@@ -1114,6 +1114,8 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
+// WebSocketEcho - simple websocket echo server, where the max fragment size
+// and max message size can be controlled by clients.
 func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	var (
 		maxFragmentSize = h.MaxBodySize / 2

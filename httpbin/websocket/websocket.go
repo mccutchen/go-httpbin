@@ -16,8 +16,11 @@ import (
 
 const requiredVersion = "13"
 
+// Opcode is a websocket OPCODE.
 type Opcode uint8
 
+// See the RFC for the set of defined opcodes:
+// https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
 const (
 	OpcodeContinuation Opcode = 0x0
 	OpcodeText         Opcode = 0x1
@@ -27,8 +30,11 @@ const (
 	OpcodePong         Opcode = 0xA
 )
 
+// StatusCode is a websocket status code.
 type StatusCode uint16
 
+// See the RFC for the set of defined status codes:
+// https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
 const (
 	StatusNormalClosure      StatusCode = 1000
 	StatusGoingAway          StatusCode = 1001
@@ -39,11 +45,11 @@ const (
 	StatusUnsupportedPayload StatusCode = 1007
 	StatusPolicyViolation    StatusCode = 1008
 	StatusTooLarge           StatusCode = 1009
-	StatusTlsHandshake       StatusCode = 1015
+	StatusTlSHandshake       StatusCode = 1015
 	StatusServerError        StatusCode = 1011
 )
 
-// Frame is a websocket frame.
+// Frame is a websocket protocol frame.
 type Frame struct {
 	Fin     bool
 	RSV1    bool
@@ -53,8 +59,8 @@ type Frame struct {
 	Payload []byte
 }
 
-// Message is a message from the client, which may be constructed from one or
-// more individual frames.
+// Message is an application-level message from the client, which may be
+// constructed from one or more individual protocol frames.
 type Message struct {
 	Binary  bool
 	Payload []byte
@@ -71,7 +77,7 @@ var EchoHandler Handler = func(ctx context.Context, msg *Message) (*Message, err
 	return msg, nil
 }
 
-// Limits defines the limits imposed on a websocket connections.
+// Limits define the limits imposed on a websocket connection.
 type Limits struct {
 	MaxFragmentSize int
 	MaxMessageSize  int
@@ -96,7 +102,9 @@ func New(w http.ResponseWriter, r *http.Request, limits Limits) *WebSocket {
 	}
 }
 
-// Handshake validates the request and performs the WebSocket handshake.
+// Handshake validates the request and performs the WebSocket handshake. If
+// Handshake returns nil, only websocket frames should be written to the
+// response writer.
 func (s *WebSocket) Handshake() error {
 	if s.handshook {
 		panic("websocket: handshake already completed")
