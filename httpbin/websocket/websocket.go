@@ -301,9 +301,7 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 	}, nil
 }
 
-func encodeFrame(frame *Frame) []byte {
-	var header []byte
-
+func writeFrame(dst *bufio.ReadWriter, frame *Frame) error {
 	// FIN, RSV1-3, OPCODE
 	var b1 byte
 	if frame.Fin {
@@ -319,29 +317,33 @@ func encodeFrame(frame *Frame) []byte {
 		b1 |= 0b00010000
 	}
 	b1 |= uint8(frame.Opcode) & 0b00001111
-	header = append(header, b1)
+	if err := dst.WriteByte(b1); err != nil {
+		return err
+	}
 
 	// payload length
 	payloadLen := int64(len(frame.Payload))
 	switch {
 	case payloadLen <= 125:
-		header = append(header, byte(payloadLen))
+		if err := dst.WriteByte(byte(payloadLen)); err != nil {
+			return err
+		}
 	case payloadLen <= 65535:
-		header = append(header, 126)
-		header = binary.BigEndian.AppendUint16(header, uint16(payloadLen))
+		if _, err := dst.Write(binary.BigEndian.AppendUint16([]byte{126}, uint16(payloadLen))); err != nil {
+			return err
+		}
 	default:
-		header = append(header, 127)
-		header = binary.BigEndian.AppendUint64(header, uint64(payloadLen))
+		if _, err := dst.Write(binary.BigEndian.AppendUint64([]byte{127}, uint64(payloadLen))); err != nil {
+			return err
+		}
 	}
 
-	return append(header, frame.Payload...)
-}
-
-func writeFrame(buf *bufio.ReadWriter, frame *Frame) error {
-	if _, err := buf.Write(encodeFrame(frame)); err != nil {
+	// payload
+	if _, err := dst.Write(frame.Payload); err != nil {
 		return err
 	}
-	return buf.Flush()
+
+	return dst.Flush()
 }
 
 // frameResponse splits a message into N frames with payloads of at most
@@ -380,13 +382,13 @@ func frameResponse(msg *Message, fragmentSize int) []*Frame {
 
 // writeCloseFrame writes a close frame to the wire, with an optional error
 // message.
-func writeCloseFrame(buf *bufio.ReadWriter, code StatusCode, err error) error {
+func writeCloseFrame(dst *bufio.ReadWriter, code StatusCode, err error) error {
 	var payload []byte
 	payload = binary.BigEndian.AppendUint16(payload, uint16(code))
 	if err != nil {
 		payload = append(payload, []byte(err.Error())...)
 	}
-	return writeFrame(buf, &Frame{
+	return writeFrame(dst, &Frame{
 		Fin:     true,
 		Opcode:  OpcodeClose,
 		Payload: payload,
