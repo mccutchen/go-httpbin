@@ -329,11 +329,17 @@ func writeFrame(dst *bufio.ReadWriter, frame *Frame) error {
 			return err
 		}
 	case payloadLen <= 65535:
-		if _, err := dst.Write(binary.BigEndian.AppendUint16([]byte{126}, uint16(payloadLen))); err != nil {
+		if err := dst.WriteByte(126); err != nil {
+			return err
+		}
+		if err := binary.Write(dst, binary.BigEndian, uint16(payloadLen)); err != nil {
 			return err
 		}
 	default:
-		if _, err := dst.Write(binary.BigEndian.AppendUint64([]byte{127}, uint64(payloadLen))); err != nil {
+		if err := dst.WriteByte(127); err != nil {
+			return err
+		}
+		if err := binary.Write(dst, binary.BigEndian, payloadLen); err != nil {
 			return err
 		}
 	}
