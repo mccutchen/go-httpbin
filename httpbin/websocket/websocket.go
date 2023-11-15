@@ -263,18 +263,16 @@ func nextFrame(buf *bufio.ReadWriter) (*Frame, error) {
 		payloadLength = uint64(b2 - 128)
 	case b2-128 == 126:
 		// Payload length is represented in the next 2 bytes (16-bit unsigned integer)
-		lenBytes := make([]byte, 2)
-		if _, err := io.ReadFull(buf, lenBytes); err != nil {
+		var l uint16
+		if err := binary.Read(buf, binary.BigEndian, &l); err != nil {
 			return nil, err
 		}
-		payloadLength = uint64(binary.BigEndian.Uint16(lenBytes))
+		payloadLength = uint64(l)
 	case b2-128 == 127:
 		// Payload length is represented in the next 8 bytes (64-bit unsigned integer)
-		lenBytes := make([]byte, 8)
-		if _, err := io.ReadFull(buf, lenBytes); err != nil {
+		if err := binary.Read(buf, binary.BigEndian, &payloadLength); err != nil {
 			return nil, err
 		}
-		payloadLength = binary.BigEndian.Uint64(lenBytes)
 	}
 
 	mask := make([]byte, 4)
