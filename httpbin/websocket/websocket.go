@@ -342,6 +342,21 @@ func writeFrame(dst *bufio.ReadWriter, frame *Frame) error {
 	return dst.Flush()
 }
 
+// writeCloseFrame writes a close frame to the wire, with an optional error
+// message.
+func writeCloseFrame(dst *bufio.ReadWriter, code StatusCode, err error) error {
+	var payload []byte
+	payload = binary.BigEndian.AppendUint16(payload, uint16(code))
+	if err != nil {
+		payload = append(payload, []byte(err.Error())...)
+	}
+	return writeFrame(dst, &Frame{
+		Fin:     true,
+		Opcode:  OpcodeClose,
+		Payload: payload,
+	})
+}
+
 // frameResponse splits a message into N frames with payloads of at most
 // fragmentSize bytes.
 func frameResponse(msg *Message, fragmentSize int) []*Frame {
@@ -374,21 +389,6 @@ func frameResponse(msg *Message, fragmentSize int) []*Frame {
 		}
 	}
 	return result
-}
-
-// writeCloseFrame writes a close frame to the wire, with an optional error
-// message.
-func writeCloseFrame(dst *bufio.ReadWriter, code StatusCode, err error) error {
-	var payload []byte
-	payload = binary.BigEndian.AppendUint16(payload, uint16(code))
-	if err != nil {
-		payload = append(payload, []byte(err.Error())...)
-	}
-	return writeFrame(dst, &Frame{
-		Fin:     true,
-		Opcode:  OpcodeClose,
-		Payload: payload,
-	})
 }
 
 var reservedStatusCodes = map[uint16]bool{
