@@ -49,8 +49,8 @@ func TestWebsocketServer(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ws := websocket.New(w, r, websocket.Limits{
-			MaxFragmentSize: 1024 * 1024 * 16,
-			MaxMessageSize:  1024 * 1024 * 16,
+			MaxFragmentSize: 1024 * 1024 * 8,
+			MaxMessageSize:  1024 * 1024 * 8,
 		})
 		if err := ws.Handshake(); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -99,26 +99,19 @@ func TestWebsocketServer(t *testing.T) {
 	)
 	runCmd(t, testCmd)
 
-	f, err := os.Open(path.Join(testDir, "report", "index.json"))
-	assert.NilError(t, err)
-	defer f.Close()
-
-	var report autobahnReportIndex
-	assert.NilError(t, json.NewDecoder(f).Decode(&report))
+	summary := loadSummary(t, testDir)
 
 	failed := false
-	for _, results := range report {
+	for _, results := range summary {
 		for caseName, result := range results {
 			result := result
 			t.Run("autobahn/"+caseName, func(t *testing.T) {
-				if result.Behavior == "FAILED" {
-					t.Errorf("test failed")
-					t.Logf("report: %s", path.Join(testDir, "report", result.ReportFile))
-					failed = true
-				}
-				if result.BehaviorClose == "FAILED" {
-					t.Errorf("test failed on close")
-					t.Logf("report: %s", path.Join(testDir, "report", result.ReportFile))
+				if result.Behavior == "FAILED" || result.BehaviorClose == "FAILED" {
+					report := loadReport(t, testDir, result.ReportFile)
+					t.Errorf("description: %s", report.Description)
+					t.Errorf("expectation: %s", report.Expectation)
+					t.Errorf("result:      %s", report.Result)
+					t.Errorf("close:       %s", report.ResultClose)
 					failed = true
 				}
 			})
@@ -138,10 +131,35 @@ func runCmd(t *testing.T, cmd *exec.Cmd) {
 	assert.NilError(t, cmd.Run())
 }
 
-type autobahnReportIndex map[string]map[string]autobahnReportResult
+func loadSummary(t *testing.T, testDir string) autobahnReportSummary {
+	t.Helper()
+	f, err := os.Open(path.Join(testDir, "report", "index.json"))
+	assert.NilError(t, err)
+	defer f.Close()
+	var summary autobahnReportSummary
+	assert.NilError(t, json.NewDecoder(f).Decode(&summary))
+	return summary
+}
+
+func loadReport(t *testing.T, testDir string, reportFile string) autobahnReportResult {
+	t.Helper()
+	reportPath := path.Join(testDir, "report", reportFile)
+	t.Logf("report path: %s", reportPath)
+	f, err := os.Open(reportPath)
+	assert.NilError(t, err)
+	var report autobahnReportResult
+	assert.NilError(t, json.NewDecoder(f).Decode(&report))
+	return report
+}
+
+type autobahnReportSummary map[string]map[string]autobahnReportResult
 
 type autobahnReportResult struct {
 	Behavior      string `json:"behavior"`
 	BehaviorClose string `json:"behaviorClose"`
+	Description   string `json:"description"`
+	Expectation   string `json:"expectation"`
 	ReportFile    string `json:"reportfile"`
+	Result        string `json:"result"`
+	ResultClose   string `json:"resultClose"`
 }
