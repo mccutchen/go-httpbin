@@ -46,7 +46,7 @@ func TestWebsocketServer(t *testing.T) {
 	if userTestCases := os.Getenv("AUTOBAHN_CASES"); userTestCases != "" {
 		t.Logf("using AUTOBAHN_CASES=%q", userTestCases)
 		includedTestCases = strings.Split(userTestCases, ",")
-		excludedTestCases = nil
+		excludedTestCases = []string{}
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,6 @@ func TestWebsocketServer(t *testing.T) {
 
 	summary := loadSummary(t, testDir)
 
-	failed := false
 	for _, results := range summary {
 		for caseName, result := range results {
 			result := result
@@ -114,14 +113,13 @@ func TestWebsocketServer(t *testing.T) {
 					t.Errorf("expectation: %s", report.Expectation)
 					t.Errorf("result:      %s", report.Result)
 					t.Errorf("close:       %s", report.ResultClose)
-					failed = true
 				}
 			})
 		}
 	}
 
 	t.Logf("autobahn test report: %s", path.Join(testDir, "report/index.html"))
-	if failed && os.Getenv("AUTOBAHN_OPEN_REPORT") != "" {
+	if os.Getenv("AUTOBAHN_OPEN_REPORT") != "" {
 		runCmd(t, exec.Command("open", path.Join(testDir, "report/index.html")))
 	}
 }
