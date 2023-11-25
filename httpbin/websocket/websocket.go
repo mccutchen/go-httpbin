@@ -1,3 +1,4 @@
+// Package websocket implements a basic websocket server.
 package websocket
 
 import (
