@@ -169,17 +169,7 @@ public internet, consider tuning it appropriately:
 
 ## Development
 
-```bash
-# local development
-make
-make test
-make testcover
-make run
-
-# building & pushing docker images
-make image
-make imagepush
-```
+See [DEVELOPMENT.md][].
 
 ## Motivation & prior art
 
@@ -218,3 +208,4 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Observer]: https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2/httpbin#Observer
 [Production considerations]: #production-considerations
 [zerolog]: https://github.com/rs/zerolog
+[DEVELOPMENT.md]: ./DEVELOPMENT.md
