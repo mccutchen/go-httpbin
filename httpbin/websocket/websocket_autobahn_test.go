@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -68,8 +69,8 @@ func TestWebSocketServer(t *testing.T) {
 	testDir := newTestDir(t)
 	t.Logf("test dir: %s", testDir)
 
-	u, _ := url.Parse(srv.URL)
-	targetURL := "ws://host.docker.internal:" + u.Port() + "/websocket/echo"
+	targetURL := newAutobahnTargetURL(t, srv)
+	t.Logf("target url: %s", targetURL)
 
 	autobahnCfg := map[string]any{
 		"servers": []map[string]string{
@@ -103,6 +104,9 @@ func TestWebSocketServer(t *testing.T) {
 	runCmd(t, testCmd)
 
 	summary := loadSummary(t, testDir)
+	if len(summary) == 0 {
+		t.Fatalf("empty autobahn test summary; check autobahn logs for problems connecting to test server at %q", targetURL)
+	}
 
 	for _, results := range summary {
 		for caseName, result := range results {
@@ -123,6 +127,32 @@ func TestWebSocketServer(t *testing.T) {
 	if os.Getenv("AUTOBAHN_OPEN_REPORT") != "" {
 		runCmd(t, exec.Command("open", path.Join(testDir, "report/index.html")))
 	}
+}
+
+// newAutobahnTargetURL returns the URL that the autobahn test suite should use
+// to connect to the given httptest server.
+//
+// On Macs, the docker engine is running inside an implicit VM, so even with
+// --net=host, we need to use the special hostname to escape the VM.
+//
+// See the Docker Desktop docs[1] for more information. This same special
+// hostname seems to work across Docker Desktop for Mac, OrbStack, and Colima.
+//
+// [1]: https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host
+func newAutobahnTargetURL(t *testing.T, srv *httptest.Server) string {
+	t.Helper()
+	u, err := url.Parse(srv.URL)
+	assert.NilError(t, err)
+
+	var host string
+	switch runtime.GOOS {
+	case "darwin":
+		host = "host.docker.internal"
+	default:
+		host = "127.0.0.1"
+	}
+
+	return fmt.Sprintf("ws://%s:%s/websocket/echo", host, u.Port())
 }
 
 func runCmd(t *testing.T, cmd *exec.Cmd) {
