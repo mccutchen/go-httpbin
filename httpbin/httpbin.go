@@ -153,6 +153,8 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/dump/request", h.DumpRequest)
 
+	mux.HandleFunc("/websocket/echo", h.WebSocketEcho)
+
 	// existing httpbin endpoints that we do not support
 	mux.HandleFunc("/brotli", notImplementedHandler)
 

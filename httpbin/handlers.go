@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/digest"
+	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 )
 
 var nilValues = url.Values{}
@@ -1111,4 +1112,52 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(http.StatusOK, w, hostnameResponse{
 		Hostname: h.hostname,
 	})
+}
+
+// WebSocketEcho - simple websocket echo server, where the max fragment size
+// and max message size can be controlled by clients.
+func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
+	var (
+		maxFragmentSize = h.MaxBodySize / 2
+		maxMessageSize  = h.MaxBodySize
+		q               = r.URL.Query()
+		err             error
+	)
+
+	if userMaxFragmentSize := q.Get("max_fragment_size"); userMaxFragmentSize != "" {
+		maxFragmentSize, err = strconv.ParseInt(userMaxFragmentSize, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_fragment_size: %w", err))
+			return
+		} else if maxFragmentSize < 1 || maxFragmentSize > h.MaxBodySize {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_fragment_size: %d not in range [1, %d]", maxFragmentSize, h.MaxBodySize))
+			return
+		}
+	}
+
+	if userMaxMessageSize := q.Get("max_message_size"); userMaxMessageSize != "" {
+		maxMessageSize, err = strconv.ParseInt(userMaxMessageSize, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_message_size: %w", err))
+			return
+		} else if maxMessageSize < 1 || maxMessageSize > h.MaxBodySize {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_message_size: %d not in range [1, %d]", maxMessageSize, h.MaxBodySize))
+			return
+		}
+	}
+
+	if maxFragmentSize > maxMessageSize {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("max_fragment_size %d must be less than or equal to max_message_size %d", maxFragmentSize, maxMessageSize))
+		return
+	}
+
+	ws := websocket.New(w, r, websocket.Limits{
+		MaxFragmentSize: int(maxFragmentSize),
+		MaxMessageSize:  int(maxMessageSize),
+	})
+	if err := ws.Handshake(); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	ws.Serve(websocket.EchoHandler)
 }

@@ -38,7 +38,7 @@ buildtests:
 .PHONY: buildtests
 
 clean:
-	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
+	rm -rf $(DIST_PATH) $(COVERAGE_PATH) .integrationtests
 .PHONY: clean
 
 
@@ -53,13 +53,17 @@ test:
 # based on codecov.io's documentation:
 # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
 testci: build buildexamples
-	go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
-	git diff --exit-code
+	AUTOBAHN_TESTS=1 go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 .PHONY: testci
 
 testcover: testci
 	go tool cover -html=$(COVERAGE_PATH)
 .PHONY: testcover
+
+# Run the autobahn fuzzingclient test suite
+testautobahn:
+	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v -run ^TestWebSocketServer$$ $(TEST_ARGS) ./...
+.PHONY: autobahntests
 
 lint:
 	test -z "$$(gofmt -d -s -e .)" || (echo "Error: gofmt failed"; gofmt -d -s -e . ; exit 1)
