@@ -1125,7 +1125,7 @@ func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if userMaxFragmentSize := q.Get("max_fragment_size"); userMaxFragmentSize != "" {
-		maxFragmentSize, err = strconv.ParseInt(userMaxFragmentSize, 10, 64)
+		maxFragmentSize, err = strconv.ParseInt(userMaxFragmentSize, 10, 32)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_fragment_size: %w", err))
 			return
@@ -1136,7 +1136,7 @@ func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userMaxMessageSize := q.Get("max_message_size"); userMaxMessageSize != "" {
-		maxMessageSize, err = strconv.ParseInt(userMaxMessageSize, 10, 64)
+		maxMessageSize, err = strconv.ParseInt(userMaxMessageSize, 10, 32)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid max_message_size: %w", err))
 			return
