@@ -53,7 +53,7 @@ test:
 # based on codecov.io's documentation:
 # https://github.com/codecov/example-go/blob/b85638743b972bd0bd2af63421fe513c6f968930/README.md
 testci: build buildexamples
-	AUTOBAHN_TESTS=1 go test $(TEST_ARGS) $(COVERAGE_ARGS) ./...
+	AUTOBAHN_TESTS=1 go test -v $(TEST_ARGS) $(COVERAGE_ARGS) ./...
 .PHONY: testci
 
 testcover: testci
