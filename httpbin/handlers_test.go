@@ -2913,8 +2913,10 @@ func TestHostname(t *testing.T) {
 
 func TestWebSocketEcho(t *testing.T) {
 	// ========================================================================
-	// Note: see websocket/*_test.go for in-depth integration tests of the
-	// actual websocket implementation.
+	// Note: Here we only test input validation for the websocket endpoint.
+	//
+	// See websocket/*_test.go for in-depth integration tests of the actual
+	// websocket implementation.
 	// ========================================================================
 
 	handshakeHeaders := map[string]string{
@@ -2960,7 +2962,7 @@ func TestWebSocketEcho(t *testing.T) {
 		{"max_fragment_size=foo&max_message_size=2", http.StatusBadRequest},
 		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", app.MaxBodySize+1), http.StatusBadRequest},
 
-		// bad max_framgent_size
+		// bad max_message_size
 		{"max_fragment_size=1&max_message_size=0", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=-1", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=bar", http.StatusBadRequest},
