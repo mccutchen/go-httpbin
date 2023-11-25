@@ -46,6 +46,8 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
+// WithExcludeHeaders sets the headers to exclude in outgoing responses, to
+// prevent possible information leakage.
 func WithExcludeHeaders(excludeHeaders string) OptionFunc {
 	return func(h *HTTPBin) {
 		h.setExcludeHeaders(excludeHeaders)

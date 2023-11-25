@@ -1,3 +1,4 @@
+// Package assert implements common assertions used in go-httbin's unit tests.
 package assert
 
 import (
