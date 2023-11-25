@@ -62,7 +62,7 @@ testcover: testci
 
 # Run the autobahn fuzzingclient test suite
 testautobahn:
-	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v -run TestWebSocketServer$$ $(TEST_ARGS) $(COVERAGE_ARGS) ./...
+	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v -run ^TestWebSocketServer$$ $(TEST_ARGS) ./...
 .PHONY: autobahntests
 
 lint:

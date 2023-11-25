@@ -135,11 +135,6 @@ func runCmd(t *testing.T, cmd *exec.Cmd) {
 
 func newTestDir(t *testing.T) string {
 	t.Helper()
-	x, err := os.Getwd()
-	assert.NilError(t, err)
-	if !strings.HasSuffix(x, "go-httpbin") {
-		t.Errorf("unexpected working directory: %s", x)
-	}
 	testDir, err := filepath.Abs(path.Join(".integrationtests", fmt.Sprintf("autobahn-test-%d", time.Now().Unix())))
 	assert.NilError(t, err)
 	assert.NilError(t, os.MkdirAll(testDir, 0o755))
