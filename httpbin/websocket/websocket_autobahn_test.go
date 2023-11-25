@@ -2,14 +2,17 @@ package websocket_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
@@ -62,9 +65,7 @@ func TestWebSocketServer(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	testDir, err := os.MkdirTemp("", "go-httpbin-autobahn-test")
-	assert.NilError(t, err)
-	// defer os.RemoveAll(testDir)
+	testDir := newTestDir(t)
 	t.Logf("test dir: %s", testDir)
 
 	u, _ := url.Parse(srv.URL)
@@ -126,9 +127,23 @@ func TestWebSocketServer(t *testing.T) {
 
 func runCmd(t *testing.T, cmd *exec.Cmd) {
 	t.Helper()
+	t.Logf("running command: %s", cmd.String())
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	assert.NilError(t, cmd.Run())
+}
+
+func newTestDir(t *testing.T) string {
+	t.Helper()
+	x, err := os.Getwd()
+	assert.NilError(t, err)
+	if !strings.HasSuffix(x, "go-httpbin") {
+		t.Errorf("unexpected working directory: %s", x)
+	}
+	testDir, err := filepath.Abs(path.Join(".integrationtests", fmt.Sprintf("autobahn-test-%d", time.Now().Unix())))
+	assert.NilError(t, err)
+	assert.NilError(t, os.MkdirAll(testDir, 0o755))
+	return testDir
 }
 
 func loadSummary(t *testing.T, testDir string) autobahnReportSummary {
