@@ -39,10 +39,20 @@ run on every pull request:
 
     make testci
 
+### WebSocket development
+
 When working on the WebSocket implementation, it can also be useful to run
 those integration tests directly, like so:
 
     make testautobahn
+
+Use the `AUTOBAHN_CASES` var to run a specific subset of the Autobahn tests,
+which may or may not include wildcards:
+
+    make testautobahn AUTOBAHN_CASES=6.*
+    make testautobahn AUTOBAHN_CASES=6.5.*
+    make testautobahn AUTOBAHN_CASES=6.5.4
+
 
 ### Test coverage
 
