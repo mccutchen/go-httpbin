@@ -160,7 +160,7 @@ func parseFiles(fileHeaders map[string][]*multipart.FileHeader) (map[string][]st
 //
 // Note: this function expects callers to limit the the maximum size of the
 // request body. See, e.g., the limitRequestSize middleware.
-func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error {
+func parseBody(r *http.Request, resp *bodyResponse) error {
 	defer r.Body.Close()
 
 	// Always set resp.Data to the incoming request body, in case we don't know

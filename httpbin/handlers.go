@@ -19,7 +19,7 @@ import (
 
 var nilValues = url.Values{}
 
-func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
+func notImplementedHandler(w http.ResponseWriter, _ *http.Request) {
 	writeError(w, http.StatusNotImplemented, nil)
 }
 
@@ -34,12 +34,12 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
-func (h *HTTPBin) FormsPost(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) FormsPost(w http.ResponseWriter, _ *http.Request) {
 	writeHTML(w, mustStaticAsset("forms-post.html"), http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test
-func (h *HTTPBin) UTF8(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) UTF8(w http.ResponseWriter, _ *http.Request) {
 	writeHTML(w, mustStaticAsset("utf8.html"), http.StatusOK)
 }
 
@@ -80,7 +80,7 @@ func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 		URL:     getURL(r).String(),
 	}
 
-	if err := parseBody(w, r, resp); err != nil {
+	if err := parseBody(r, resp); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("error parsing request body: %w", err))
 		return
 	}
@@ -718,12 +718,12 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 }
 
 // HTML renders a basic HTML page
-func (h *HTTPBin) HTML(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) HTML(w http.ResponseWriter, _ *http.Request) {
 	writeHTML(w, mustStaticAsset("moby.html"), http.StatusOK)
 }
 
 // Robots renders a basic robots.txt file
-func (h *HTTPBin) Robots(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) Robots(w http.ResponseWriter, _ *http.Request) {
 	robotsTxt := []byte(`User-agent: *
 Disallow: /deny
 `)
@@ -731,7 +731,7 @@ Disallow: /deny
 }
 
 // Deny renders a basic page that robots should never access
-func (h *HTTPBin) Deny(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) Deny(w http.ResponseWriter, _ *http.Request) {
 	writeResponse(w, http.StatusOK, textContentType, []byte(`YOU SHOULDN'T BE HERE`))
 }
 
@@ -926,7 +926,7 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 }
 
 // doLinksPage renders a page with a series of N links
-func doLinksPage(w http.ResponseWriter, r *http.Request, n int, offset int) {
+func doLinksPage(w http.ResponseWriter, _ *http.Request, n int, offset int) {
 	w.Header().Add("Content-Type", htmlContentType)
 	w.WriteHeader(http.StatusOK)
 
@@ -988,7 +988,7 @@ func doImage(w http.ResponseWriter, kind string) {
 }
 
 // XML responds with an XML document
-func (h *HTTPBin) XML(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) XML(w http.ResponseWriter, _ *http.Request) {
 	writeResponse(w, http.StatusOK, "application/xml", mustStaticAsset("sample.xml"))
 }
 
@@ -1042,7 +1042,7 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 // UUID - responds with a generated UUID
-func (h *HTTPBin) UUID(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) UUID(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(http.StatusOK, w, uuidResponse{
 		UUID: uuidv4(),
 	})
@@ -1085,7 +1085,7 @@ func (h *HTTPBin) DumpRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // JSON - returns a sample json
-func (h *HTTPBin) JSON(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) JSON(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", jsonContentType)
 	w.WriteHeader(http.StatusOK)
 	w.Write(mustStaticAsset("sample.json"))
@@ -1107,7 +1107,7 @@ func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 }
 
 // Hostname - returns the hostname.
-func (h *HTTPBin) Hostname(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(http.StatusOK, w, hostnameResponse{
 		Hostname: h.hostname,
 	})

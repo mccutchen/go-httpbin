@@ -1,3 +1,5 @@
+// Package must implements helper functions for testing to eliminate some error
+// checking boilerplate.
 package must
 
 import (

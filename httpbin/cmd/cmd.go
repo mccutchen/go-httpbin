@@ -1,3 +1,5 @@
+// Package cmd implements the go-httpbin command line interface as a testable
+// package.
 package cmd
 
 import (

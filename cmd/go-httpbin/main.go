@@ -1,3 +1,4 @@
+// Package main implements the go-httpbin command line tool.
 package main
 
 import (
