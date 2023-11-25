@@ -38,7 +38,7 @@ buildtests:
 .PHONY: buildtests
 
 clean:
-	rm -rf $(DIST_PATH) $(COVERAGE_PATH)
+	rm -rf $(DIST_PATH) $(COVERAGE_PATH) .integrationtests
 .PHONY: clean
 
 

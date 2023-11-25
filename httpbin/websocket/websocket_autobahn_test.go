@@ -165,7 +165,13 @@ func runCmd(t *testing.T, cmd *exec.Cmd) {
 
 func newTestDir(t *testing.T) string {
 	t.Helper()
-	testDir, err := filepath.Abs(path.Join(".integrationtests", fmt.Sprintf("autobahn-test-%d", time.Now().Unix())))
+
+	// package tests are run with the package as the working directory, but we
+	// want to store our integration test output in the repo root
+	testDir, err := filepath.Abs(path.Join(
+		"..", "..", ".integrationtests", fmt.Sprintf("autobahn-test-%d", time.Now().Unix()),
+	))
+
 	assert.NilError(t, err)
 	assert.NilError(t, os.MkdirAll(testDir, 0o755))
 	return testDir
