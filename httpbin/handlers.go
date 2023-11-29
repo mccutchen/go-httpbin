@@ -1152,6 +1152,7 @@ func (h *HTTPBin) WebSocketEcho(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ws := websocket.New(w, r, websocket.Limits{
+		MaxDuration:     h.MaxDuration,
 		MaxFragmentSize: int(maxFragmentSize),
 		MaxMessageSize:  int(maxMessageSize),
 	})

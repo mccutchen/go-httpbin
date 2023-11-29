@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -80,6 +81,7 @@ var EchoHandler Handler = func(ctx context.Context, msg *Message) (*Message, err
 
 // Limits define the limits imposed on a websocket connection.
 type Limits struct {
+	MaxDuration     time.Duration
 	MaxFragmentSize int
 	MaxMessageSize  int
 }
@@ -88,6 +90,7 @@ type Limits struct {
 type WebSocket struct {
 	w               http.ResponseWriter
 	r               *http.Request
+	maxDuration     time.Duration
 	maxFragmentSize int
 	maxMessageSize  int
 	handshook       bool
@@ -98,6 +101,7 @@ func New(w http.ResponseWriter, r *http.Request, limits Limits) *WebSocket {
 	return &WebSocket{
 		w:               w,
 		r:               r,
+		maxDuration:     limits.MaxDuration,
 		maxFragmentSize: limits.MaxFragmentSize,
 		maxMessageSize:  limits.MaxMessageSize,
 	}
@@ -151,6 +155,10 @@ func (s *WebSocket) Serve(handler Handler) {
 		panic(fmt.Errorf("websocket: serve: hijack failed: %s", err))
 	}
 	defer conn.Close()
+
+	// best effort attempt to ensure that our websocket conenctions do not
+	// exceed the maximum request duration
+	conn.SetDeadline(time.Now().Add(s.maxDuration))
 
 	// errors intentionally ignored here. it's serverLoop's responsibility to
 	// properly close the websocket connection with a useful error message, and
