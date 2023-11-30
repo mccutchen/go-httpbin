@@ -55,6 +55,7 @@ func TestWebSocketServer(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ws := websocket.New(w, r, websocket.Limits{
+			MaxDuration:     30 * time.Second,
 			MaxFragmentSize: 1024 * 1024 * 16,
 			MaxMessageSize:  1024 * 1024 * 16,
 		})
