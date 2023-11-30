@@ -459,18 +459,22 @@ func TestMainImpl(t *testing.T) {
 			wantOut:     "error: could not look up real hostname: hostname failure",
 		},
 		"server error": {
-			args:     []string{"-port", "-256"},
+			args: []string{
+				"-port", "-256",
+				"-host", "127.0.0.1", // default of 0.0.0.0 causes annoying permission popup on macOS
+			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on http://0.0.0.0:-256\nerror: listen tcp: address -256: invalid port\n",
+			wantOut:  "go-httpbin listening on http://127.0.0.1:-256\nerror: listen tcp: address -256: invalid port\n",
 		},
 		"tls cert error": {
 			args: []string{
+				"-host", "127.0.0.1", // default of 0.0.0.0 causes annoying permission popup on macOS
 				"-port", "0",
 				"-https-cert-file", "./https-cert-does-not-exist",
 				"-https-key-file", "./https-key-does-not-exist",
 			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on https://0.0.0.0:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
+			wantOut:  "go-httpbin listening on https://127.0.0.1:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
 		},
 	}
 
