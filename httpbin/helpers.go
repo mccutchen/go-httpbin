@@ -20,9 +20,6 @@ import (
 	"time"
 )
 
-// Base64MaxLen - Maximum input length for Base64 functions
-const Base64MaxLen = 2000
-
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
 //
@@ -385,60 +382,66 @@ func uuidv4() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", buff[0:4], buff[4:6], buff[6:8], buff[8:10], buff[10:])
 }
 
-// base64Helper - describes the base64 operation (encode|decode) and input data
+// base64Helper encapsulates a base64 operation (encode or decode) and its input
+// data.
 type base64Helper struct {
+	maxLen    int64
 	operation string
 	data      string
 }
 
-// newbase64Helper - create a new base64Helper struct
-// Supports the following URL paths
-// - /base64/input_str
-// - /base64/encode/input_str
-// - /base64/decode/input_str
-func newBase64Helper(path string) (*base64Helper, error) {
-	parts := strings.Split(path, "/")
-
-	if len(parts) != 3 && len(parts) != 4 {
-		return nil, errors.New("invalid URL")
-	}
-
-	var b base64Helper
-
-	// Validation for - /base64/input_str
-	if len(parts) == 3 {
+// newBase64Helper creates a new base64Helper from a URL path, which should be
+// in one of two forms:
+// - /base64/<base64_encoded_data>
+// - /base64/<operation>/<base64_encoded_data>
+func newBase64Helper(path string, maxLen int64) *base64Helper {
+	parts := strings.SplitN(path, "/", 4)
+	b := &base64Helper{maxLen: maxLen}
+	switch len(parts) {
+	// Any other cases will be rejected when transform() is called
+	case 3:
+		// handle /base64/<base64_encoded_data>
 		b.operation = "decode"
 		b.data = parts[2]
-	} else {
-		// Validation for
-		// - /base64/encode/input_str
-		// - /base64/encode/input_str
+	case 4:
+		// handle /base64/<operation>/<base64_encoded_data>
 		b.operation = parts[2]
-		if b.operation != "encode" && b.operation != "decode" {
-			return nil, fmt.Errorf("invalid operation: %s", b.operation)
-		}
 		b.data = parts[3]
 	}
-	if len(b.data) == 0 {
-		return nil, errors.New("no input data")
-	}
-	if len(b.data) >= Base64MaxLen {
-		return nil, fmt.Errorf("input length - %d, Cannot handle input >= %d", len(b.data), Base64MaxLen)
-	}
-
-	return &b, nil
+	return b
 }
 
-// Encode - encode data as URL-safe base64
-func (b *base64Helper) Encode() ([]byte, error) {
+// transform performs the base64 operation on the input data.
+func (b *base64Helper) transform() ([]byte, error) {
+	if dataLen := int64(len(b.data)); dataLen == 0 {
+		return nil, errors.New("no input data")
+	} else if dataLen > b.maxLen {
+		return nil, fmt.Errorf("input data exceeds max length of %d", b.maxLen)
+	}
+
+	switch b.operation {
+	case "encode":
+		return b.encode(), nil
+	case "decode":
+		result, err := b.decode()
+		if err != nil {
+			return nil, fmt.Errorf("base64 decode failed: %w", err)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("invalid operation: %s", b.operation)
+	}
+}
+
+func (b *base64Helper) encode() []byte {
+	// always encode using the URL-safe character set
 	buff := make([]byte, base64.URLEncoding.EncodedLen(len(b.data)))
 	base64.URLEncoding.Encode(buff, []byte(b.data))
-	return buff, nil
+	return buff
 }
 
-// Decode - decode data from base64, attempting both URL-safe and standard
-// encodings.
-func (b *base64Helper) Decode() ([]byte, error) {
+func (b *base64Helper) decode() ([]byte, error) {
+	// first, try URL-safe encoding, then std encoding
 	if result, err := base64.URLEncoding.DecodeString(b.data); err == nil {
 		return result, nil
 	}

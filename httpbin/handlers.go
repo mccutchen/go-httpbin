@@ -1051,21 +1051,9 @@ func (h *HTTPBin) UUID(w http.ResponseWriter, _ *http.Request) {
 
 // Base64 - encodes/decodes input data
 func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
-	b, err := newBase64Helper(r.URL.Path)
+	result, err := newBase64Helper(r.URL.Path, h.MaxBodySize).transform()
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid base64 data: %w", err))
-		return
-	}
-
-	var result []byte
-	if b.operation == "decode" {
-		result, err = b.Decode()
-	} else {
-		result, err = b.Encode()
-	}
-
-	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("%s failed: %w", b.operation, err))
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	writeResponse(w, http.StatusOK, textContentType, result)
