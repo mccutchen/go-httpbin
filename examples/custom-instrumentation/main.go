@@ -1,3 +1,4 @@
+// Package main demonstrates how to instrument httpbin with custom metrics.
 package main
 
 import (

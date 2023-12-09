@@ -1,6 +1,11 @@
 package httpbin
 
-import "time"
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+)
 
 // OptionFunc uses the "functional options" pattern to customize an HTTPBin
 // instance
@@ -41,6 +46,14 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
+// WithExcludeHeaders sets the headers to exclude in outgoing responses, to
+// prevent possible information leakage.
+func WithExcludeHeaders(excludeHeaders string) OptionFunc {
+	return func(h *HTTPBin) {
+		h.setExcludeHeaders(excludeHeaders)
+	}
+}
+
 // WithPrefix sets the path prefix
 func WithPrefix(p string) OptionFunc {
 	return func(h *HTTPBin) {
@@ -53,9 +66,17 @@ func WithPrefix(p string) OptionFunc {
 func WithAllowedRedirectDomains(hosts []string) OptionFunc {
 	return func(h *HTTPBin) {
 		hostSet := make(map[string]struct{}, len(hosts))
+		formattedListItems := make([]string, 0, len(hosts))
 		for _, host := range hosts {
 			hostSet[host] = struct{}{}
+			formattedListItems = append(formattedListItems, fmt.Sprintf("- %s", host))
 		}
 		h.AllowedRedirectDomains = hostSet
+
+		sort.Strings(formattedListItems)
+		h.forbiddenRedirectError = fmt.Sprintf(`Forbidden redirect URL. Please be careful with this link.
+
+Allowed redirect destinations:
+%s`, strings.Join(formattedListItems, "\n"))
 	}
 }

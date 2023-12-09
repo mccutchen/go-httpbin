@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	jsonContentType = "application/json; encoding=utf-8"
-	htmlContentType = "text/html; charset=utf-8"
+	binaryContentType = "application/octet-stream"
+	htmlContentType   = "text/html; charset=utf-8"
+	jsonContentType   = "application/json; charset=utf-8"
+	textContentType   = "text/plain; charset=utf-8"
 )
 
 type headersResponse struct {
@@ -27,6 +29,7 @@ type userAgentResponse struct {
 type noBodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
+	Method  string      `json:"method"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
@@ -39,13 +42,14 @@ type noBodyResponse struct {
 type bodyResponse struct {
 	Args    url.Values  `json:"args"`
 	Headers http.Header `json:"headers"`
+	Method  string      `json:"method"`
 	Origin  string      `json:"origin"`
 	URL     string      `json:"url"`
 
-	Data  string              `json:"data"`
-	Files map[string][]string `json:"files"`
-	Form  map[string][]string `json:"form"`
-	JSON  interface{}         `json:"json"`
+	Data  string      `json:"data"`
+	Files url.Values  `json:"files"`
+	Form  url.Values  `json:"form"`
+	JSON  interface{} `json:"json"`
 }
 
 type cookiesResponse map[string]string
@@ -76,4 +80,10 @@ type bearerResponse struct {
 
 type hostnameResponse struct {
 	Hostname string `json:"hostname"`
+}
+
+type errorRespnose struct {
+	StatusCode int    `json:"status_code"`
+	Error      string `json:"error"`
+	Detail     string `json:"detail,omitempty"`
 }

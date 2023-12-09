@@ -10,25 +10,31 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-// Base64MaxLen - Maximum input length for Base64 functions
-const Base64MaxLen = 2000
-
 // requestHeaders takes in incoming request and returns an http.Header map
 // suitable for inclusion in our response data structures.
 //
-// This is necessary to ensure that the incoming Host header is included,
-// because golang only exposes that header on the http.Request struct itself.
-func getRequestHeaders(r *http.Request) http.Header {
+// This is necessary to ensure that the incoming Host and Transfer-Encoding
+// headers are included, because golang only exposes those values on the
+// http.Request struct itself.
+func getRequestHeaders(r *http.Request, fn headersProcessorFunc) http.Header {
 	h := r.Header
 	h.Set("Host", r.Host)
+	if len(r.TransferEncoding) > 0 {
+		h.Set("Transfer-Encoding", strings.Join(r.TransferEncoding, ","))
+	}
+	if fn != nil {
+		return fn(h)
+	}
 	return h
 }
 
@@ -38,6 +44,9 @@ func getRequestHeaders(r *http.Request) http.Header {
 func getClientIP(r *http.Request) string {
 	// Special case some hosting platforms that provide the value directly.
 	if clientIP := r.Header.Get("Fly-Client-IP"); clientIP != "" {
+		return clientIP
+	}
+	if clientIP := r.Header.Get("CF-Connecting-IP"); clientIP != "" {
 		return clientIP
 	}
 
@@ -57,6 +66,9 @@ func getURL(r *http.Request) *url.URL {
 		scheme = r.Header.Get("X-Forwarded-Protocol")
 	}
 	if scheme == "" && r.Header.Get("X-Forwarded-Ssl") == "on" {
+		scheme = "https"
+	}
+	if scheme == "" && r.TLS != nil {
 		scheme = "https"
 	}
 	if scheme == "" {
@@ -106,50 +118,78 @@ func writeHTML(w http.ResponseWriter, body []byte, status int) {
 	writeResponse(w, status, htmlContentType, body)
 }
 
+func writeError(w http.ResponseWriter, code int, err error) {
+	resp := errorRespnose{
+		Error:      http.StatusText(code),
+		StatusCode: code,
+	}
+	if err != nil {
+		resp.Detail = err.Error()
+	}
+	writeJSON(code, w, resp)
+}
+
+// parseFiles handles reading the contents of files in a multipart FileHeader
+// and returning a map that can be used as the Files attribute of a response
+func parseFiles(fileHeaders map[string][]*multipart.FileHeader) (map[string][]string, error) {
+	files := map[string][]string{}
+	for k, fs := range fileHeaders {
+		files[k] = []string{}
+
+		for _, f := range fs {
+			fh, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			contents, err := io.ReadAll(fh)
+			if err != nil {
+				return nil, err
+			}
+			files[k] = append(files[k], string(contents))
+		}
+	}
+	return files, nil
+}
+
 // parseBody handles parsing a request body into our standard API response,
 // taking care to only consume the request body once based on the Content-Type
 // of the request. The given bodyResponse will be modified.
 //
 // Note: this function expects callers to limit the the maximum size of the
 // request body. See, e.g., the limitRequestSize middleware.
-func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error {
-	if r.Body == nil {
-		return nil
-	}
+func parseBody(r *http.Request, resp *bodyResponse) error {
+	defer r.Body.Close()
 
 	// Always set resp.Data to the incoming request body, in case we don't know
 	// how to handle the content type
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		r.Body.Close()
 		return err
 	}
-	resp.Data = string(body)
 
 	// After reading the body to populate resp.Data, we need to re-wrap it in
 	// an io.Reader for further processing below
-	r.Body.Close()
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	ct := r.Header.Get("Content-Type")
-
-	// Strip of charset encoding, if present
-	if strings.Contains(ct, ";") {
-		ct = strings.Split(ct, ";")[0]
+	// if we read an empty body, there's no need to do anything further
+	if len(body) == 0 {
+		return nil
 	}
 
-	switch {
-	// cases where we don't need to parse the body
-	case strings.HasPrefix(ct, "html/"):
-		fallthrough
-	case strings.HasPrefix(ct, "text/"):
-		// string body is already set above
+	// Always store the "raw" incoming request body
+	resp.Data = string(body)
+
+	contentType, _, _ := strings.Cut(r.Header.Get("Content-Type"), ";")
+
+	switch contentType {
+	case "text/html", "text/plain":
+		// no need for extra parsing, string body is already set above
 		return nil
 
-	case ct == "application/x-www-form-urlencoded":
-		// r.ParseForm() does not populate r.PostForm for DELETE or GET requests, but
-		// we need it to for compatibility with the httpbin implementation, so
-		// we trick it with this ugly hack.
+	case "application/x-www-form-urlencoded":
+		// r.ParseForm() does not populate r.PostForm for DELETE or GET
+		// requests, but we need it to for compatibility with the httpbin
+		// implementation, so we trick it with this ugly hack.
 		if r.Method == http.MethodDelete || r.Method == http.MethodGet {
 			originalMethod := r.Method
 			r.Method = http.MethodPost
@@ -159,7 +199,8 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 			return err
 		}
 		resp.Form = r.PostForm
-	case ct == "multipart/form-data":
+
+	case "multipart/form-data":
 		// The memory limit here only restricts how many parts will be kept in
 		// memory before overflowing to disk:
 		// https://golang.org/pkg/net/http/#Request.ParseMultipartForm
@@ -167,16 +208,21 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 			return err
 		}
 		resp.Form = r.PostForm
-	case ct == "application/json":
-		err := json.NewDecoder(r.Body).Decode(&resp.JSON)
-		if err != nil && err != io.EOF {
+		files, err := parseFiles(r.MultipartForm.File)
+		if err != nil {
+			return err
+		}
+		resp.Files = files
+
+	case "application/json":
+		if err := json.NewDecoder(r.Body).Decode(&resp.JSON); err != nil {
 			return err
 		}
 
 	default:
-		// If we don't have a special case for the content type, we'll just return it encoded as base64 data url
-		// we strip off any charset information, since we will re-encode the body
-		resp.Data = encodeData(body, ct)
+		// If we don't have a special case for the content type, return it
+		// encoded as base64 data url
+		resp.Data = encodeData(body, contentType)
 	}
 
 	return nil
@@ -184,14 +230,27 @@ func parseBody(w http.ResponseWriter, r *http.Request, resp *bodyResponse) error
 
 // return provided string as base64 encoded data url, with the given content type
 func encodeData(body []byte, contentType string) string {
-	data := base64.URLEncoding.EncodeToString(body)
-
 	// If no content type is provided, default to application/octet-stream
 	if contentType == "" {
-		contentType = "application/octet-stream"
+		contentType = binaryContentType
 	}
-
+	data := base64.URLEncoding.EncodeToString(body)
 	return string("data:" + contentType + ";base64," + data)
+}
+
+func parseStatusCode(input string) (int, error) {
+	return parseBoundedStatusCode(input, 100, 599)
+}
+
+func parseBoundedStatusCode(input string, min, max int) (int, error) {
+	code, err := strconv.Atoi(input)
+	if err != nil {
+		return 0, fmt.Errorf("invalid status code: %q: %w", input, err)
+	}
+	if code < min || code > max {
+		return 0, fmt.Errorf("invalid status code: %d not in range [%d, %d]", code, min, max)
+	}
+	return code, nil
 }
 
 // parseDuration takes a user's input as a string and attempts to convert it
@@ -315,8 +374,7 @@ func sha1hash(input string) string {
 
 func uuidv4() string {
 	buff := make([]byte, 16)
-	_, err := crypto_rand.Read(buff[:])
-	if err != nil {
+	if _, err := crypto_rand.Read(buff[:]); err != nil {
 		panic(err)
 	}
 	buff[6] = (buff[6] & 0x0f) | 0x40 // Version 4
@@ -324,58 +382,127 @@ func uuidv4() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", buff[0:4], buff[4:6], buff[6:8], buff[8:10], buff[10:])
 }
 
-// base64Helper - describes the base64 operation (encode|decode) and input data
+// base64Helper encapsulates a base64 operation (encode or decode) and its input
+// data.
 type base64Helper struct {
+	maxLen    int64
 	operation string
 	data      string
 }
 
-// newbase64Helper - create a new base64Helper struct
-// Supports the following URL paths
-// - /base64/input_str
-// - /base64/encode/input_str
-// - /base64/decode/input_str
-func newBase64Helper(path string) (*base64Helper, error) {
-	parts := strings.Split(path, "/")
-
-	if len(parts) != 3 && len(parts) != 4 {
-		return nil, errors.New("invalid URL")
-	}
-
-	var b base64Helper
-
-	// Validation for - /base64/input_str
-	if len(parts) == 3 {
+// newBase64Helper creates a new base64Helper from a URL path, which should be
+// in one of two forms:
+// - /base64/<base64_encoded_data>
+// - /base64/<operation>/<base64_encoded_data>
+func newBase64Helper(path string, maxLen int64) *base64Helper {
+	parts := strings.SplitN(path, "/", 4)
+	b := &base64Helper{maxLen: maxLen}
+	switch len(parts) {
+	// Any other cases will be rejected when transform() is called
+	case 3:
+		// handle /base64/<base64_encoded_data>
 		b.operation = "decode"
 		b.data = parts[2]
-	} else {
-		// Validation for
-		// - /base64/encode/input_str
-		// - /base64/encode/input_str
+	case 4:
+		// handle /base64/<operation>/<base64_encoded_data>
 		b.operation = parts[2]
-		if b.operation != "encode" && b.operation != "decode" {
-			return nil, fmt.Errorf("invalid operation: %s", b.operation)
-		}
 		b.data = parts[3]
 	}
-	if len(b.data) == 0 {
-		return nil, errors.New("no input data")
-	}
-	if len(b.data) >= Base64MaxLen {
-		return nil, fmt.Errorf("input length - %d, Cannot handle input >= %d", len(b.data), Base64MaxLen)
-	}
-
-	return &b, nil
+	return b
 }
 
-// Encode - encode data as base64
-func (b *base64Helper) Encode() ([]byte, error) {
+// transform performs the base64 operation on the input data.
+func (b *base64Helper) transform() ([]byte, error) {
+	if dataLen := int64(len(b.data)); dataLen == 0 {
+		return nil, errors.New("no input data")
+	} else if dataLen > b.maxLen {
+		return nil, fmt.Errorf("input data exceeds max length of %d", b.maxLen)
+	}
+
+	switch b.operation {
+	case "encode":
+		return b.encode(), nil
+	case "decode":
+		result, err := b.decode()
+		if err != nil {
+			return nil, fmt.Errorf("base64 decode failed: %w", err)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("invalid operation: %s", b.operation)
+	}
+}
+
+func (b *base64Helper) encode() []byte {
+	// always encode using the URL-safe character set
 	buff := make([]byte, base64.URLEncoding.EncodedLen(len(b.data)))
 	base64.URLEncoding.Encode(buff, []byte(b.data))
-	return buff, nil
+	return buff
 }
 
-// Decode - decode data from base64
-func (b *base64Helper) Decode() ([]byte, error) {
-	return base64.URLEncoding.DecodeString(b.data)
+func (b *base64Helper) decode() ([]byte, error) {
+	// first, try URL-safe encoding, then std encoding
+	if result, err := base64.URLEncoding.DecodeString(b.data); err == nil {
+		return result, nil
+	}
+	return base64.StdEncoding.DecodeString(b.data)
+}
+
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
+}
+
+func createExcludeHeadersProcessor(excludeRegex *regexp.Regexp) headersProcessorFunc {
+	return func(headers http.Header) http.Header {
+		result := make(http.Header)
+		for k, v := range headers {
+			matched := excludeRegex.Match([]byte(k))
+			if matched {
+				continue
+			}
+			result[k] = v
+		}
+
+		return result
+	}
+}
+
+func createFullExcludeRegex(excludeHeaders string) *regexp.Regexp {
+	// comma separated list of headers to exclude from response
+	tmp := strings.Split(excludeHeaders, ",")
+
+	tmpRegexStrings := make([]string, 0)
+	for _, v := range tmp {
+		s := strings.TrimSpace(v)
+		if len(s) == 0 {
+			continue
+		}
+		pattern := wildCardToRegexp(s)
+		tmpRegexStrings = append(tmpRegexStrings, pattern)
+	}
+
+	if len(tmpRegexStrings) > 0 {
+		tmpRegexStr := strings.Join(tmpRegexStrings, "|")
+		result := regexp.MustCompile("(?i)" + "(" + tmpRegexStr + ")")
+		return result
+	}
+
+	return nil
 }

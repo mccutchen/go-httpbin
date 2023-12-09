@@ -61,9 +61,9 @@
 <li><a href="."><code>{{.Prefix}}/</code></a> This page.</li>
 <li><a href="absolute-redirect/6"><code>{{.Prefix}}/absolute-redirect/:n</code></a> 302 Absolute redirects <em>n</em> times.</li>
 <li><a href="anything"><code>{{.Prefix}}/anything/:anything</code></a> Returns anything that is passed to request.</li>
-<li><a href="base64/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/:value</code></a> Decodes a Base64 encoded string.</li>
+<li><a href="base64/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/:value</code></a> Decodes a Base64-encoded string.</li>
 <li><a href="base64/decode/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/decode/:value</code></a> Explicit URL for decoding a Base64 encoded string.</li>
-<li><a href="base64/encode/httpbingo.org"><code>{{.Prefix}}/base64/encode/:value</code></a> Encodes a string into Base64.</li>
+<li><a href="base64/encode/httpbingo.org"><code>{{.Prefix}}/base64/encode/:value</code></a> Encodes a string into URL-safe Base64.</li>
 <li><a href="basic-auth/user/passwd"><code>{{.Prefix}}/basic-auth/:user/:passwd</code></a> Challenges HTTPBasic Auth.</li>
 <li><a href="bearer"><code>{{.Prefix}}/bearer</code></a> Checks Bearer token header - returns 401 if not set.</li>
 <li><a href="brotli"><code><del>{{.Prefix}}/brotli</del></code></a> Returns brotli-encoded data.</del> <i>Not implemented!</i></li>
@@ -115,6 +115,7 @@
 <li><a href="unstable"><code>{{.Prefix}}/unstable</code></a> Fails half the time, accepts optional <em>failure_rate</em> float and <em>seed</em> integer parameters.</li>
 <li><a href="user-agent"><code>{{.Prefix}}/user-agent</code></a> Returns user-agent.</li>
 <li><a href="uuid"><code>{{.Prefix}}/uuid</code></a> Generates a <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">UUIDv4</a> value.</li>
+<li><a href="websocket/echo?max_fragment_size=2048&amp;max_message_size=10240"><code>{{.Prefix}}/websocket/echo?max_fragment_size=2048&amp;max_message_size=10240</code></a> A WebSocket echo service.</li>
 <li><a href="xml"><code>{{.Prefix}}/xml</code></a> Returns some XML</li>
 </ul>
 

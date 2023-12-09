@@ -27,6 +27,8 @@ var DefaultDefaultParams = DefaultParams{
 	DripNumBytes: 10,
 }
 
+type headersProcessorFunc func(h http.Header) http.Header
+
 // HTTPBin contains the business logic
 type HTTPBin struct {
 	// Max size of an incoming request generated response body, in bytes
@@ -45,6 +47,8 @@ type HTTPBin struct {
 	// Set of hosts to which the /redirect-to endpoint will allow redirects
 	AllowedRedirectDomains map[string]struct{}
 
+	forbiddenRedirectError string
+
 	// The hostname to expose via /hostname.
 	hostname string
 
@@ -57,6 +61,8 @@ type HTTPBin struct {
 	forms_post_html []byte
 
 	specialCases map[int]*statusCase
+
+	excludeHeadersProcessor headersProcessorFunc
 }
 
 // New creates a new HTTPBin instance
@@ -160,6 +166,8 @@ func (h *HTTPBin) Handler() http.Handler {
 
 	mux.HandleFunc("/dump/request", h.DumpRequest)
 
+	mux.HandleFunc("/websocket/echo", h.WebSocketEcho)
+
 	// existing httpbin endpoints that we do not support
 	mux.HandleFunc("/brotli", notImplementedHandler)
 
@@ -195,4 +203,11 @@ func (h *HTTPBin) Handler() http.Handler {
 	}
 
 	return handler
+}
+
+func (h *HTTPBin) setExcludeHeaders(excludeHeaders string) {
+	regex := createFullExcludeRegex(excludeHeaders)
+	if regex != nil {
+		h.excludeHeadersProcessor = createExcludeHeadersProcessor(regex)
+	}
 }
