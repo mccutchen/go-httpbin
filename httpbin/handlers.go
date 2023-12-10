@@ -350,7 +350,7 @@ func (h *HTTPBin) redirectLocation(r *http.Request, relative bool, n int) string
 	return location
 }
 
-func (h *HTTPBin) doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
+func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
 		writeError(w, http.StatusNotFound, nil)
@@ -375,17 +375,17 @@ func (h *HTTPBin) doRedirect(w http.ResponseWriter, r *http.Request, relative bo
 func (h *HTTPBin) Redirect(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	relative := strings.ToLower(params.Get("absolute")) != "true"
-	h.doRedirect(w, r, relative)
+	h.handleRedirect(w, r, relative)
 }
 
 // RelativeRedirect responds with an HTTP 302 redirect a given number of times
 func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
-	h.doRedirect(w, r, true)
+	h.handleRedirect(w, r, true)
 }
 
 // AbsoluteRedirect responds with an HTTP 302 redirect a given number of times
 func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
-	h.doRedirect(w, r, false)
+	h.handleRedirect(w, r, false)
 }
 
 // RedirectTo responds with a redirect to a specific URL with an optional
@@ -447,8 +447,7 @@ func (h *HTTPBin) SetCookies(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 		})
 	}
-	w.Header().Set("Location", h.prefix+"/cookies")
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, "/cookies", http.StatusFound)
 }
 
 // DeleteCookies deletes cookies specified in query params and redirects to
@@ -464,8 +463,7 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 			Expires:  time.Now().Add(-1 * 24 * 365 * time.Hour),
 		})
 	}
-	w.Header().Set("Location", h.prefix+"/cookies")
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, "/cookies", http.StatusFound)
 }
 
 // BasicAuth requires basic authentication
@@ -940,6 +938,12 @@ func (h *HTTPBin) doLinksPage(w http.ResponseWriter, _ *http.Request, n int, off
 		}
 	}
 	w.Write([]byte("</body></html>"))
+}
+
+// doRedirect set redirect header
+func (h *HTTPBin) doRedirect(w http.ResponseWriter, path string, code int) {
+	w.Header().Set("Location", h.prefix+path)
+	w.WriteHeader(code)
 }
 
 // ImageAccept responds with an appropriate image based on the Accept header

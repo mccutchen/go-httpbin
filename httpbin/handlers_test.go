@@ -2560,76 +2560,81 @@ func TestStreamBytes(t *testing.T) {
 }
 
 func TestLinks(t *testing.T) {
-	redirectTests := []struct {
-		url              string
-		expectedLocation string
-	}{
-		{"/links/1", "/links/1/0"},
-		{"/links/100", "/links/100/0"},
-	}
+	for _, env := range envs {
+		env := env
 
-	for _, test := range redirectTests {
-		test := test
-		t.Run("ok"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", test.expectedLocation)
-		})
-	}
+		redirectTests := []struct {
+			url              string
+			expectedLocation string
+		}{
+			{"/links/1", "/links/1/0"},
+			{"/links/100", "/links/100/0"},
+		}
 
-	errorTests := []struct {
-		url            string
-		expectedStatus int
-	}{
-		{"/links/10/1/foo", http.StatusNotFound},
+		for _, test := range redirectTests {
+			test := test
+			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, http.StatusFound)
+				assert.Header(t, resp, "Location", env.prefix+test.expectedLocation)
+			})
+		}
 
-		// invalid N
-		{"/links/3.14", http.StatusBadRequest},
-		{"/links/-1", http.StatusBadRequest},
-		{"/links/257", http.StatusBadRequest},
+		errorTests := []struct {
+			url            string
+			expectedStatus int
+		}{
+			{"/links/10/1/foo", http.StatusNotFound},
 
-		// invalid offset
-		{"/links/1/3.14", http.StatusBadRequest},
-		{"/links/1/foo", http.StatusBadRequest},
-	}
+			// invalid N
+			{"/links/3.14", http.StatusBadRequest},
+			{"/links/-1", http.StatusBadRequest},
+			{"/links/257", http.StatusBadRequest},
 
-	for _, test := range errorTests {
-		test := test
-		t.Run("error"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, test.expectedStatus)
-		})
-	}
+			// invalid offset
+			{"/links/1/3.14", http.StatusBadRequest},
+			{"/links/1/foo", http.StatusBadRequest},
+		}
 
-	linksPageTests := []struct {
-		url             string
-		expectedContent string
-	}{
-		{"/links/2/0", `<html><head><title>Links</title></head><body>0 <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> 1 </body></html>`},
+		for _, test := range errorTests {
+			test := test
+			t.Run("error"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, test.expectedStatus)
+			})
+		}
 
-		// offsets too large and too small are ignored
-		{"/links/2/2", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/10", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-	}
-	for _, test := range linksPageTests {
-		test := test
-		t.Run("ok"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, http.StatusOK)
-			assert.ContentType(t, resp, htmlContentType)
-			assert.BodyEquals(t, resp, test.expectedContent)
-		})
+		linksPageTests := []struct {
+			url             string
+			expectedContent string
+		}{
+			{"/links/2/0", `<html><head><title>Links</title></head><body>0 <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/1", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> 1 </body></html>`},
+
+			// offsets too large and too small are ignored
+			{"/links/2/2", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/10", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+		}
+		for _, test := range linksPageTests {
+			test := test
+			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, http.StatusOK)
+				assert.ContentType(t, resp, htmlContentType)
+				expectedContent := fmt.Sprintf(test.expectedContent, env.prefix)
+				assert.BodyEquals(t, resp, expectedContent)
+			})
+		}
 	}
 }
 
