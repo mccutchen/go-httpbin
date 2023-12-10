@@ -80,8 +80,8 @@ func New(opts ...OptionFunc) *HTTPBin {
 
 	h.specialCases = createSpecialCases(h.prefix)
 
-	h.indexHTML = h.staticTemplateAssert("index.html")
-	h.formsPostHTML = h.staticTemplateAssert("forms-post.html")
+	h.indexHTML = h.staticTemplateAssert("index.html.tmpl")
+	h.formsPostHTML = h.staticTemplateAssert("forms-post.html.tmpl")
 
 	return h
 }
