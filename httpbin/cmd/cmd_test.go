@@ -13,7 +13,10 @@ import (
 )
 
 // To update, run:
+// OSX:
 // make && ./dist/go-httpbin -h 2>&1 | pbcopy
+// Linux (paste with middle mouse):
+// make && ./dist/go-httpbin -h 2>&1 | xclip
 const usage = `Usage of go-httpbin:
   -allowed-redirect-domains string
     	Comma-separated list of domains the /redirect-to endpoint will allow
@@ -31,6 +34,8 @@ const usage = `Usage of go-httpbin:
     	Maximum duration a response may take (default 10s)
   -port int
     	Port to listen on (default 8080)
+  -prefix string
+    	Path prefix (empty or start with slash and does not end with slash)
   -use-real-hostname
     	Expose value of os.Hostname() in the /hostname endpoint instead of dummy value
 `
