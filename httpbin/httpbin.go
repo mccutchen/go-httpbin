@@ -57,8 +57,8 @@ type HTTPBin struct {
 
 	prefix string
 
-	index_html      []byte
-	forms_post_html []byte
+	indexHTML     []byte
+	formsPostHTML []byte
 
 	specialCases map[int]*statusCase
 
@@ -80,8 +80,8 @@ func New(opts ...OptionFunc) *HTTPBin {
 
 	h.specialCases = createSpecialCases(h.prefix)
 
-	h.index_html = h.staticTemplateAssert("index.html")
-	h.forms_post_html = h.staticTemplateAssert("forms-post.html")
+	h.indexHTML = h.staticTemplateAssert("index.html")
+	h.formsPostHTML = h.staticTemplateAssert("forms-post.html")
 
 	return h
 }

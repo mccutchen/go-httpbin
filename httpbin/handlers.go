@@ -31,12 +31,12 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
-	writeHTML(w, h.index_html, http.StatusOK)
+	writeHTML(w, h.indexHTML, http.StatusOK)
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, _ *http.Request) {
-	writeHTML(w, h.forms_post_html, http.StatusOK)
+	writeHTML(w, h.formsPostHTML, http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test

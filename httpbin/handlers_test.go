@@ -37,7 +37,6 @@ const (
 )
 
 type environment struct {
-	app    *HTTPBin
 	prefix string
 	srv    *httptest.Server
 	client *http.Client
@@ -87,12 +86,14 @@ func TestMain(m *testing.M) {
 
 	env = newTestEnvironment(createApp(WithPrefix(testPrefix)))
 	defer env.srv.Close()
+	envs = append(envs, env)
 
 	os.Exit(m.Run())
 }
 
 func TestIndex(t *testing.T) {
 	for _, env := range envs {
+		env := env
 		t.Run("ok"+env.prefix, func(t *testing.T) {
 			t.Parallel()
 
@@ -1409,7 +1410,7 @@ func TestCookies(t *testing.T) {
 				t.Run(name, func(t *testing.T) {
 					t.Parallel()
 
-					req := newTestRequest(t, "GET", env.prefix+"/cookies")
+					req := newTestRequest(t, "GET", env.prefix+"/cookies", env)
 					for k, v := range tc.cookies {
 						req.AddCookie(&http.Cookie{
 							Name:  k,
@@ -1438,11 +1439,11 @@ func TestCookies(t *testing.T) {
 				params.Set(k, v)
 			}
 
-			req := newTestRequest(t, "GET", env.prefix+"/cookies/set?"+params.Encode())
+			req := newTestRequest(t, "GET", env.prefix+"/cookies/set?"+params.Encode(), env)
 			resp := must.DoReq(t, client, req)
 
 			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", "/cookies")
+			assert.Header(t, resp, "Location", env.prefix+"/cookies")
 
 			for _, c := range resp.Cookies() {
 				v, ok := cookies[c.Name]
@@ -1465,7 +1466,7 @@ func TestCookies(t *testing.T) {
 			params := &url.Values{}
 			params.Set(toDelete, "")
 
-			req := newTestRequest(t, "GET", env.prefix+"/cookies/delete?"+params.Encode())
+			req := newTestRequest(t, "GET", env.prefix+"/cookies/delete?"+params.Encode(), env)
 			for k, v := range cookies {
 				req.AddCookie(&http.Cookie{
 					Name:  k,
@@ -1475,7 +1476,7 @@ func TestCookies(t *testing.T) {
 
 			resp := must.DoReq(t, env.client, req)
 			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", "/cookies")
+			assert.Header(t, resp, "Location", env.prefix+"/cookies")
 
 			for _, c := range resp.Cookies() {
 				if c.Name == toDelete {
@@ -2935,10 +2936,10 @@ func TestHostname(t *testing.T) {
 
 		realHostname := "real-hostname"
 		app := New(WithHostname(realHostname))
-		env := newTestEnvironment(app)
-		defer env.srv.Close()
+		srv, client := newTestServer(app)
+		defer srv.Close()
 
-		req, err := http.NewRequest("GET", env.srv.URL+"/hostname", nil)
+		req, err := http.NewRequest("GET", srv.URL+"/hostname", nil)
 		assert.NilError(t, err)
 
 		resp, err := client.Do(req)
@@ -3020,15 +3021,19 @@ func TestWebSocketEcho(t *testing.T) {
 		})
 	}
 }
+func newTestServer(handler http.Handler) (*httptest.Server, *http.Client) {
+	srv := httptest.NewServer(handler)
+	client := srv.Client()
+	client.Timeout = 5 * time.Second
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	return srv, client
+}
 
 func newTestEnvironment(app *HTTPBin) (env *environment) {
 	env = new(environment)
-	env.srv = httptest.NewServer(app)
-	env.client = env.srv.Client()
-	env.client.Timeout = 5 * time.Second
-	env.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+	env.srv, env.client = newTestServer(app)
 	env.prefix = app.prefix
 	return
 }
