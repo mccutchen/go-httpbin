@@ -204,6 +204,14 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 			cfg.Prefix = prefix
 		}
 	}
+	if cfg.Prefix != "" {
+		if !strings.HasPrefix(cfg.Prefix, "/") {
+			return nil, configErr("Prefix %#v must start with a slash", cfg.Prefix)
+		}
+		if strings.HasSuffix(cfg.Prefix, "/") {
+			return nil, configErr("Prefix %#v must not end with a slash", cfg.Prefix)
+		}
+	}
 	if cfg.ExcludeHeaders == "" && getEnv("EXCLUDE_HEADERS") != "" {
 		cfg.ExcludeHeaders = getEnv("EXCLUDE_HEADERS")
 	}

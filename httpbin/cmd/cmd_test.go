@@ -217,6 +217,37 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 
+		// prefix
+		"invalid -prefix (does not start with slash)": {
+			args:    []string{"-prefix", "invalidprefix1"},
+			wantErr: errors.New("Prefix \"invalidprefix1\" must start with a slash"),
+		},
+		"invalid -prefix (ends with with slash)": {
+			args:    []string{"-prefix", "/invalidprefix2/"},
+			wantErr: errors.New("Prefix \"/invalidprefix2/\" must not end with a slash"),
+		},
+		"ok -prefix takes precedence over env": {
+			args: []string{"-prefix", "/prefix1"},
+			env:  map[string]string{"PREFIX": "/prefix2"},
+			wantCfg: &config{
+				ListenHost:  defaultListenHost,
+				ListenPort:  defaultListenPort,
+				Prefix:      "/prefix1",
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+			},
+		},
+		"ok PREFIX": {
+			env: map[string]string{"PREFIX": "/prefix2"},
+			wantCfg: &config{
+				ListenHost:  defaultListenHost,
+				ListenPort:  defaultListenPort,
+				Prefix:      "/prefix2",
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+			},
+		},
+
 		// https cert file
 		"https cert and key must both be provided, cert only": {
 			args:    []string{"-https-cert-file", "/tmp/test.crt"},
