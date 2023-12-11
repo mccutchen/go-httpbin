@@ -331,11 +331,11 @@ func (h *HTTPBin) redirectLocation(r *http.Request, relative bool, n int) string
 	var path string
 
 	if n < 1 {
-		path = h.prefix + "/get"
+		path = "/get"
 	} else if relative {
-		path = fmt.Sprintf("%s/relative-redirect/%d", h.prefix, n)
+		path = fmt.Sprintf("/relative-redirect/%d", n)
 	} else {
-		path = fmt.Sprintf("%s/absolute-redirect/%d", h.prefix, n)
+		path = fmt.Sprintf("/absolute-redirect/%d", n)
 	}
 
 	if relative {
@@ -365,8 +365,7 @@ func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relativ
 		return
 	}
 
-	w.Header().Set("Location", h.redirectLocation(r, relative, n-1))
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, h.redirectLocation(r, relative, n-1), http.StatusFound)
 }
 
 // Redirect responds with 302 redirect a given number of times. Defaults to a
@@ -423,8 +422,7 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Location", u.String())
-	w.WriteHeader(statusCode)
+	h.doRedirect(w, u.String(), statusCode)
 }
 
 // Cookies responds with the cookies in the incoming request
@@ -919,9 +917,8 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Otherwise, redirect from /links/<n> to /links/<n>/0
-	r.URL.Path = h.prefix + r.URL.Path + "/0"
-	w.Header().Set("Location", r.URL.String())
-	w.WriteHeader(http.StatusFound)
+	r.URL.Path = r.URL.Path + "/0"
+	h.doRedirect(w, r.URL.String(), http.StatusFound)
 }
 
 // doLinksPage renders a page with a series of N links
@@ -942,7 +939,12 @@ func (h *HTTPBin) doLinksPage(w http.ResponseWriter, _ *http.Request, n int, off
 
 // doRedirect set redirect header
 func (h *HTTPBin) doRedirect(w http.ResponseWriter, path string, code int) {
-	w.Header().Set("Location", h.prefix+path)
+	var sb strings.Builder
+	if strings.HasPrefix(path, "/") {
+		sb.WriteString(h.prefix)
+	}
+	sb.WriteString(path)
+	w.Header().Set("Location", sb.String())
 	w.WriteHeader(code)
 }
 

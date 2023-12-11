@@ -1225,13 +1225,15 @@ func TestRedirects(t *testing.T) {
 		requestURL       string
 		expectedLocation string
 	}{
+		// append %.s to expected string if result does not contain prefix:
+		// https://stackoverflow.com/a/41209086
 		{"%s/redirect/1", "%s/get"},
 		{"%s/redirect/2", "%s/relative-redirect/1"},
 		{"%s/redirect/100", "%s/relative-redirect/99"},
 
-		{"%s/redirect/1?absolute=true", "http://host%s/get"},
-		{"%s/redirect/2?absolute=TRUE", "http://host%s/absolute-redirect/1"},
-		{"%s/redirect/100?absolute=True", "http://host%s/absolute-redirect/99"},
+		{"%s/redirect/1?absolute=true", "http://host/get%.s"},
+		{"%s/redirect/2?absolute=TRUE", "http://host/absolute-redirect/1%.s"},
+		{"%s/redirect/100?absolute=True", "http://host/absolute-redirect/99%.s"},
 
 		{"%s/redirect/100?absolute=t", "%s/relative-redirect/99"},
 		{"%s/redirect/100?absolute=1", "%s/relative-redirect/99"},
@@ -1241,9 +1243,9 @@ func TestRedirects(t *testing.T) {
 		{"%s/relative-redirect/2", "%s/relative-redirect/1"},
 		{"%s/relative-redirect/100", "%s/relative-redirect/99"},
 
-		{"%s/absolute-redirect/1", "http://host%s/get"},
-		{"%s/absolute-redirect/2", "http://host%s/absolute-redirect/1"},
-		{"%s/absolute-redirect/100", "http://host%s/absolute-redirect/99"},
+		{"%s/absolute-redirect/1", "http://host/get%.s"},
+		{"%s/absolute-redirect/2", "http://host/absolute-redirect/1%.s"},
+		{"%s/absolute-redirect/100", "http://host/absolute-redirect/99%.s"},
 	}
 
 	for _, env := range envs {
