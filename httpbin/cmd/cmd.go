@@ -199,6 +199,11 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	if cfg.ListenHost == defaultListenHost && getEnv("HOST") != "" {
 		cfg.ListenHost = getEnv("HOST")
 	}
+	if cfg.Prefix == "" {
+		if prefix := getEnv("PREFIX"); prefix != "" {
+			cfg.Prefix = prefix
+		}
+	}
 	if cfg.ExcludeHeaders == "" && getEnv("EXCLUDE_HEADERS") != "" {
 		cfg.ExcludeHeaders = getEnv("EXCLUDE_HEADERS")
 	}
