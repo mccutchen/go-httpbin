@@ -60,7 +60,7 @@ type HTTPBin struct {
 	indexHTML     []byte
 	formsPostHTML []byte
 
-	specialCases map[int]*statusCase
+	statusSpecialCases map[int]*statusCase
 
 	excludeHeadersProcessor headersProcessorFunc
 }
@@ -78,7 +78,7 @@ func New(opts ...OptionFunc) *HTTPBin {
 	}
 	h.handler = h.Handler()
 
-	h.specialCases = createSpecialCases(h.prefix)
+	h.statusSpecialCases = createSpecialCases(h.prefix)
 
 	h.indexHTML = h.staticTemplateAssert("index.html.tmpl")
 	h.formsPostHTML = h.staticTemplateAssert("forms-post.html.tmpl")

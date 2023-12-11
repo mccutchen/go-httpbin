@@ -265,7 +265,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	// for special cases
 	w.Header().Set("Content-Type", textContentType)
 
-	if specialCase, ok := h.specialCases[code]; ok {
+	if specialCase, ok := h.statusSpecialCases[code]; ok {
 		for key, val := range specialCase.headers {
 			w.Header().Set(key, val)
 		}
