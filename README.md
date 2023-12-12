@@ -170,9 +170,9 @@ public internet, consider tuning it appropriately:
    `EXCLUDE_HEADERS` env var to configure a denylist of sensitive header keys.
 
    For example, the Alibaba Cloud Function Compute platform adds [a variety of
-   headers][alibaba-headers] to each incoming request, some of which might be
-   sensitive. To have go-httpbin filter **all** of these headers in its own
-   responses, set
+   `x-fc-*` headers][alibaba-headers] to each incoming request, some of which
+   might be sensitive. To have go-httpbin filter **all** of these headers in
+   its own responses, set
 
        EXCLUDE_HEADERS="x-fc-*"
 
@@ -222,3 +222,4 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Production considerations]: #production-considerations
 [zerolog]: https://github.com/rs/zerolog
 [DEVELOPMENT.md]: ./DEVELOPMENT.md
+[alibaba-headers]: https://www.alibabacloud.com/help/en/fc/user-guide/specification-details#section-3f8-5y1-i77
