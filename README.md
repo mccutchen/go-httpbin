@@ -163,10 +163,22 @@ public internet, consider tuning it appropriately:
 
 5. **Prevent leaking sensitive headers**
 
-  By default, go-httpbin will return any headers sent by the client in the response.
-  But if you want to deploy go-httpbin in some serverless environment, you may want to drop some headers.
-  You can use the `-exclude-headers` CLI argument or the `EXCLUDE_HEADERS` env var to configure an appropriate allowlist.
-  For example, Alibaba Cloud Function Compute will [add some headers like `x-fc-*` to the request](https://www.alibabacloud.com/help/en/fc/user-guide/specification-details). if you want to drop these `x-fc-*` headers, you can set `EXCLUDE_HEADERS=x-fc-*`.
+   By default, go-httpbin will return any request headers sent by the client
+   (and any intermediate proxies) in the response. If go-httpbin is deployed
+   into an environment where some incoming request headers might reveal
+   sensitive information, use the `-exclude-headers` CLI argument or
+   `EXCLUDE_HEADERS` env var to configure a denylist of sensitive header keys.
+
+   For example, the Alibaba Cloud Function Compute platform adds [a variety of
+   `x-fc-*` headers][alibaba-headers] to each incoming request, some of which
+   might be sensitive. To have go-httpbin filter **all** of these headers in
+   its own responses, set
+
+       EXCLUDE_HEADERS="x-fc-*"
+
+   To have go-httpbin filter only specific headers, you can get more specific:
+
+       EXCLUDE_HEADERS="x-fc-access-key-*,x-fc-security-token,x-fc-region"
 
 ## Development
 
