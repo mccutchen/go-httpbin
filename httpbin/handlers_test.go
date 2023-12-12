@@ -33,21 +33,27 @@ import (
 const (
 	maxBodySize int64         = 1024
 	maxDuration time.Duration = 1 * time.Second
+	testPrefix                = "/a-prefix"
 )
+
+type environment struct {
+	prefix string
+	srv    *httptest.Server
+	client *http.Client
+}
 
 // "Global" test app, server, & client to be reused across test cases.
 // Initialized in TestMain.
 var (
-	app    *HTTPBin
-	srv    *httptest.Server
-	client *http.Client
+	app        *HTTPBin
+	srv        *httptest.Server
+	client     *http.Client
+	envs       []*environment
+	defaultEnv *environment
 )
 
-func TestMain(m *testing.M) {
-	// enable additional safety checks
-	testMode = true
-
-	app = New(
+func createApp(opts ...OptionFunc) *HTTPBin {
+	return New(append(append(make([]OptionFunc, 0, 6+len(opts)),
 		WithAllowedRedirectDomains([]string{
 			"httpbingo.org",
 			"example.org",
@@ -61,38 +67,60 @@ func TestMain(m *testing.M) {
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration),
 		WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
-		WithExcludeHeaders("x-ignore-*,x-info-this-key"),
-	)
-	srv, client = newTestServer(app)
-	defer srv.Close()
+		WithExcludeHeaders("x-ignore-*,x-info-this-key")),
+		opts...)...)
+}
+
+func TestMain(m *testing.M) {
+	// enable additional safety checks
+	testMode = true
+
+	var env *environment
+	app = createApp()
+	env = newTestEnvironment(app)
+	defer env.srv.Close()
+	srv = env.srv
+	client = env.client
+	envs = append(envs, env)
+	defaultEnv = env
+
+	env = newTestEnvironment(createApp(WithPrefix(testPrefix)))
+	defer env.srv.Close()
+	envs = append(envs, env)
+
 	os.Exit(m.Run())
 }
 
 func TestIndex(t *testing.T) {
-	t.Run("ok", func(t *testing.T) {
-		t.Parallel()
+	for _, env := range envs {
+		env := env
+		t.Run("ok"+env.prefix, func(t *testing.T) {
+			t.Parallel()
 
-		req := newTestRequest(t, "GET", "/")
-		resp := must.DoReq(t, client, req)
+			req := newTestRequest(t, "GET", env.prefix+"/", env)
+			resp := must.DoReq(t, env.client, req)
 
-		assert.ContentType(t, resp, htmlContentType)
-		assert.Header(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
-		assert.BodyContains(t, resp, "go-httpbin")
-	})
+			assert.ContentType(t, resp, htmlContentType)
+			assert.Header(t, resp, "Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
+			body := must.ReadAll(t, resp.Body)
+			assert.Contains(t, body, "go-httpbin", "body")
+			assert.Contains(t, body, env.prefix+"/get", "body")
+		})
 
-	t.Run("not found", func(t *testing.T) {
-		t.Parallel()
-		req := newTestRequest(t, "GET", "/foo")
-		resp := must.DoReq(t, client, req)
-		assert.StatusCode(t, resp, http.StatusNotFound)
-		assert.ContentType(t, resp, jsonContentType)
-		got := must.Unmarshal[errorRespnose](t, resp.Body)
-		want := errorRespnose{
-			StatusCode: http.StatusNotFound,
-			Error:      "Not Found",
-		}
-		assert.DeepEqual(t, got, want, "incorrect error response")
-	})
+		t.Run("not found"+env.prefix, func(t *testing.T) {
+			t.Parallel()
+			req := newTestRequest(t, "GET", env.prefix+"/foo", env)
+			resp := must.DoReq(t, env.client, req)
+			assert.StatusCode(t, resp, http.StatusNotFound)
+			assert.ContentType(t, resp, jsonContentType)
+			got := must.Unmarshal[errorRespnose](t, resp.Body)
+			want := errorRespnose{
+				StatusCode: http.StatusNotFound,
+				Error:      "Not Found",
+			}
+			assert.DeepEqual(t, got, want, "incorrect error response")
+		})
+	}
 }
 
 func TestFormsPost(t *testing.T) {
@@ -1197,77 +1225,87 @@ func TestRedirects(t *testing.T) {
 		requestURL       string
 		expectedLocation string
 	}{
-		{"/redirect/1", "/get"},
-		{"/redirect/2", "/relative-redirect/1"},
-		{"/redirect/100", "/relative-redirect/99"},
+		// append %.s to expected string if result does not contain prefix:
+		// https://stackoverflow.com/a/41209086
+		{"%s/redirect/1", "%s/get"},
+		{"%s/redirect/2", "%s/relative-redirect/1"},
+		{"%s/redirect/100", "%s/relative-redirect/99"},
 
-		{"/redirect/1?absolute=true", "http://host/get"},
-		{"/redirect/2?absolute=TRUE", "http://host/absolute-redirect/1"},
-		{"/redirect/100?absolute=True", "http://host/absolute-redirect/99"},
+		{"%s/redirect/1?absolute=true", "http://host/get%.s"},
+		{"%s/redirect/2?absolute=TRUE", "http://host/absolute-redirect/1%.s"},
+		{"%s/redirect/100?absolute=True", "http://host/absolute-redirect/99%.s"},
 
-		{"/redirect/100?absolute=t", "/relative-redirect/99"},
-		{"/redirect/100?absolute=1", "/relative-redirect/99"},
-		{"/redirect/100?absolute=yes", "/relative-redirect/99"},
+		{"%s/redirect/100?absolute=t", "%s/relative-redirect/99"},
+		{"%s/redirect/100?absolute=1", "%s/relative-redirect/99"},
+		{"%s/redirect/100?absolute=yes", "%s/relative-redirect/99"},
 
-		{"/relative-redirect/1", "/get"},
-		{"/relative-redirect/2", "/relative-redirect/1"},
-		{"/relative-redirect/100", "/relative-redirect/99"},
+		{"%s/relative-redirect/1", "%s/get"},
+		{"%s/relative-redirect/2", "%s/relative-redirect/1"},
+		{"%s/relative-redirect/100", "%s/relative-redirect/99"},
 
-		{"/absolute-redirect/1", "http://host/get"},
-		{"/absolute-redirect/2", "http://host/absolute-redirect/1"},
-		{"/absolute-redirect/100", "http://host/absolute-redirect/99"},
+		{"%s/absolute-redirect/1", "http://host/get%.s"},
+		{"%s/absolute-redirect/2", "http://host/absolute-redirect/1%.s"},
+		{"%s/absolute-redirect/100", "http://host/absolute-redirect/99%.s"},
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run("ok"+test.requestURL, func(t *testing.T) {
-			t.Parallel()
+	for _, env := range envs {
+		for _, test := range tests {
+			env := env
+			test := test
+			requestURL := fmt.Sprintf(test.requestURL, env.prefix)
+			t.Run("ok"+requestURL, func(t *testing.T) {
+				t.Parallel()
 
-			req := newTestRequest(t, "GET", test.requestURL)
-			req.Host = "host"
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
+				req := newTestRequest(t, "GET", requestURL, env)
+				req.Host = "host"
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
 
-			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", test.expectedLocation)
-		})
+				assert.StatusCode(t, resp, http.StatusFound)
+				assert.Header(t, resp, "Location", fmt.Sprintf(test.expectedLocation, env.prefix))
+			})
+		}
 	}
 
 	errorTests := []struct {
 		requestURL     string
 		expectedStatus int
 	}{
-		{"/redirect", http.StatusNotFound},
-		{"/redirect/", http.StatusBadRequest},
-		{"/redirect/-1", http.StatusBadRequest},
-		{"/redirect/3.14", http.StatusBadRequest},
-		{"/redirect/foo", http.StatusBadRequest},
-		{"/redirect/10/foo", http.StatusNotFound},
+		{"%s/redirect", http.StatusNotFound},
+		{"%s/redirect/", http.StatusBadRequest},
+		{"%s/redirect/-1", http.StatusBadRequest},
+		{"%s/redirect/3.14", http.StatusBadRequest},
+		{"%s/redirect/foo", http.StatusBadRequest},
+		{"%s/redirect/10/foo", http.StatusNotFound},
 
-		{"/relative-redirect", http.StatusNotFound},
-		{"/relative-redirect/", http.StatusBadRequest},
-		{"/relative-redirect/-1", http.StatusBadRequest},
-		{"/relative-redirect/3.14", http.StatusBadRequest},
-		{"/relative-redirect/foo", http.StatusBadRequest},
-		{"/relative-redirect/10/foo", http.StatusNotFound},
+		{"%s/relative-redirect", http.StatusNotFound},
+		{"%s/relative-redirect/", http.StatusBadRequest},
+		{"%s/relative-redirect/-1", http.StatusBadRequest},
+		{"%s/relative-redirect/3.14", http.StatusBadRequest},
+		{"%s/relative-redirect/foo", http.StatusBadRequest},
+		{"%s/relative-redirect/10/foo", http.StatusNotFound},
 
-		{"/absolute-redirect", http.StatusNotFound},
-		{"/absolute-redirect/", http.StatusBadRequest},
-		{"/absolute-redirect/-1", http.StatusBadRequest},
-		{"/absolute-redirect/3.14", http.StatusBadRequest},
-		{"/absolute-redirect/foo", http.StatusBadRequest},
-		{"/absolute-redirect/10/foo", http.StatusNotFound},
+		{"%s/absolute-redirect", http.StatusNotFound},
+		{"%s/absolute-redirect/", http.StatusBadRequest},
+		{"%s/absolute-redirect/-1", http.StatusBadRequest},
+		{"%s/absolute-redirect/3.14", http.StatusBadRequest},
+		{"%s/absolute-redirect/foo", http.StatusBadRequest},
+		{"%s/absolute-redirect/10/foo", http.StatusNotFound},
 	}
 
-	for _, test := range errorTests {
-		test := test
-		t.Run("error"+test.requestURL, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.requestURL)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, test.expectedStatus)
-		})
+	for _, env := range envs {
+		for _, test := range errorTests {
+			env := env
+			test := test
+			requestURL := fmt.Sprintf(test.requestURL, env.prefix)
+			t.Run("error"+requestURL, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", requestURL, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, test.expectedStatus)
+			})
+		}
 	}
 }
 
@@ -1346,108 +1384,111 @@ func TestRedirectTo(t *testing.T) {
 }
 
 func TestCookies(t *testing.T) {
-	t.Run("get", func(t *testing.T) {
-		testCases := map[string]struct {
-			cookies cookiesResponse
-		}{
-			"ok/no cookies": {
-				cookies: cookiesResponse{},
-			},
-			"ok/one cookie": {
-				cookies: cookiesResponse{
-					"k1": "v1",
+	for _, env := range envs {
+		env := env
+		t.Run("get"+env.prefix, func(t *testing.T) {
+			testCases := map[string]struct {
+				cookies cookiesResponse
+			}{
+				"ok/no cookies": {
+					cookies: cookiesResponse{},
 				},
-			},
-			"ok/many cookies": {
-				cookies: cookiesResponse{
-					"k1": "v1",
-					"k2": "v2",
-					"k3": "v3",
+				"ok/one cookie": {
+					cookies: cookiesResponse{
+						"k1": "v1",
+					},
 				},
-			},
-		}
-
-		for name, tc := range testCases {
-			tc := tc
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-
-				req := newTestRequest(t, "GET", "/cookies")
-				for k, v := range tc.cookies {
-					req.AddCookie(&http.Cookie{
-						Name:  k,
-						Value: v,
-					})
-				}
-
-				resp := must.DoReq(t, client, req)
-				defer consumeAndCloseBody(resp)
-
-				result := mustParseResponse[cookiesResponse](t, resp)
-				assert.DeepEqual(t, result, tc.cookies, "cookies mismatch")
-			})
-		}
-	})
-
-	t.Run("set", func(t *testing.T) {
-		t.Parallel()
-
-		cookies := cookiesResponse{
-			"k1": "v1",
-			"k2": "v2",
-		}
-		params := &url.Values{}
-		for k, v := range cookies {
-			params.Set(k, v)
-		}
-
-		req := newTestRequest(t, "GET", "/cookies/set?"+params.Encode())
-		resp := must.DoReq(t, client, req)
-
-		assert.StatusCode(t, resp, http.StatusFound)
-		assert.Header(t, resp, "Location", "/cookies")
-
-		for _, c := range resp.Cookies() {
-			v, ok := cookies[c.Name]
-			if !ok {
-				t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
+				"ok/many cookies": {
+					cookies: cookiesResponse{
+						"k1": "v1",
+						"k2": "v2",
+						"k3": "v3",
+					},
+				},
 			}
-			assert.Equal(t, v, c.Value, "value mismatch for cookie %q", c.Name)
-		}
-	})
 
-	t.Run("delete", func(t *testing.T) {
-		t.Parallel()
+			for name, tc := range testCases {
+				tc := tc
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 
-		cookies := cookiesResponse{
-			"k1": "v1",
-			"k2": "v2",
-		}
+					req := newTestRequest(t, "GET", env.prefix+"/cookies", env)
+					for k, v := range tc.cookies {
+						req.AddCookie(&http.Cookie{
+							Name:  k,
+							Value: v,
+						})
+					}
 
-		toDelete := "k2"
-		params := &url.Values{}
-		params.Set(toDelete, "")
+					resp := must.DoReq(t, env.client, req)
+					defer consumeAndCloseBody(resp)
 
-		req := newTestRequest(t, "GET", "/cookies/delete?"+params.Encode())
-		for k, v := range cookies {
-			req.AddCookie(&http.Cookie{
-				Name:  k,
-				Value: v,
-			})
-		}
+					result := mustParseResponse[cookiesResponse](t, resp)
+					assert.DeepEqual(t, result, tc.cookies, "cookies mismatch")
+				})
+			}
+		})
 
-		resp := must.DoReq(t, client, req)
-		assert.StatusCode(t, resp, http.StatusFound)
-		assert.Header(t, resp, "Location", "/cookies")
+		t.Run("set"+env.prefix, func(t *testing.T) {
+			t.Parallel()
 
-		for _, c := range resp.Cookies() {
-			if c.Name == toDelete {
-				if time.Since(c.Expires) < (24*365-1)*time.Hour {
-					t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
+			cookies := cookiesResponse{
+				"k1": "v1",
+				"k2": "v2",
+			}
+			params := &url.Values{}
+			for k, v := range cookies {
+				params.Set(k, v)
+			}
+
+			req := newTestRequest(t, "GET", env.prefix+"/cookies/set?"+params.Encode(), env)
+			resp := must.DoReq(t, client, req)
+
+			assert.StatusCode(t, resp, http.StatusFound)
+			assert.Header(t, resp, "Location", env.prefix+"/cookies")
+
+			for _, c := range resp.Cookies() {
+				v, ok := cookies[c.Name]
+				if !ok {
+					t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
+				}
+				assert.Equal(t, v, c.Value, "value mismatch for cookie %q", c.Name)
+			}
+		})
+
+		t.Run("delete"+env.prefix, func(t *testing.T) {
+			t.Parallel()
+
+			cookies := cookiesResponse{
+				"k1": "v1",
+				"k2": "v2",
+			}
+
+			toDelete := "k2"
+			params := &url.Values{}
+			params.Set(toDelete, "")
+
+			req := newTestRequest(t, "GET", env.prefix+"/cookies/delete?"+params.Encode(), env)
+			for k, v := range cookies {
+				req.AddCookie(&http.Cookie{
+					Name:  k,
+					Value: v,
+				})
+			}
+
+			resp := must.DoReq(t, env.client, req)
+			assert.StatusCode(t, resp, http.StatusFound)
+			assert.Header(t, resp, "Location", env.prefix+"/cookies")
+
+			for _, c := range resp.Cookies() {
+				if c.Name == toDelete {
+					if time.Since(c.Expires) < (24*365-1)*time.Hour {
+						t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
+					}
 				}
 			}
-		}
-	})
+		})
+	}
 }
 
 func TestBasicAuth(t *testing.T) {
@@ -2521,76 +2562,81 @@ func TestStreamBytes(t *testing.T) {
 }
 
 func TestLinks(t *testing.T) {
-	redirectTests := []struct {
-		url              string
-		expectedLocation string
-	}{
-		{"/links/1", "/links/1/0"},
-		{"/links/100", "/links/100/0"},
-	}
+	for _, env := range envs {
+		env := env
 
-	for _, test := range redirectTests {
-		test := test
-		t.Run("ok"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", test.expectedLocation)
-		})
-	}
+		redirectTests := []struct {
+			url              string
+			expectedLocation string
+		}{
+			{"/links/1", "/links/1/0"},
+			{"/links/100", "/links/100/0"},
+		}
 
-	errorTests := []struct {
-		url            string
-		expectedStatus int
-	}{
-		{"/links/10/1/foo", http.StatusNotFound},
+		for _, test := range redirectTests {
+			test := test
+			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, http.StatusFound)
+				assert.Header(t, resp, "Location", env.prefix+test.expectedLocation)
+			})
+		}
 
-		// invalid N
-		{"/links/3.14", http.StatusBadRequest},
-		{"/links/-1", http.StatusBadRequest},
-		{"/links/257", http.StatusBadRequest},
+		errorTests := []struct {
+			url            string
+			expectedStatus int
+		}{
+			{"/links/10/1/foo", http.StatusNotFound},
 
-		// invalid offset
-		{"/links/1/3.14", http.StatusBadRequest},
-		{"/links/1/foo", http.StatusBadRequest},
-	}
+			// invalid N
+			{"/links/3.14", http.StatusBadRequest},
+			{"/links/-1", http.StatusBadRequest},
+			{"/links/257", http.StatusBadRequest},
 
-	for _, test := range errorTests {
-		test := test
-		t.Run("error"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, test.expectedStatus)
-		})
-	}
+			// invalid offset
+			{"/links/1/3.14", http.StatusBadRequest},
+			{"/links/1/foo", http.StatusBadRequest},
+		}
 
-	linksPageTests := []struct {
-		url             string
-		expectedContent string
-	}{
-		{"/links/2/0", `<html><head><title>Links</title></head><body>0 <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> 1 </body></html>`},
+		for _, test := range errorTests {
+			test := test
+			t.Run("error"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, test.expectedStatus)
+			})
+		}
 
-		// offsets too large and too small are ignored
-		{"/links/2/2", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/10", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-		{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="/links/2/0">0</a> <a href="/links/2/1">1</a> </body></html>`},
-	}
-	for _, test := range linksPageTests {
-		test := test
-		t.Run("ok"+test.url, func(t *testing.T) {
-			t.Parallel()
-			req := newTestRequest(t, "GET", test.url)
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, http.StatusOK)
-			assert.ContentType(t, resp, htmlContentType)
-			assert.BodyEquals(t, resp, test.expectedContent)
-		})
+		linksPageTests := []struct {
+			url             string
+			expectedContent string
+		}{
+			{"/links/2/0", `<html><head><title>Links</title></head><body>0 <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/1", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> 1 </body></html>`},
+
+			// offsets too large and too small are ignored
+			{"/links/2/2", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/10", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+			{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
+		}
+		for _, test := range linksPageTests {
+			test := test
+			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, "GET", env.prefix+test.url, env)
+				resp := must.DoReq(t, env.client, req)
+				defer consumeAndCloseBody(resp)
+				assert.StatusCode(t, resp, http.StatusOK)
+				assert.ContentType(t, resp, htmlContentType)
+				expectedContent := fmt.Sprintf(test.expectedContent, env.prefix)
+				assert.BodyEquals(t, resp, expectedContent)
+			})
+		}
 	}
 }
 
@@ -2982,7 +3028,6 @@ func TestWebSocketEcho(t *testing.T) {
 		})
 	}
 }
-
 func newTestServer(handler http.Handler) (*httptest.Server, *http.Client) {
 	srv := httptest.NewServer(handler)
 	client := srv.Client()
@@ -2993,14 +3038,30 @@ func newTestServer(handler http.Handler) (*httptest.Server, *http.Client) {
 	return srv, client
 }
 
-func newTestRequest(t *testing.T, verb, path string) *http.Request {
-	t.Helper()
-	return newTestRequestWithBody(t, verb, path, nil)
+func newTestEnvironment(app *HTTPBin) (env *environment) {
+	env = new(environment)
+	env.srv, env.client = newTestServer(app)
+	env.prefix = app.prefix
+	return
 }
 
-func newTestRequestWithBody(t *testing.T, verb, path string, body io.Reader) *http.Request {
+func newTestRequest(t *testing.T, verb, path string, envs ...*environment) *http.Request {
 	t.Helper()
-	req, err := http.NewRequest(verb, srv.URL+path, body)
+	return newTestRequestWithBody(t, verb, path, nil, envs...)
+}
+
+func newTestRequestWithBody(t *testing.T, verb, path string, body io.Reader, envs ...*environment) *http.Request {
+	t.Helper()
+
+	var env *environment
+	if len(envs) == 0 {
+		env = defaultEnv
+	} else if len(envs) == 1 {
+		env = envs[0]
+	} else {
+		t.Fatal("Only zero or one environment are allowed")
+	}
+	req, err := http.NewRequest(verb, env.srv.URL+path, body)
 	assert.NilError(t, err)
 	return req
 }

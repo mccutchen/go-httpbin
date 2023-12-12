@@ -55,6 +55,13 @@ type HTTPBin struct {
 	// The app's http handler
 	handler http.Handler
 
+	prefix string
+
+	indexHTML     []byte
+	formsPostHTML []byte
+
+	statusSpecialCases map[int]*statusCase
+
 	excludeHeadersProcessor headersProcessorFunc
 }
 
@@ -70,6 +77,12 @@ func New(opts ...OptionFunc) *HTTPBin {
 		opt(h)
 	}
 	h.handler = h.Handler()
+
+	h.statusSpecialCases = createSpecialCases(h.prefix)
+
+	h.indexHTML = h.staticTemplateAssert("index.html.tmpl")
+	h.formsPostHTML = h.staticTemplateAssert("forms-post.html.tmpl")
+
 	return h
 }
 
@@ -180,6 +193,11 @@ func (h *HTTPBin) Handler() http.Handler {
 	handler = limitRequestSize(h.MaxBodySize, handler)
 	handler = preflight(handler)
 	handler = autohead(handler)
+
+	if h.prefix != "" {
+		handler = http.StripPrefix(h.prefix, handler)
+	}
+
 	if h.Observer != nil {
 		handler = observe(h.Observer, handler)
 	}

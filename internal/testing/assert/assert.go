@@ -87,13 +87,19 @@ func ContentType(t *testing.T, resp *http.Response, contentType string) {
 	Header(t, resp, "Content-Type", contentType)
 }
 
+// expects needle in s
+func Contains(t *testing.T, s string, needle string, description string) {
+	t.Helper()
+	if !strings.Contains(s, needle) {
+		t.Fatalf("expected string %q in %s %q", needle, description, s)
+	}
+}
+
 // BodyContains asserts that a response body contains a specific substring.
 func BodyContains(t *testing.T, resp *http.Response, needle string) {
 	t.Helper()
 	body := must.ReadAll(t, resp.Body)
-	if !strings.Contains(body, needle) {
-		t.Fatalf("expected string %q in body %q", needle, body)
-	}
+	Contains(t, body, needle, "body")
 }
 
 // BodyEquals asserts that a response body is equal to a specific string.

@@ -54,6 +54,13 @@ func WithExcludeHeaders(excludeHeaders string) OptionFunc {
 	}
 }
 
+// WithPrefix sets the path prefix
+func WithPrefix(p string) OptionFunc {
+	return func(h *HTTPBin) {
+		h.prefix = p
+	}
+}
+
 // WithAllowedRedirectDomains limits the domains to which the /redirect-to
 // endpoint will redirect traffic.
 func WithAllowedRedirectDomains(hosts []string) OptionFunc {

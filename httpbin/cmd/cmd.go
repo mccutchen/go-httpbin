@@ -73,6 +73,9 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
 		httpbin.WithExcludeHeaders(cfg.ExcludeHeaders),
 	}
+	if cfg.Prefix != "" {
+		opts = append(opts, httpbin.WithPrefix(cfg.Prefix))
+	}
 	if cfg.RealHostname != "" {
 		opts = append(opts, httpbin.WithHostname(cfg.RealHostname))
 	}
@@ -106,6 +109,7 @@ type config struct {
 	ListenPort             int
 	MaxBodySize            int64
 	MaxDuration            time.Duration
+	Prefix                 string
 	RealHostname           string
 	TLSCertFile            string
 	TLSKeyFile             string
@@ -142,6 +146,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.IntVar(&cfg.ListenPort, "port", defaultListenPort, "Port to listen on")
 	fs.StringVar(&cfg.rawAllowedRedirectDomains, "allowed-redirect-domains", "", "Comma-separated list of domains the /redirect-to endpoint will allow")
 	fs.StringVar(&cfg.ListenHost, "host", defaultListenHost, "Host to listen on")
+	fs.StringVar(&cfg.Prefix, "prefix", "", "Path prefix (empty or start with slash and does not end with slash)")
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
@@ -193,6 +198,19 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	}
 	if cfg.ListenHost == defaultListenHost && getEnv("HOST") != "" {
 		cfg.ListenHost = getEnv("HOST")
+	}
+	if cfg.Prefix == "" {
+		if prefix := getEnv("PREFIX"); prefix != "" {
+			cfg.Prefix = prefix
+		}
+	}
+	if cfg.Prefix != "" {
+		if !strings.HasPrefix(cfg.Prefix, "/") {
+			return nil, configErr("Prefix %#v must start with a slash", cfg.Prefix)
+		}
+		if strings.HasSuffix(cfg.Prefix, "/") {
+			return nil, configErr("Prefix %#v must not end with a slash", cfg.Prefix)
+		}
 	}
 	if cfg.ExcludeHeaders == "" && getEnv("EXCLUDE_HEADERS") != "" {
 		cfg.ExcludeHeaders = getEnv("EXCLUDE_HEADERS")

@@ -13,7 +13,10 @@ import (
 )
 
 // To update, run:
+// OSX:
 // make && ./dist/go-httpbin -h 2>&1 | pbcopy
+// Linux (paste with middle mouse):
+// make && ./dist/go-httpbin -h 2>&1 | xclip
 const usage = `Usage of go-httpbin:
   -allowed-redirect-domains string
     	Comma-separated list of domains the /redirect-to endpoint will allow
@@ -31,6 +34,8 @@ const usage = `Usage of go-httpbin:
     	Maximum duration a response may take (default 10s)
   -port int
     	Port to listen on (default 8080)
+  -prefix string
+    	Path prefix (empty or start with slash and does not end with slash)
   -use-real-hostname
     	Expose value of os.Hostname() in the /hostname endpoint instead of dummy value
 `
@@ -207,6 +212,37 @@ func TestLoadConfig(t *testing.T) {
 			wantCfg: &config{
 				ListenHost:  defaultListenHost,
 				ListenPort:  1234,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+			},
+		},
+
+		// prefix
+		"invalid -prefix (does not start with slash)": {
+			args:    []string{"-prefix", "invalidprefix1"},
+			wantErr: errors.New("Prefix \"invalidprefix1\" must start with a slash"),
+		},
+		"invalid -prefix (ends with with slash)": {
+			args:    []string{"-prefix", "/invalidprefix2/"},
+			wantErr: errors.New("Prefix \"/invalidprefix2/\" must not end with a slash"),
+		},
+		"ok -prefix takes precedence over env": {
+			args: []string{"-prefix", "/prefix1"},
+			env:  map[string]string{"PREFIX": "/prefix2"},
+			wantCfg: &config{
+				ListenHost:  defaultListenHost,
+				ListenPort:  defaultListenPort,
+				Prefix:      "/prefix1",
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+			},
+		},
+		"ok PREFIX": {
+			env: map[string]string{"PREFIX": "/prefix2"},
+			wantCfg: &config{
+				ListenHost:  defaultListenHost,
+				ListenPort:  defaultListenPort,
+				Prefix:      "/prefix2",
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
 			},

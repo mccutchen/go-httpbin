@@ -31,12 +31,12 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
-	writeHTML(w, mustStaticAsset("index.html"), http.StatusOK)
+	writeHTML(w, h.indexHTML, http.StatusOK)
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, _ *http.Request) {
-	writeHTML(w, mustStaticAsset("forms-post.html"), http.StatusOK)
+	writeHTML(w, h.formsPostHTML, http.StatusOK)
 }
 
 // UTF8 renders an HTML encoding stress test
@@ -161,13 +161,13 @@ type statusCase struct {
 	body    []byte
 }
 
-var (
-	statusRedirectHeaders = &statusCase{
+func createSpecialCases(prefix string) map[int]*statusCase {
+	statusRedirectHeaders := &statusCase{
 		headers: map[string]string{
-			"Location": "/redirect/1",
+			"Location": prefix + "/redirect/1",
 		},
 	}
-	statusNotAcceptableBody = []byte(`{
+	statusNotAcceptableBody := []byte(`{
   "message": "Client did not request a supported media type",
   "accept": [
     "image/webp",
@@ -178,31 +178,31 @@ var (
   ]
 }
 `)
-	statusHTTP300body = []byte(`<!doctype html>
+	statusHTTP300body := []byte(fmt.Sprintf(`<!doctype html>
 <head>
 <title>Multiple Choices</title>
 </head>
 <body>
 <ul>
-<li><a href="/image/jpeg">/image/jpeg</a></li>
-<li><a href="/image/png">/image/png</a></li>
-<li><a href="/image/svg">/image/svg</a></li>
+<li><a href="%[1]s/image/jpeg">/image/jpeg</a></li>
+<li><a href="%[1]s/image/png">/image/png</a></li>
+<li><a href="%[1]s/image/svg">/image/svg</a></li>
 </body>
-</html>`)
+</html>`, prefix))
 
-	statusHTTP308Body = []byte(`<!doctype html>
+	statusHTTP308Body := []byte(fmt.Sprintf(`<!doctype html>
 <head>
 <title>Permanent Redirect</title>
 </head>
-<body>Permanently redirected to <a href="/image/jpeg">/image/jpeg</a>
+<body>Permanently redirected to <a href="%[1]s/image/jpeg">%[1]s/image/jpeg</a>
 </body>
-</html>`)
+</html>`, prefix))
 
-	statusSpecialCases = map[int]*statusCase{
+	return map[int]*statusCase{
 		300: {
 			body: statusHTTP300body,
 			headers: map[string]string{
-				"Location": "/image/jpeg",
+				"Location": prefix + "/image/jpeg",
 			},
 		},
 		301: statusRedirectHeaders,
@@ -213,7 +213,7 @@ var (
 		308: {
 			body: statusHTTP308Body,
 			headers: map[string]string{
-				"Location": "/image/jpeg",
+				"Location": prefix + "/image/jpeg",
 			},
 		},
 		401: {
@@ -245,7 +245,7 @@ var (
 			},
 		},
 	}
-)
+}
 
 // Status responds with the specified status code. TODO: support random choice
 // from multiple, optionally weighted status codes.
@@ -265,7 +265,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 	// for special cases
 	w.Header().Set("Content-Type", textContentType)
 
-	if specialCase, ok := statusSpecialCases[code]; ok {
+	if specialCase, ok := h.statusSpecialCases[code]; ok {
 		for key, val := range specialCase.headers {
 			w.Header().Set(key, val)
 		}
@@ -326,7 +326,7 @@ func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	mustMarshalJSON(w, args)
 }
 
-func redirectLocation(r *http.Request, relative bool, n int) string {
+func (h *HTTPBin) redirectLocation(r *http.Request, relative bool, n int) string {
 	var location string
 	var path string
 
@@ -350,7 +350,7 @@ func redirectLocation(r *http.Request, relative bool, n int) string {
 	return location
 }
 
-func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
+func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 3 {
 		writeError(w, http.StatusNotFound, nil)
@@ -365,8 +365,7 @@ func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 		return
 	}
 
-	w.Header().Set("Location", redirectLocation(r, relative, n-1))
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, h.redirectLocation(r, relative, n-1), http.StatusFound)
 }
 
 // Redirect responds with 302 redirect a given number of times. Defaults to a
@@ -375,17 +374,17 @@ func doRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
 func (h *HTTPBin) Redirect(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	relative := strings.ToLower(params.Get("absolute")) != "true"
-	doRedirect(w, r, relative)
+	h.handleRedirect(w, r, relative)
 }
 
 // RelativeRedirect responds with an HTTP 302 redirect a given number of times
 func (h *HTTPBin) RelativeRedirect(w http.ResponseWriter, r *http.Request) {
-	doRedirect(w, r, true)
+	h.handleRedirect(w, r, true)
 }
 
 // AbsoluteRedirect responds with an HTTP 302 redirect a given number of times
 func (h *HTTPBin) AbsoluteRedirect(w http.ResponseWriter, r *http.Request) {
-	doRedirect(w, r, false)
+	h.handleRedirect(w, r, false)
 }
 
 // RedirectTo responds with a redirect to a specific URL with an optional
@@ -423,8 +422,7 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Location", u.String())
-	w.WriteHeader(statusCode)
+	h.doRedirect(w, u.String(), statusCode)
 }
 
 // Cookies responds with the cookies in the incoming request
@@ -447,8 +445,7 @@ func (h *HTTPBin) SetCookies(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 		})
 	}
-	w.Header().Set("Location", "/cookies")
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, "/cookies", http.StatusFound)
 }
 
 // DeleteCookies deletes cookies specified in query params and redirects to
@@ -464,8 +461,7 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 			Expires:  time.Now().Add(-1 * 24 * 365 * time.Hour),
 		})
 	}
-	w.Header().Set("Location", "/cookies")
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, "/cookies", http.StatusFound)
 }
 
 // BasicAuth requires basic authentication
@@ -916,18 +912,17 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid offset: %w", err))
 			return
 		}
-		doLinksPage(w, r, n, offset)
+		h.doLinksPage(w, r, n, offset)
 		return
 	}
 
 	// Otherwise, redirect from /links/<n> to /links/<n>/0
 	r.URL.Path = r.URL.Path + "/0"
-	w.Header().Set("Location", r.URL.String())
-	w.WriteHeader(http.StatusFound)
+	h.doRedirect(w, r.URL.String(), http.StatusFound)
 }
 
 // doLinksPage renders a page with a series of N links
-func doLinksPage(w http.ResponseWriter, _ *http.Request, n int, offset int) {
+func (h *HTTPBin) doLinksPage(w http.ResponseWriter, _ *http.Request, n int, offset int) {
 	w.Header().Add("Content-Type", htmlContentType)
 	w.WriteHeader(http.StatusOK)
 
@@ -936,10 +931,21 @@ func doLinksPage(w http.ResponseWriter, _ *http.Request, n int, offset int) {
 		if i == offset {
 			fmt.Fprintf(w, "%d ", i)
 		} else {
-			fmt.Fprintf(w, `<a href="/links/%d/%d">%d</a> `, n, i, i)
+			fmt.Fprintf(w, `<a href="%s/links/%d/%d">%d</a> `, h.prefix, n, i, i)
 		}
 	}
 	w.Write([]byte("</body></html>"))
+}
+
+// doRedirect set redirect header
+func (h *HTTPBin) doRedirect(w http.ResponseWriter, path string, code int) {
+	var sb strings.Builder
+	if strings.HasPrefix(path, "/") {
+		sb.WriteString(h.prefix)
+	}
+	sb.WriteString(path)
+	w.Header().Set("Location", sb.String())
+	w.WriteHeader(code)
 }
 
 // ImageAccept responds with an appropriate image based on the Accept header

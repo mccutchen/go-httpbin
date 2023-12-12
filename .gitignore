@@ -4,3 +4,4 @@
 *.prof
 dist/*
 coverage.txt
+/cmd/go-httpbin/go-httpbin
