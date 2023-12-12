@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -1106,6 +1107,115 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(http.StatusOK, w, hostnameResponse{
 		Hostname: h.hostname,
 	})
+}
+
+// SSE writes a stream of events over a duration after an optional
+// initial delay.
+func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	var (
+		count    = h.DefaultParams.SSECount
+		duration = h.DefaultParams.SSEDuration
+		delay    = h.DefaultParams.SSEDelay
+		err      error
+	)
+
+	if userCount := q.Get("count"); userCount != "" {
+		count, err = strconv.Atoi(userCount)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
+			return
+		}
+		if count < 1 || int64(count) > h.maxSSECount {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: must in range [1, %d]", h.maxSSECount))
+			return
+		}
+	}
+
+	if userDuration := q.Get("duration"); userDuration != "" {
+		duration, err = parseBoundedDuration(userDuration, 1, h.MaxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
+			return
+		}
+	}
+
+	if userDelay := q.Get("delay"); userDelay != "" {
+		delay, err = parseBoundedDuration(userDelay, 0, h.MaxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid delay: %w", err))
+			return
+		}
+	}
+
+	if duration+delay > h.MaxDuration {
+		http.Error(w, "Too much time", http.StatusBadRequest)
+		return
+	}
+
+	pause := duration
+	if count > 1 {
+		// compensate for lack of pause after final write (i.e. if we're
+		// writing 10 events, we will only pause 9 times)
+		pause = duration / time.Duration(count-1)
+	}
+
+	// Initial delay before we send any response data
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+			// ok
+		case <-r.Context().Done():
+			w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", sseContentType)
+	w.WriteHeader(http.StatusOK)
+
+	flusher := w.(http.Flusher)
+
+	// special case when we only have one event to write
+	if count == 1 {
+		writeServerSentEvent(w, 0, time.Now())
+		flusher.Flush()
+		return
+	}
+
+	ticker := time.NewTicker(pause)
+	defer ticker.Stop()
+
+	for i := 0; i < count; i++ {
+		writeServerSentEvent(w, i, time.Now())
+		flusher.Flush()
+
+		// don't pause after last byte
+		if i == count-1 {
+			return
+		}
+
+		select {
+		case <-ticker.C:
+			// ok
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
+// writeServerSentEvent writes the bytes that constitute a single server-sent
+// event message, including both the event type and data.
+func writeServerSentEvent(dst io.Writer, id int, ts time.Time) {
+	dst.Write([]byte("event: ping\n"))
+	dst.Write([]byte("data: "))
+	json.NewEncoder(dst).Encode(serverSentEvent{
+		ID:        id,
+		Timestamp: ts.UnixMilli(),
+	})
+	// each SSE ends with two newlines (\n\n), the first of which is written
+	// automatically by json.NewEncoder().Encode()
+	dst.Write([]byte("\n"))
 }
 
 // WebSocketEcho - simple websocket echo server, where the max fragment size

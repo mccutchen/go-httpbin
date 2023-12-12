@@ -9,6 +9,7 @@ const (
 	binaryContentType = "application/octet-stream"
 	htmlContentType   = "text/html; charset=utf-8"
 	jsonContentType   = "application/json; charset=utf-8"
+	sseContentType    = "text/event-stream; charset=utf-8"
 	textContentType   = "text/plain; charset=utf-8"
 )
 
@@ -86,4 +87,9 @@ type errorRespnose struct {
 	StatusCode int    `json:"status_code"`
 	Error      string `json:"error"`
 	Detail     string `json:"detail,omitempty"`
+}
+
+type serverSentEvent struct {
+	ID        int   `json:"id"`
+	Timestamp int64 `json:"timestamp"`
 }

@@ -109,6 +109,7 @@
 <li><a href="{{.Prefix}}/relative-redirect/6"><code>{{.Prefix}}/relative-redirect/:n</code></a> 302 Relative redirects <em>n</em> times.</li>
 <li><a href="{{.Prefix}}/response-headers?Server=httpbin&amp;Content-Type=text%2Fplain%3B+charset%3DUTF-8"><code>{{.Prefix}}/response-headers?key=val</code></a> Returns given response headers.</li>
 <li><a href="{{.Prefix}}/robots.txt"><code>{{.Prefix}}/robots.txt</code></a> Returns some robots.txt rules.</li>
+<li><a href="{{.Prefix}}/sse?delay=1s&amp;duration=5s&count=10"><code>{{.Prefix}}/sse?delay=1s&amp;duration=5s&count=10</code></a> a stream of server-sent events.</li>
 <li><a href="{{.Prefix}}/status/418"><code>{{.Prefix}}/status/:code</code></a> Returns given HTTP Status code.</li>
 <li><a href="{{.Prefix}}/stream-bytes/1024"><code>{{.Prefix}}/stream-bytes/:n</code></a> Streams <em>n</em> random bytes of binary data, accepts optional <em>seed</em> and <em>chunk_size</em> integer parameters.</li>
 <li><a href="{{.Prefix}}/stream/20"><code>{{.Prefix}}/stream/:n</code></a> Streams <em>min(n, 100)</em> lines.</li>
