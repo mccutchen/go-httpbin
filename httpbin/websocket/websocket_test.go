@@ -51,22 +51,22 @@ func TestHandshake(t *testing.T) {
 			},
 			wantStatus: http.StatusSwitchingProtocols,
 		},
-		"missing Connection header": {
+		"missing Connection header is okay": {
 			reqHeaders: map[string]string{
 				"Upgrade":               "websocket",
 				"Sec-WebSocket-Key":     "dGhlIHNhbXBsZSBub25jZQ==",
 				"Sec-WebSocket-Version": "13",
 			},
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusSwitchingProtocols,
 		},
-		"incorrect Connection header": {
+		"incorrect Connection header is also okay": {
 			reqHeaders: map[string]string{
-				"Connection":            "close",
+				"Connection":            "foo",
 				"Upgrade":               "websocket",
 				"Sec-WebSocket-Key":     "dGhlIHNhbXBsZSBub25jZQ==",
 				"Sec-WebSocket-Version": "13",
 			},
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusSwitchingProtocols,
 		},
 		"missing Upgrade header": {
 			reqHeaders: map[string]string{
