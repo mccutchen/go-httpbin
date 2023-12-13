@@ -115,9 +115,6 @@ func (s *WebSocket) Handshake() error {
 		panic("websocket: handshake already completed")
 	}
 
-	if strings.ToLower(s.r.Header.Get("Connection")) != "upgrade" {
-		return fmt.Errorf("missing required `Connection: upgrade` header")
-	}
 	if strings.ToLower(s.r.Header.Get("Upgrade")) != "websocket" {
 		return fmt.Errorf("missing required `Upgrade: websocket` header")
 	}
