@@ -506,3 +506,59 @@ func createFullExcludeRegex(excludeHeaders string) *regexp.Regexp {
 
 	return nil
 }
+
+// weightedChoice represents a choice with its associated weight.
+type weightedChoice[T any] struct {
+	Choice T
+	Weight float64
+}
+
+// parseWeighteChoices parses a comma-separated list of choices in
+// choice:weight format, where weight is an optional floating point number.
+func parseWeightedChoices[T any](rawChoices string, parser func(string) (T, error)) ([]weightedChoice[T], error) {
+	if rawChoices == "" {
+		return nil, nil
+	}
+
+	var (
+		choicePairs = strings.Split(rawChoices, ",")
+		choices     = make([]weightedChoice[T], 0, len(choicePairs))
+		err         error
+	)
+	for _, choicePair := range choicePairs {
+		weight := 1.0
+		rawChoice, rawWeight, found := strings.Cut(choicePair, ":")
+		if found {
+			weight, err = strconv.ParseFloat(rawWeight, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid weight value: %q", rawWeight)
+			}
+		}
+		choice, err := parser(rawChoice)
+		if err != nil {
+			return nil, fmt.Errorf("invalid choice value: %q", rawChoice)
+		}
+		choices = append(choices, weightedChoice[T]{Choice: choice, Weight: weight})
+	}
+	return choices, nil
+}
+
+// weightedRandomChoice returns a randomly chosen element from the weighted
+// choices, given as a slice of "choice:weight" strings where weight is a
+// floating point number. Weights do not need to sum to 1.
+func weightedRandomChoice[T any](choices []weightedChoice[T]) T {
+	// Calculate total weight
+	var totalWeight float64
+	for _, wc := range choices {
+		totalWeight += wc.Weight
+	}
+	randomNumber := rand.Float64() * totalWeight
+	currentWeight := 0.0
+	for _, wc := range choices {
+		currentWeight += wc.Weight
+		if randomNumber < currentWeight {
+			return wc.Choice
+		}
+	}
+	panic("failed to select a weighted random choice")
+}

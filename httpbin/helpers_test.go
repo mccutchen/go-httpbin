@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -394,4 +396,132 @@ func TestCreateFullExcludeRegex(t *testing.T) {
 
 	nilReturn := createFullExcludeRegex("")
 	assert.Equal(t, nilReturn, nil, "incorrect match")
+}
+
+func TestParseWeightedChoices(t *testing.T) {
+	testCases := []struct {
+		given   string
+		want    []weightedChoice[int]
+		wantErr error
+	}{
+		{
+			given: "200:0.5,300:0.3,400:0.1,500:0.1",
+			want: []weightedChoice[int]{
+				{Choice: 200, Weight: 0.5},
+				{Choice: 300, Weight: 0.3},
+				{Choice: 400, Weight: 0.1},
+				{Choice: 500, Weight: 0.1},
+			},
+		},
+		{
+			given: "",
+			want:  nil,
+		},
+		{
+			given: "200,300,400",
+			want: []weightedChoice[int]{
+				{Choice: 200, Weight: 1.0},
+				{Choice: 300, Weight: 1.0},
+				{Choice: 400, Weight: 1.0},
+			},
+		},
+		{
+			given: "200",
+			want: []weightedChoice[int]{
+				{Choice: 200, Weight: 1.0},
+			},
+		},
+		{
+			given: "200:10,300,400:0.01",
+			want: []weightedChoice[int]{
+				{Choice: 200, Weight: 10.0},
+				{Choice: 300, Weight: 1.0},
+				{Choice: 400, Weight: 0.01},
+			},
+		},
+		{
+			given: "200:10,300,400:0.01",
+			want: []weightedChoice[int]{
+				{Choice: 200, Weight: 10.0},
+				{Choice: 300, Weight: 1.0},
+				{Choice: 400, Weight: 0.01},
+			},
+		},
+		{
+			given:   "200:,300:1.0",
+			wantErr: errors.New("invalid weight value: \"\""),
+		},
+		{
+			given:   "200:1.0,300:foo",
+			wantErr: errors.New("invalid weight value: \"foo\""),
+		},
+		{
+			given:   "A:1.0,200:1.0",
+			wantErr: errors.New("invalid choice value: \"A\""),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.given, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseWeightedChoices[int](tc.given, strconv.Atoi)
+			assert.Error(t, err, tc.wantErr)
+			assert.DeepEqual(t, got, tc.want, "incorrect weighted choices")
+		})
+	}
+}
+
+func TestWeightedRandomChoice(t *testing.T) {
+	iters := 1_000
+	testCases := []string{
+		// weights sum to 1
+		"A:0.5,B:0.3,C:0.1,D:0.1",
+		// weights sum to 1 but are out of order
+		"A:0.2,B:0.5,C:0.3",
+		// weights do not sum to 1
+		"A:5,B:1,C:0.5",
+		// weights do not sum to 1 and are out of order
+		"A:0.5,B:5,C:1",
+		// one choice
+		"A:1",
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
+			choices, err := parseWeightedChoices(tc, func(s string) (string, error) { return s, nil })
+			assert.NilError(t, err)
+
+			normalizedChoices := normalizeChoices(choices)
+			t.Logf("given choices:      %q", tc)
+			t.Logf("parsed choices:     %v", choices)
+			t.Logf("normalized choices: %v", normalizedChoices)
+
+			result := make(map[string]int, len(choices))
+			for i := 0; i < 1_000; i++ {
+				choice := weightedRandomChoice(choices)
+				result[choice]++
+			}
+
+			for _, choice := range normalizedChoices {
+				count := result[choice.Choice]
+				ratio := float64(count) / float64(iters)
+				assert.RoughlyEqual(t, ratio, choice.Weight, 0.05)
+			}
+		})
+	}
+}
+
+func normalizeChoices[T any](choices []weightedChoice[T]) []weightedChoice[T] {
+	var totalWeight float64
+	for _, wc := range choices {
+		totalWeight += wc.Weight
+	}
+	normalized := make([]weightedChoice[T], 0, len(choices))
+	for _, wc := range choices {
+		normalized = append(normalized, weightedChoice[T]{Choice: wc.Choice, Weight: wc.Weight / totalWeight})
+	}
+	return normalized
 }
