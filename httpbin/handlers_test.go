@@ -1114,6 +1114,36 @@ func TestStatus(t *testing.T) {
 		assert.NilError(t, err)
 		assert.StatusCode(t, resp, http.StatusContinue)
 	})
+
+	t.Run("multiple choice", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+			req, _ := http.NewRequest("GET", srv.URL+"/status/200:0.7,429:0.2,503:0.1", nil)
+			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
+			if resp.StatusCode != 200 && resp.StatusCode != 429 && resp.StatusCode != 503 {
+				t.Fatalf("expected status code 200, 429, or 503, got %d", resp.StatusCode)
+			}
+		})
+
+		t.Run("bad weight", func(t *testing.T) {
+			t.Parallel()
+			req, _ := http.NewRequest("GET", srv.URL+"/status/200:foo,500:1", nil)
+			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
+			assert.StatusCode(t, resp, http.StatusBadRequest)
+		})
+
+		t.Run("bad choice", func(t *testing.T) {
+			t.Parallel()
+			req, _ := http.NewRequest("GET", srv.URL+"/status/200:1,foo:1", nil)
+			resp := must.DoReq(t, client, req)
+			defer consumeAndCloseBody(resp)
+			assert.StatusCode(t, resp, http.StatusBadRequest)
+		})
+	})
 }
 
 func TestUnstable(t *testing.T) {

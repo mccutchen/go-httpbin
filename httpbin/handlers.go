@@ -256,16 +256,33 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, nil)
 		return
 	}
-	code, err := parseStatusCode(parts[2])
+	rawStatus := parts[2]
+
+	// simple case, specific status code is requested
+	if !strings.Contains(rawStatus, ",") {
+		code, err := parseStatusCode(parts[2])
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		h.doStatus(w, code)
+		return
+	}
+
+	// complex case, make a weighted choice from multiple status codes
+	choices, err := parseWeightedChoices(rawStatus, strconv.Atoi)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	choice := weightedRandomChoice(choices)
+	h.doStatus(w, choice)
+}
 
+func (h *HTTPBin) doStatus(w http.ResponseWriter, code int) {
 	// default to plain text content type, which may be overriden by headers
 	// for special cases
 	w.Header().Set("Content-Type", textContentType)
-
 	if specialCase, ok := h.statusSpecialCases[code]; ok {
 		for key, val := range specialCase.headers {
 			w.Header().Set(key, val)
@@ -276,7 +293,6 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	w.WriteHeader(code)
 }
 

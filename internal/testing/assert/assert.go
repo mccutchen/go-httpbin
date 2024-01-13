@@ -48,6 +48,11 @@ func NilError(t *testing.T, err error) {
 func Error(t *testing.T, got, expected error) {
 	t.Helper()
 	if got != expected {
+		if got != nil && expected != nil {
+			if got.Error() == expected.Error() {
+				return
+			}
+		}
 		t.Fatalf("expected error %v, got %v", expected, got)
 	}
 }
@@ -87,7 +92,7 @@ func ContentType(t *testing.T, resp *http.Response, contentType string) {
 	Header(t, resp, "Content-Type", contentType)
 }
 
-// expects needle in s
+// Contains asserts that needle is found in the given string.
 func Contains(t *testing.T, s string, needle string, description string) {
 	t.Helper()
 	if !strings.Contains(s, needle) {
@@ -129,4 +134,12 @@ func DurationRange(t *testing.T, got, min, max time.Duration) {
 func RoughDuration(t *testing.T, got, want time.Duration, tolerance time.Duration) {
 	t.Helper()
 	DurationRange(t, got, want-tolerance, want+tolerance)
+}
+
+// RoughlyEqual asserts that a float64 is within a certain tolerance.
+func RoughlyEqual(t *testing.T, got, want float64, epsilon float64) {
+	t.Helper()
+	if got < want-epsilon || got > want+epsilon {
+		t.Fatalf("expected value between %f and %f, got %f", want-epsilon, want+epsilon, got)
+	}
 }
