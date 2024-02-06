@@ -1,15 +1,10 @@
-name: Test
+name: test
 
-# Translated: "Execute this workflow on pushes to main OR on pull requests
-# opened against main"
-#
-# See this question and answer for what we're solving here:
-# https://github.community/t5/GitHub-Actions/How-to-trigger-an-action-on-push-or-pull-request-but-not-both/m-p/36155#M2460
 on:
   push:
-    branches: [main]
+    branches: [main] # pushes TO main
   pull_request:
-    branches: [main]
+    branches: [main] # pull requests AGAINST main
 
 # cancel CI runs when a new commit is pushed to any branch except main
 concurrency:
@@ -18,39 +13,28 @@ concurrency:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/setup-go@v2
-      with:
-        go-version: '1.21'
-
-    - uses: actions/checkout@v2
-
-    - run: make testci
-
-    - uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.txt
-
-    - run: make image
-
-  regression_tests:
-    name: Regression Tests
+    name: test
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        go_version:
-        - '1.20'
-        - '1.19'
+        # build against the two latest releases, to match golang's release
+        # policy: https://go.dev/doc/devel/release#policy
+        go-version:
+        - 'stable'
+        - 'oldstable'
 
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
-        go-version: ${{matrix.go_version}}
+        go-version: ${{matrix.go-version}}
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
-    - run: make test
+    - name: test
+      run: make testci
+
+    - uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.out
+      if: ${{ matrix.go-version == 'stable' }}

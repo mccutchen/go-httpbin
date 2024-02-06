@@ -1,4 +1,4 @@
-name: Lint
+name: lint
 
 on:
   push:
@@ -13,13 +13,15 @@ concurrency:
 
 jobs:
   golangci:
-    name: Lint
+    name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
-      - uses: golangci/golangci-lint-action@v3.7.0
+          go-version: 'stable'
+
+      - uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.55.2
+          version: latest
