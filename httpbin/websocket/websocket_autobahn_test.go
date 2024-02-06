@@ -41,7 +41,7 @@ var defaultExcludedTestCases = []string{
 func TestWebSocketServer(t *testing.T) {
 	t.Parallel()
 
-	if os.Getenv("AUTOBAHN_TESTS") == "" {
+	if os.Getenv("AUTOBAHN_TESTS") != "1" {
 		t.Skipf("set AUTOBAHN_TESTS=1 to run autobahn integration tests")
 	}
 

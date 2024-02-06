@@ -34,8 +34,6 @@ jobs:
       run: make testci
 
     - uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.out
       if: ${{ matrix.go-version == 'stable' }}
 
   lint:
