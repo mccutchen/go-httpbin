@@ -1526,54 +1526,66 @@ func TestCookies(t *testing.T) {
 
 func TestBasicAuth(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
-		t.Parallel()
+		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
+			method := method
+			t.Run(method, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, method, "/basic-auth/user/pass")
+				req.SetBasicAuth("user", "pass")
 
-		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
-		req.SetBasicAuth("user", "pass")
-
-		resp := must.DoReq(t, client, req)
-		result := mustParseResponse[authResponse](t, resp)
-		expectedResult := authResponse{
-			Authorized: true,
-			User:       "user",
+				resp := must.DoReq(t, client, req)
+				result := mustParseResponse[authResponse](t, resp)
+				expectedResult := authResponse{
+					Authorized: true,
+					User:       "user",
+				}
+				assert.DeepEqual(t, result, expectedResult, "expected authorized user")
+			})
 		}
-		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
 
 	t.Run("error/no auth", func(t *testing.T) {
-		t.Parallel()
+		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
+			method := method
+			t.Run(method, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, method, "/basic-auth/user/pass")
+				resp := must.DoReq(t, client, req)
+				assert.StatusCode(t, resp, http.StatusUnauthorized)
+				assert.ContentType(t, resp, jsonContentType)
+				assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
-		resp := must.DoReq(t, client, req)
-		assert.StatusCode(t, resp, http.StatusUnauthorized)
-		assert.ContentType(t, resp, jsonContentType)
-		assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
-
-		result := must.Unmarshal[authResponse](t, resp.Body)
-		expectedResult := authResponse{
-			Authorized: false,
-			User:       "",
+				result := must.Unmarshal[authResponse](t, resp.Body)
+				expectedResult := authResponse{
+					Authorized: false,
+					User:       "",
+				}
+				assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
+			})
 		}
-		assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 	})
 
 	t.Run("error/bad auth", func(t *testing.T) {
-		t.Parallel()
+		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
+			method := method
+			t.Run(method, func(t *testing.T) {
+				t.Parallel()
+				req := newTestRequest(t, method, "/basic-auth/user/pass")
+				req.SetBasicAuth("bad", "auth")
 
-		req := newTestRequest(t, "GET", "/basic-auth/user/pass")
-		req.SetBasicAuth("bad", "auth")
+				resp := must.DoReq(t, client, req)
+				assert.StatusCode(t, resp, http.StatusUnauthorized)
+				assert.ContentType(t, resp, jsonContentType)
+				assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
 
-		resp := must.DoReq(t, client, req)
-		assert.StatusCode(t, resp, http.StatusUnauthorized)
-		assert.ContentType(t, resp, jsonContentType)
-		assert.Header(t, resp, "WWW-Authenticate", `Basic realm="Fake Realm"`)
-
-		result := must.Unmarshal[authResponse](t, resp.Body)
-		expectedResult := authResponse{
-			Authorized: false,
-			User:       "bad",
+				result := must.Unmarshal[authResponse](t, resp.Body)
+				expectedResult := authResponse{
+					Authorized: false,
+					User:       "bad",
+				}
+				assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
+			})
 		}
-		assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 	})
 
 	errorTests := []struct {
