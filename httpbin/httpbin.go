@@ -129,7 +129,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/anything", h.Anything)
 	mux.HandleFunc("/anything/", h.Anything)
 	mux.HandleFunc("/base64/", h.Base64)
-	mux.HandleFunc("/basic-auth/", h.BasicAuth)
+	mux.HandleFunc("/basic-auth/", methods(h.BasicAuth, "GET", "POST", "PUT", "DELETE", "PATCH"))
 	mux.HandleFunc("/bearer", h.Bearer)
 	mux.HandleFunc("/bytes/", h.Bytes)
 	mux.HandleFunc("/cache", h.Cache)
