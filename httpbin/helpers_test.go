@@ -247,6 +247,26 @@ func TestGetClientIP(t *testing.T) {
 			},
 			want: "9.9.9.9",
 		},
+		"custom fastly header take precedence": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"Fastly-Client-IP": "9.9.9.9",
+					"X-Forwarded-For":  "1.1.1.1,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "9.9.9.9",
+		},
+		"custom akamai header take precedence": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"True-Client-IP":  "9.9.9.9",
+					"X-Forwarded-For": "1.1.1.1,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0",
+			},
+			want: "9.9.9.9",
+		},
 		"x-forwarded-for is parsed": {
 			given: &http.Request{
 				Header: makeHeaders(map[string]string{
