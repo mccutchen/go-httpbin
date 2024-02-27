@@ -32,3 +32,4 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+      appProtocol: http
