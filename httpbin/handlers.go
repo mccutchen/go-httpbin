@@ -421,7 +421,14 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if u.IsAbs() && len(h.AllowedRedirectDomains) > 0 {
+	// If we're given a URL that includes a domain name and we have a list of
+	// allowed domains, ensure that the domain is allowed.
+	//
+	// Note: This checks the hostname directly rather than using the net.URL's
+	// IsAbs() method, because IsAbs() will return false for URLs that omit
+	// the scheme but include a domain name, like "//evil.com" and it's
+	// important that we validate the domain in these cases as well.
+	if u.Hostname() != "" && len(h.AllowedRedirectDomains) > 0 {
 		if _, ok := h.AllowedRedirectDomains[u.Hostname()]; !ok {
 			// for this error message we do not use our standard JSON response
 			// because we want it to be more obviously human readable.
@@ -957,7 +964,7 @@ func (h *HTTPBin) doLinksPage(w http.ResponseWriter, _ *http.Request, n int, off
 // doRedirect set redirect header
 func (h *HTTPBin) doRedirect(w http.ResponseWriter, path string, code int) {
 	var sb strings.Builder
-	if strings.HasPrefix(path, "/") {
+	if strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "//") {
 		sb.WriteString(h.prefix)
 	}
 	sb.WriteString(path)
