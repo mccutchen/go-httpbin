@@ -1400,6 +1400,9 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?url=https://example.org/foo/bar", http.StatusFound},         // paths don't matter
 		{"/redirect-to?url=https://foo.example.org/foo/bar", http.StatusForbidden}, // subdomains of allowed domains do not match
 		{"/redirect-to?url=https://evil.com", http.StatusForbidden},                // not in allowlist
+
+		// See https://github.com/mccutchen/go-httpbin/issues/173
+		{"/redirect-to?url=//evil.com", http.StatusForbidden}, // missing scheme to attempt to bypass allowlist
 	}
 	for _, test := range allowListTests {
 		test := test
