@@ -3,7 +3,7 @@ package httpbin
 import (
 	"bufio"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
@@ -163,22 +163,19 @@ type Observer func(result Result)
 
 // StdLogObserver creates an Observer that will log each request in structured
 // format using the given stdlib logger
-func StdLogObserver(l *log.Logger) Observer {
+func StdLogObserver(l *slog.Logger) Observer {
 	const (
-		logFmt  = "time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f user_agent=%q client_ip=%s"
 		dateFmt = "2006-01-02T15:04:05.9999"
 	)
 	return func(result Result) {
-		l.Printf(
-			logFmt,
-			time.Now().Format(dateFmt),
-			result.Status,
-			result.Method,
-			result.URI,
-			result.Size,
-			result.Duration.Seconds()*1e3, // https://github.com/golang/go/issues/5491#issuecomment-66079585
-			result.UserAgent,
-			result.ClientIP,
-		)
+		l.With("time", time.Now().Format(dateFmt)).
+			With("status", result.Status).
+			With("method", result.Method).
+			With("uri", result.URI).
+			With("size_bytes", result.Size).
+			With("duration_ms", result.Duration.Seconds()*1e3).
+			With("user_agent", result.UserAgent).
+			With("client_ip", result.ClientIP).
+			Info("request")
 	}
 }

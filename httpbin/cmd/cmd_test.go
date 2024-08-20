@@ -28,6 +28,8 @@ const usage = `Usage of go-httpbin:
     	HTTPS Server certificate file
   -https-key-file string
     	HTTPS Server private key file
+  -log-format string
+    	Log format (text or json) (default "text")
   -max-body-size int
     	Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
@@ -433,6 +435,26 @@ func TestLoadConfig(t *testing.T) {
 				AllowedRedirectDomains: []string{"foo", "bar", "baz"},
 			},
 		},
+		"ok use json log format": {
+			args: []string{"-log-format", "json"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "json",
+			},
+		},
+		"ok use text log format": {
+			args: []string{"-log-format", "text"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "text",
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -511,6 +533,11 @@ func TestMainImpl(t *testing.T) {
 			},
 			wantCode: 1,
 			wantOut:  "go-httpbin listening on https://127.0.0.1:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
+		},
+		"log format error": {
+			args:     []string{"-log-format", "invalid"},
+			wantCode: 2,
+			wantOut:  "error: invalid log format invalid, must be 'text' or 'json'\n\n" + usage,
 		},
 	}
 

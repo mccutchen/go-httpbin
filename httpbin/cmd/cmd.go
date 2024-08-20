@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -40,8 +40,6 @@ func Main() int {
 // mainImpl is the real implementation of Main(), extracted for better
 // testability.
 func mainImpl(args []string, getEnv func(string) string, getHostname func() (string, error), out io.Writer) int {
-	logger := log.New(out, "", 0)
-
 	cfg, err := loadConfig(args, getEnv, getHostname)
 	if err != nil {
 		if cfgErr, ok := err.(ConfigError); ok {
@@ -65,6 +63,14 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 		}
 		fmt.Fprintf(out, "error: %s", err)
 		return 1
+	}
+
+	logger := slog.New(slog.NewTextHandler(out, nil))
+
+	if cfg.LogFormat == "json" {
+		// use structured logging if requested
+		handler := slog.NewJSONHandler(out, nil)
+		logger = slog.New(handler)
 	}
 
 	opts := []httpbin.OptionFunc{
@@ -93,7 +99,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 	}
 
 	if err := listenAndServeGracefully(srv, cfg, logger); err != nil {
-		logger.Printf("error: %s", err)
+		logger.Error(fmt.Sprintf("error: %s", err))
 		return 1
 	}
 
@@ -113,6 +119,7 @@ type config struct {
 	RealHostname           string
 	TLSCertFile            string
 	TLSKeyFile             string
+	LogFormat              string
 
 	// temporary placeholders for arguments that need extra processing
 	rawAllowedRedirectDomains string
@@ -120,7 +127,7 @@ type config struct {
 }
 
 // ConfigError is used to signal an error with a command line argument or
-// environmment variable.
+// environment variable.
 //
 // It carries the command's usage output, so that we can decouple configuration
 // parsing from error reporting for better testability.
@@ -150,10 +157,11 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
+	fs.StringVar(&cfg.LogFormat, "log-format", "text", "Log format (text or json)")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
-	// flagset, which by defaults prints errors automatically.
+	// flag-set, which by defaults prints errors automatically.
 	//
 	// so, we capture the "usage" output it would generate and then trick it
 	// into generating no output on errors, since they'll be handled by the
@@ -233,6 +241,9 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 			return nil, configErr("https cert and key must both be provided")
 		}
 	}
+	if cfg.LogFormat != "text" && cfg.LogFormat != "json" {
+		return nil, configErr("invalid log format %s, must be 'text' or 'json'", cfg.LogFormat)
+	}
 
 	// useRealHostname will be true if either the `-use-real-hostname`
 	// arg is given on the command line or if the USE_REAL_HOSTNAME env var
@@ -263,7 +274,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	return cfg, nil
 }
 
-func listenAndServeGracefully(srv *http.Server, cfg *config, logger *log.Logger) error {
+func listenAndServeGracefully(srv *http.Server, cfg *config, logger *slog.Logger) error {
 	doneCh := make(chan error, 1)
 
 	go func() {
@@ -271,7 +282,7 @@ func listenAndServeGracefully(srv *http.Server, cfg *config, logger *log.Logger)
 		signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 		<-sigCh
 
-		logger.Printf("shutting down ...")
+		logger.Info("shutting down ...")
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.MaxDuration+1*time.Second)
 		defer cancel()
 		doneCh <- srv.Shutdown(ctx)
@@ -279,10 +290,10 @@ func listenAndServeGracefully(srv *http.Server, cfg *config, logger *log.Logger)
 
 	var err error
 	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
-		logger.Printf("go-httpbin listening on https://%s", srv.Addr)
+		logger.Info(fmt.Sprintf("go-httpbin listening on https://%s", srv.Addr))
 		err = srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
 	} else {
-		logger.Printf("go-httpbin listening on http://%s", srv.Addr)
+		logger.Info(fmt.Sprintf("go-httpbin listening on http://%s", srv.Addr))
 		err = srv.ListenAndServe()
 	}
 	if err != nil && err != http.ErrServerClosed {
