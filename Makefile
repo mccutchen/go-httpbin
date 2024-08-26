@@ -81,7 +81,7 @@ run: build
 .PHONY: run
 
 watch:
-	$(REFLEX) -s -r '\.(go|html)$$' make run
+	$(REFLEX) -s -r '\.(go|html|tmpl)$$' make run
 .PHONY: watch
 
 

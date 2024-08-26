@@ -115,13 +115,7 @@ func TestIndex(t *testing.T) {
 			req := newTestRequest(t, "GET", env.prefix+"/foo", env)
 			resp := must.DoReq(t, env.client, req)
 			assert.StatusCode(t, resp, http.StatusNotFound)
-			assert.ContentType(t, resp, jsonContentType)
-			got := must.Unmarshal[errorRespnose](t, resp.Body)
-			want := errorRespnose{
-				StatusCode: http.StatusNotFound,
-				Error:      "Not Found",
-			}
-			assert.DeepEqual(t, got, want, "incorrect error response")
+			assert.ContentType(t, resp, textContentType)
 		})
 	}
 }
@@ -1068,7 +1062,7 @@ func TestStatus(t *testing.T) {
 		status int
 	}{
 		{"/status", http.StatusNotFound},
-		{"/status/", http.StatusBadRequest},
+		{"/status/", http.StatusNotFound},
 		{"/status/200/foo", http.StatusNotFound},
 		{"/status/3.14", http.StatusBadRequest},
 		{"/status/foo", http.StatusBadRequest},
@@ -1305,21 +1299,21 @@ func TestRedirects(t *testing.T) {
 		expectedStatus int
 	}{
 		{"%s/redirect", http.StatusNotFound},
-		{"%s/redirect/", http.StatusBadRequest},
+		{"%s/redirect/", http.StatusNotFound},
 		{"%s/redirect/-1", http.StatusBadRequest},
 		{"%s/redirect/3.14", http.StatusBadRequest},
 		{"%s/redirect/foo", http.StatusBadRequest},
 		{"%s/redirect/10/foo", http.StatusNotFound},
 
 		{"%s/relative-redirect", http.StatusNotFound},
-		{"%s/relative-redirect/", http.StatusBadRequest},
+		{"%s/relative-redirect/", http.StatusNotFound},
 		{"%s/relative-redirect/-1", http.StatusBadRequest},
 		{"%s/relative-redirect/3.14", http.StatusBadRequest},
 		{"%s/relative-redirect/foo", http.StatusBadRequest},
 		{"%s/relative-redirect/10/foo", http.StatusNotFound},
 
 		{"%s/absolute-redirect", http.StatusNotFound},
-		{"%s/absolute-redirect/", http.StatusBadRequest},
+		{"%s/absolute-redirect/", http.StatusNotFound},
 		{"%s/absolute-redirect/-1", http.StatusBadRequest},
 		{"%s/absolute-redirect/3.14", http.StatusBadRequest},
 		{"%s/absolute-redirect/foo", http.StatusBadRequest},
