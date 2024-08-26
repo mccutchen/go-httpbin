@@ -400,19 +400,14 @@ type base64Helper struct {
 // in one of two forms:
 // - /base64/<base64_encoded_data>
 // - /base64/<operation>/<base64_encoded_data>
-func newBase64Helper(path string, maxLen int64) *base64Helper {
-	parts := strings.SplitN(path, "/", 4)
-	b := &base64Helper{maxLen: maxLen}
-	switch len(parts) {
-	// Any other cases will be rejected when transform() is called
-	case 3:
-		// handle /base64/<base64_encoded_data>
+func newBase64Helper(r *http.Request, maxLen int64) *base64Helper {
+	b := &base64Helper{
+		operation: r.PathValue("operation"),
+		data:      r.PathValue("data"),
+		maxLen:    maxLen,
+	}
+	if b.operation == "" {
 		b.operation = "decode"
-		b.data = parts[2]
-	case 4:
-		// handle /base64/<operation>/<base64_encoded_data>
-		b.operation = parts[2]
-		b.data = parts[3]
 	}
 	return b
 }
