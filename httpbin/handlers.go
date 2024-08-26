@@ -368,12 +368,7 @@ func (h *HTTPBin) redirectLocation(r *http.Request, relative bool, n int) string
 }
 
 func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	n, err := strconv.Atoi(parts[2])
+	n, err := strconv.Atoi(r.PathValue("n"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid redirect count: %w", err))
 		return
@@ -381,7 +376,6 @@ func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relativ
 		writeError(w, http.StatusBadRequest, errors.New("redirect count must be > 0"))
 		return
 	}
-
 	h.doRedirect(w, h.redirectLocation(r, relative, n-1), http.StatusFound)
 }
 
@@ -490,13 +484,8 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 
 // BasicAuth requires basic authentication
 func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	expectedUser := parts[2]
-	expectedPass := parts[3]
+	expectedUser := r.PathValue("user")
+	expectedPass := r.PathValue("password")
 
 	givenUser, givenPass, _ := r.BasicAuth()
 
@@ -830,13 +819,7 @@ func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
 // and StreamBytes endpoints and knows how to write the response in chunks if
 // streaming is true.
 func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	numBytes, err := strconv.Atoi(parts[2])
+	numBytes, err := strconv.Atoi(r.PathValue("numBytes"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %w", err))
 		return
@@ -1081,7 +1064,7 @@ func (h *HTTPBin) UUID(w http.ResponseWriter, _ *http.Request) {
 
 // Base64 - encodes/decodes input data
 func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
-	result, err := newBase64Helper(r.URL.Path, h.MaxBodySize).transform()
+	result, err := newBase64Helper(r, h.MaxBodySize).transform()
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
