@@ -24,6 +24,7 @@ import (
 const (
 	defaultListenHost = "0.0.0.0"
 	defaultListenPort = 8080
+	defaultLogFormat  = "text"
 
 	// Reasonable defaults for our http server
 	srvReadTimeout       = 5 * time.Second
@@ -157,7 +158,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	fs.StringVar(&cfg.TLSCertFile, "https-cert-file", "", "HTTPS Server certificate file")
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
-	fs.StringVar(&cfg.LogFormat, "log-format", "text", "Log format (text or json)")
+	fs.StringVar(&cfg.LogFormat, "log-format", defaultLogFormat, "Log format (text or json)")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
@@ -241,11 +242,11 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 			return nil, configErr("https cert and key must both be provided")
 		}
 	}
-	if cfg.LogFormat == "" && getEnv("LOG_FORMAT") != "" {
+	if cfg.LogFormat == defaultLogFormat && getEnv("LOG_FORMAT") != "" {
 		cfg.LogFormat = getEnv("LOG_FORMAT")
 	}
 	if cfg.LogFormat != "text" && cfg.LogFormat != "json" {
-		return nil, configErr("invalid log format %s, must be 'text' or 'json'", cfg.LogFormat)
+		return nil, configErr(`invalid log format %q, must be "text" or "json"`, cfg.LogFormat)
 	}
 
 	// useRealHostname will be true if either the `-use-real-hostname`
