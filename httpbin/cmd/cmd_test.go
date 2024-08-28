@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"log/slog"
 	"os"
 	"reflect"
 	"regexp"
@@ -46,16 +45,6 @@ const usage = `Usage of go-httpbin:
 
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
-
-	// Configure slog to use a consistent log format without timestamps
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				return slog.Attr{} // Remove the time attribute
-			}
-			return a
-		},
-	})))
 
 	testDefaultRealHostname := "real-hostname.test"
 	testDefaultLogFormat := "text"
