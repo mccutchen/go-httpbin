@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -526,7 +528,7 @@ func TestMainImpl(t *testing.T) {
 		getHostname func() (string, error)
 		wantCode    int
 		wantOut     string
-		regex       bool
+		wantOutFn   func(wantOut string, out string) bool
 	}{
 		"help": {
 			args:     []string{"-h"},
@@ -556,7 +558,24 @@ func TestMainImpl(t *testing.T) {
 			},
 			wantCode: 1,
 			wantOut:  "level=INFO msg=\"go-httpbin listening on http://127.0.0.1:-256\"\nlevel=ERROR msg=\"error: listen tcp: address -256: invalid port\"\n",
-			regex:    true,
+			wantOutFn: func(wantOut string, out string) bool {
+				wantLines := strings.Split(strings.TrimSpace(wantOut), "\n")
+
+				var patternParts []string
+				for _, line := range wantLines {
+					escapedLine := regexp.QuoteMeta(line)
+					patternParts = append(patternParts, `time=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+-]\d{2}:\d{2} `+escapedLine)
+				}
+
+				pattern := `(?m)^` + strings.Join(patternParts, `\n`)
+
+				matched, err := regexp.MatchString(pattern, out)
+				if err != nil {
+					fmt.Printf("Regex error: %v\n", err)
+					return false
+				}
+				return matched
+			},
 		},
 		"tls cert error": {
 			args: []string{
@@ -566,13 +585,30 @@ func TestMainImpl(t *testing.T) {
 				"-https-key-file", "./https-key-does-not-exist",
 			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on https://127.0.0.1:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
-			regex:    true,
+			wantOut:  "level=INFO msg=\"go-httpbin listening on https://127.0.0.1:0\"\nlevel=ERROR msg=\"error: open ./https-cert-does-not-exist: no such file or directory\"\n",
+			wantOutFn: func(wantOut string, out string) bool {
+				wantLines := strings.Split(strings.TrimSpace(wantOut), "\n")
+
+				var patternParts []string
+				for _, line := range wantLines {
+					escapedLine := regexp.QuoteMeta(line)
+					patternParts = append(patternParts, `time=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+-]\d{2}:\d{2} `+escapedLine)
+				}
+
+				pattern := `(?m)^` + strings.Join(patternParts, `\n`)
+
+				matched, err := regexp.MatchString(pattern, out)
+				if err != nil {
+					fmt.Printf("Regex error: %v\n", err)
+					return false
+				}
+				return matched
+			},
 		},
 		"log format error": {
 			args:     []string{"-log-format", "invalid"},
 			wantCode: 2,
-			wantOut:  "error: invalid log format invalid, must be 'text' or 'json'\n\n" + usage,
+			wantOut:  "error: invalid log format \"invalid\", must be \"text\" or \"json\"\n\n" + usage,
 		},
 	}
 
@@ -594,9 +630,9 @@ func TestMainImpl(t *testing.T) {
 				t.Fatalf("expected return code %d, got %d", tc.wantCode, gotCode)
 			}
 
-			if tc.regex {
-				if _, err := regexp.MatchString(tc.wantOut, out); err != nil {
-					t.Fatalf("output matching regex error:\nwant: %q\ngot: %q", tc.wantOut, out)
+			if tc.wantOutFn != nil {
+				if !tc.wantOutFn(tc.wantOut, out) {
+					t.Fatalf("output mismatch error:\nwant: %q\ngot:  %q", tc.wantOut, out)
 				}
 				return
 			}
