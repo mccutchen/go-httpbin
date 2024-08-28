@@ -241,6 +241,9 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 			return nil, configErr("https cert and key must both be provided")
 		}
 	}
+	if cfg.LogFormat == "" && getEnv("LOG_FORMAT") != "" {
+		cfg.LogFormat = getEnv("LOG_FORMAT")
+	}
 	if cfg.LogFormat != "text" && cfg.LogFormat != "json" {
 		return nil, configErr("invalid log format %s, must be 'text' or 'json'", cfg.LogFormat)
 	}

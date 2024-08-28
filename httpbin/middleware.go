@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
@@ -165,17 +166,22 @@ type Observer func(result Result)
 // format using the given stdlib logger
 func StdLogObserver(l *slog.Logger) Observer {
 	const (
+		logFmt  = "%d %s %s %.1fms"
 		dateFmt = "2006-01-02T15:04:05.9999"
 	)
 	return func(result Result) {
-		l.With("time", time.Now().Format(dateFmt)).
-			With("status", result.Status).
-			With("method", result.Method).
-			With("uri", result.URI).
-			With("size_bytes", result.Size).
-			With("duration_ms", result.Duration.Seconds()*1e3).
-			With("user_agent", result.UserAgent).
-			With("client_ip", result.ClientIP).
-			Info("request")
+		l.LogAttrs(
+			context.Background(),
+			slog.LevelInfo,
+			fmt.Sprintf(logFmt, result.Status, result.Method, result.URI, result.Duration.Seconds()*1e3),
+			slog.String("time", time.Now().Format(dateFmt)),
+			slog.Int("status", result.Status),
+			slog.String("method", result.Method),
+			slog.String("uri", result.URI),
+			slog.Int64("size_bytes", result.Size),
+			slog.Float64("duration_ms", result.Duration.Seconds()*1e3),
+			slog.String("user_agent", result.UserAgent),
+			slog.String("client_ip", result.ClientIP),
+		)
 	}
 }
