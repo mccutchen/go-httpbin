@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"log/slog"
 	"os"
 	"reflect"
+	"regexp"
 	"testing"
 	"time"
 
@@ -45,7 +47,18 @@ const usage = `Usage of go-httpbin:
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
+	// Configure slog to use a consistent log format without timestamps
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{} // Remove the time attribute
+			}
+			return a
+		},
+	})))
+
 	testDefaultRealHostname := "real-hostname.test"
+	testDefaultLogFormat := "text"
 	getHostnameDefault := func() (string, error) {
 		return testDefaultRealHostname, nil
 	}
@@ -64,6 +77,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"-h": {
@@ -91,6 +105,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 99,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok MAX_BODY_SIZE": {
@@ -100,6 +115,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 9999,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok max body size CLI takes precedence over env": {
@@ -110,6 +126,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 1234,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -129,6 +146,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 99 * time.Second,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok MAX_DURATION": {
@@ -138,6 +156,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 9999 * time.Second,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok max duration size CLI takes precedence over env": {
@@ -148,6 +167,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 1234 * time.Second,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -159,6 +179,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok HOST": {
@@ -168,6 +189,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok host cli takes precedence over end": {
@@ -178,6 +200,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -197,6 +220,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  99,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok PORT": {
@@ -206,6 +230,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  9999,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok port CLI takes precedence over env": {
@@ -216,6 +241,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  1234,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -237,6 +263,7 @@ func TestLoadConfig(t *testing.T) {
 				Prefix:      "/prefix1",
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok PREFIX": {
@@ -247,6 +274,7 @@ func TestLoadConfig(t *testing.T) {
 				Prefix:      "/prefix2",
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -271,6 +299,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/test.crt",
 				TLSKeyFile:  "/tmp/test.key",
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok https env": {
@@ -285,6 +314,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/test.crt",
 				TLSKeyFile:  "/tmp/test.key",
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok https CLI takes precedence over env": {
@@ -303,6 +333,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/cli.crt",
 				TLSKeyFile:  "/tmp/cli.key",
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 
@@ -315,6 +346,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		"ok -use-real-hostname=1": {
@@ -325,6 +357,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		"ok -use-real-hostname=true": {
@@ -335,6 +368,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		// any value for the argument is interpreted as true
@@ -346,6 +380,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=1": {
@@ -356,6 +391,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=true": {
@@ -366,6 +402,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    testDefaultLogFormat,
 			},
 		},
 		// case sensitive
@@ -376,6 +413,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=false": {
@@ -385,6 +423,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 		"err real hostname error": {
@@ -402,6 +441,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar"},
+				LogFormat:              testDefaultLogFormat,
 			},
 		},
 		"ok ALLOWED_REDIRECT_DOMAINS": {
@@ -412,6 +452,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar"},
+				LogFormat:              testDefaultLogFormat,
 			},
 		},
 		"ok allowed redirect domains CLI takes precedence over env": {
@@ -423,6 +464,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo.cli", "bar.cli"},
+				LogFormat:              testDefaultLogFormat,
 			},
 		},
 		"ok allowed redirect domains are normalized": {
@@ -433,10 +475,12 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar", "baz"},
+				LogFormat:              testDefaultLogFormat,
 			},
 		},
 		"ok use json log format": {
 			args: []string{"-log-format", "json"},
+			env:  map[string]string{"LOG_FORMAT": "json"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -452,7 +496,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
-				LogFormat:   "text",
+				LogFormat:   testDefaultLogFormat,
 			},
 		},
 	}
@@ -494,6 +538,7 @@ func TestMainImpl(t *testing.T) {
 		getHostname func() (string, error)
 		wantCode    int
 		wantOut     string
+		regex       bool
 	}{
 		"help": {
 			args:     []string{"-h"},
@@ -522,7 +567,8 @@ func TestMainImpl(t *testing.T) {
 				"-host", "127.0.0.1", // default of 0.0.0.0 causes annoying permission popup on macOS
 			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on http://127.0.0.1:-256\nerror: listen tcp: address -256: invalid port\n",
+			wantOut:  "level=INFO msg=\"go-httpbin listening on http://127.0.0.1:-256\"\nlevel=ERROR msg=\"error: listen tcp: address -256: invalid port\"\n",
+			regex:    true,
 		},
 		"tls cert error": {
 			args: []string{
@@ -533,6 +579,7 @@ func TestMainImpl(t *testing.T) {
 			},
 			wantCode: 1,
 			wantOut:  "go-httpbin listening on https://127.0.0.1:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
+			regex:    true,
 		},
 		"log format error": {
 			args:     []string{"-log-format", "invalid"},
@@ -557,6 +604,13 @@ func TestMainImpl(t *testing.T) {
 			if gotCode != tc.wantCode {
 				t.Logf("unexpected error: output:\n%s", out)
 				t.Fatalf("expected return code %d, got %d", tc.wantCode, gotCode)
+			}
+
+			if tc.regex {
+				if _, err := regexp.MatchString(tc.wantOut, out); err != nil {
+					t.Fatalf("output matching regex error:\nwant: %q\ngot: %q", tc.wantOut, out)
+				}
+				return
 			}
 
 			if out != tc.wantOut {
