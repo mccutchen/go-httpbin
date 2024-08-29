@@ -166,9 +166,9 @@ type Observer func(result Result)
 // format using the given stdlib logger
 func StdLogObserver(l *slog.Logger) Observer {
 	const dateFmt = "2006-01-02T15:04:05.9999"
-	var logLevel = slog.LevelInfo
 
 	return func(result Result) {
+		logLevel := slog.LevelInfo
 		if result.Status >= 500 {
 			logLevel = slog.LevelError
 		} else if result.Status >= 400 && result.Status < 500 {
