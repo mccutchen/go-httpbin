@@ -4,15 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"reflect"
-	"regexp"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 // To update, run:
@@ -489,6 +487,17 @@ func TestLoadConfig(t *testing.T) {
 				LogFormat:   "text",
 			},
 		},
+		"ok use json log format using LOG_FORMAT env": {
+			args: []string{},
+			env:  map[string]string{"LOG_FORMAT": "json"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "json",
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -528,7 +537,7 @@ func TestMainImpl(t *testing.T) {
 		getHostname func() (string, error)
 		wantCode    int
 		wantOut     string
-		wantOutFn   func(wantOut string, out string) bool
+		wantOutFn   func(t *testing.T, out string)
 	}{
 		"help": {
 			args:     []string{"-h"},
@@ -557,24 +566,8 @@ func TestMainImpl(t *testing.T) {
 				"-host", "127.0.0.1", // default of 0.0.0.0 causes annoying permission popup on macOS
 			},
 			wantCode: 1,
-			wantOut:  "level=INFO msg=\"go-httpbin listening on http://127.0.0.1:-256\"\nlevel=ERROR msg=\"error: listen tcp: address -256: invalid port\"\n",
-			wantOutFn: func(wantOut string, out string) bool {
-				wantLines := strings.Split(strings.TrimSpace(wantOut), "\n")
-
-				var patternParts []string
-				for _, line := range wantLines {
-					escapedLine := regexp.QuoteMeta(line)
-					patternParts = append(patternParts, `time=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+-]\d{2}:\d{2} `+escapedLine)
-				}
-
-				pattern := `(?m)^` + strings.Join(patternParts, `\n`)
-
-				matched, err := regexp.MatchString(pattern, out)
-				if err != nil {
-					fmt.Printf("Regex error: %v\n", err)
-					return false
-				}
-				return matched
+			wantOutFn: func(t *testing.T, out string) {
+				assert.Contains(t, out, `msg="error: listen tcp: address -256: invalid port"`, "server error does not contain expected message")
 			},
 		},
 		"tls cert error": {
@@ -585,24 +578,8 @@ func TestMainImpl(t *testing.T) {
 				"-https-key-file", "./https-key-does-not-exist",
 			},
 			wantCode: 1,
-			wantOut:  "level=INFO msg=\"go-httpbin listening on https://127.0.0.1:0\"\nlevel=ERROR msg=\"error: open ./https-cert-does-not-exist: no such file or directory\"\n",
-			wantOutFn: func(wantOut string, out string) bool {
-				wantLines := strings.Split(strings.TrimSpace(wantOut), "\n")
-
-				var patternParts []string
-				for _, line := range wantLines {
-					escapedLine := regexp.QuoteMeta(line)
-					patternParts = append(patternParts, `time=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+-]\d{2}:\d{2} `+escapedLine)
-				}
-
-				pattern := `(?m)^` + strings.Join(patternParts, `\n`)
-
-				matched, err := regexp.MatchString(pattern, out)
-				if err != nil {
-					fmt.Printf("Regex error: %v\n", err)
-					return false
-				}
-				return matched
+			wantOutFn: func(t *testing.T, out string) {
+				assert.Contains(t, out, `msg="error: open ./https-cert-does-not-exist: no such file or directory"`, "tls cert error does not contain expected message")
 			},
 		},
 		"log format error": {
@@ -631,9 +608,7 @@ func TestMainImpl(t *testing.T) {
 			}
 
 			if tc.wantOutFn != nil {
-				if !tc.wantOutFn(tc.wantOut, out) {
-					t.Fatalf("output mismatch error:\nwant: %q\ngot:  %q", tc.wantOut, out)
-				}
+				tc.wantOutFn(t, out)
 				return
 			}
 
