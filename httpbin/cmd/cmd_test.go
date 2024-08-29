@@ -468,7 +468,6 @@ func TestLoadConfig(t *testing.T) {
 		},
 		"ok use json log format": {
 			args: []string{"-log-format", "json"},
-			env:  map[string]string{"LOG_FORMAT": "json"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -487,9 +486,17 @@ func TestLoadConfig(t *testing.T) {
 				LogFormat:   "text",
 			},
 		},
+		"ok use default log format": {
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
+			},
+		},
 		"ok use json log format using LOG_FORMAT env": {
-			args: []string{},
-			env:  map[string]string{"LOG_FORMAT": "json"},
+			env: map[string]string{"LOG_FORMAT": "json"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
