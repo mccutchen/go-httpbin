@@ -165,8 +165,6 @@ type Observer func(result Result)
 // StdLogObserver creates an Observer that will log each request in structured
 // format using the given stdlib logger
 func StdLogObserver(l *slog.Logger) Observer {
-	const dateFmt = "2006-01-02T15:04:05.9999"
-
 	return func(result Result) {
 		logLevel := slog.LevelInfo
 		if result.Status >= 500 {
