@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin"
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 // To update, run:
@@ -28,6 +29,8 @@ const usage = `Usage of go-httpbin:
     	HTTPS Server certificate file
   -https-key-file string
     	HTTPS Server private key file
+  -log-format string
+    	Log format (text or json) (default "text")
   -max-body-size int
     	Maximum size of request or response, in bytes (default 1048576)
   -max-duration duration
@@ -62,6 +65,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"-h": {
@@ -89,6 +93,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 99,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok MAX_BODY_SIZE": {
@@ -98,6 +103,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 9999,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok max body size CLI takes precedence over env": {
@@ -108,6 +114,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: 1234,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -127,6 +134,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 99 * time.Second,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok MAX_DURATION": {
@@ -136,6 +144,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 9999 * time.Second,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok max duration size CLI takes precedence over env": {
@@ -146,6 +155,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: 1234 * time.Second,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -157,6 +167,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok HOST": {
@@ -166,6 +177,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok host cli takes precedence over end": {
@@ -176,6 +188,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -195,6 +208,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  99,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok PORT": {
@@ -204,6 +218,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  9999,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok port CLI takes precedence over env": {
@@ -214,6 +229,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  1234,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -235,6 +251,7 @@ func TestLoadConfig(t *testing.T) {
 				Prefix:      "/prefix1",
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok PREFIX": {
@@ -245,6 +262,7 @@ func TestLoadConfig(t *testing.T) {
 				Prefix:      "/prefix2",
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -269,6 +287,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/test.crt",
 				TLSKeyFile:  "/tmp/test.key",
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok https env": {
@@ -283,6 +302,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/test.crt",
 				TLSKeyFile:  "/tmp/test.key",
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok https CLI takes precedence over env": {
@@ -301,6 +321,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxDuration: httpbin.DefaultMaxDuration,
 				TLSCertFile: "/tmp/cli.crt",
 				TLSKeyFile:  "/tmp/cli.key",
+				LogFormat:   defaultLogFormat,
 			},
 		},
 
@@ -313,6 +334,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		"ok -use-real-hostname=1": {
@@ -323,6 +345,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		"ok -use-real-hostname=true": {
@@ -333,6 +356,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		// any value for the argument is interpreted as true
@@ -344,6 +368,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=1": {
@@ -354,6 +379,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=true": {
@@ -364,6 +390,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:  httpbin.DefaultMaxBodySize,
 				MaxDuration:  httpbin.DefaultMaxDuration,
 				RealHostname: testDefaultRealHostname,
+				LogFormat:    defaultLogFormat,
 			},
 		},
 		// case sensitive
@@ -374,6 +401,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"ok USE_REAL_HOSTNAME=false": {
@@ -383,6 +411,7 @@ func TestLoadConfig(t *testing.T) {
 				ListenPort:  8080,
 				MaxBodySize: httpbin.DefaultMaxBodySize,
 				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
 			},
 		},
 		"err real hostname error": {
@@ -400,6 +429,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar"},
+				LogFormat:              defaultLogFormat,
 			},
 		},
 		"ok ALLOWED_REDIRECT_DOMAINS": {
@@ -410,6 +440,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar"},
+				LogFormat:              defaultLogFormat,
 			},
 		},
 		"ok allowed redirect domains CLI takes precedence over env": {
@@ -421,6 +452,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo.cli", "bar.cli"},
+				LogFormat:              defaultLogFormat,
 			},
 		},
 		"ok allowed redirect domains are normalized": {
@@ -431,6 +463,46 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:            httpbin.DefaultMaxBodySize,
 				MaxDuration:            httpbin.DefaultMaxDuration,
 				AllowedRedirectDomains: []string{"foo", "bar", "baz"},
+				LogFormat:              defaultLogFormat,
+			},
+		},
+		"ok use json log format": {
+			args: []string{"-log-format", "json"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "json",
+			},
+		},
+		"ok use text log format": {
+			args: []string{"-log-format", "text"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "text",
+			},
+		},
+		"ok use default log format": {
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
+			},
+		},
+		"ok use json log format using LOG_FORMAT env": {
+			env: map[string]string{"LOG_FORMAT": "json"},
+			wantCfg: &config{
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   "json",
 			},
 		},
 	}
@@ -472,6 +544,7 @@ func TestMainImpl(t *testing.T) {
 		getHostname func() (string, error)
 		wantCode    int
 		wantOut     string
+		wantOutFn   func(t *testing.T, out string)
 	}{
 		"help": {
 			args:     []string{"-h"},
@@ -500,7 +573,9 @@ func TestMainImpl(t *testing.T) {
 				"-host", "127.0.0.1", // default of 0.0.0.0 causes annoying permission popup on macOS
 			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on http://127.0.0.1:-256\nerror: listen tcp: address -256: invalid port\n",
+			wantOutFn: func(t *testing.T, out string) {
+				assert.Contains(t, out, `msg="error: listen tcp: address -256: invalid port"`, "server error does not contain expected message")
+			},
 		},
 		"tls cert error": {
 			args: []string{
@@ -510,7 +585,14 @@ func TestMainImpl(t *testing.T) {
 				"-https-key-file", "./https-key-does-not-exist",
 			},
 			wantCode: 1,
-			wantOut:  "go-httpbin listening on https://127.0.0.1:0\nerror: open ./https-cert-does-not-exist: no such file or directory\n",
+			wantOutFn: func(t *testing.T, out string) {
+				assert.Contains(t, out, `msg="error: open ./https-cert-does-not-exist: no such file or directory"`, "tls cert error does not contain expected message")
+			},
+		},
+		"log format error": {
+			args:     []string{"-log-format", "invalid"},
+			wantCode: 2,
+			wantOut:  "error: invalid log format \"invalid\", must be \"text\" or \"json\"\n\n" + usage,
 		},
 	}
 
@@ -530,6 +612,11 @@ func TestMainImpl(t *testing.T) {
 			if gotCode != tc.wantCode {
 				t.Logf("unexpected error: output:\n%s", out)
 				t.Fatalf("expected return code %d, got %d", tc.wantCode, gotCode)
+			}
+
+			if tc.wantOutFn != nil {
+				tc.wantOutFn(t, out)
+				return
 			}
 
 			if out != tc.wantOut {

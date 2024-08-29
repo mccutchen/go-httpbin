@@ -30,7 +30,7 @@ func TestTestMode(t *testing.T) {
 		}
 		err, ok := r.(error)
 		assert.Equal(t, ok, true, "expected panic to be an error")
-		assert.Equal(t, err.Error(), "HTTP status already set to 400, cannot set to 200", "incorrectp panic error message")
+		assert.Equal(t, err.Error(), "HTTP status already set to 400, cannot set to 200", "incorrect panic error message")
 	}()
 
 	w := httptest.NewRecorder()

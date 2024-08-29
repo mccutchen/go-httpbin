@@ -2,8 +2,9 @@ package httpbin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
@@ -163,22 +164,25 @@ type Observer func(result Result)
 
 // StdLogObserver creates an Observer that will log each request in structured
 // format using the given stdlib logger
-func StdLogObserver(l *log.Logger) Observer {
-	const (
-		logFmt  = "time=%q status=%d method=%q uri=%q size_bytes=%d duration_ms=%0.02f user_agent=%q client_ip=%s"
-		dateFmt = "2006-01-02T15:04:05.9999"
-	)
+func StdLogObserver(l *slog.Logger) Observer {
 	return func(result Result) {
-		l.Printf(
-			logFmt,
-			time.Now().Format(dateFmt),
-			result.Status,
-			result.Method,
-			result.URI,
-			result.Size,
-			result.Duration.Seconds()*1e3, // https://github.com/golang/go/issues/5491#issuecomment-66079585
-			result.UserAgent,
-			result.ClientIP,
+		logLevel := slog.LevelInfo
+		if result.Status >= 500 {
+			logLevel = slog.LevelError
+		} else if result.Status >= 400 && result.Status < 500 {
+			logLevel = slog.LevelWarn
+		}
+		l.LogAttrs(
+			context.Background(),
+			logLevel,
+			fmt.Sprintf("%d %s %s %.1fms", result.Status, result.Method, result.URI, result.Duration.Seconds()*1e3),
+			slog.Int("status", result.Status),
+			slog.String("method", result.Method),
+			slog.String("uri", result.URI),
+			slog.Int64("size_bytes", result.Size),
+			slog.Float64("duration_ms", result.Duration.Seconds()*1e3),
+			slog.String("user_agent", result.UserAgent),
+			slog.String("client_ip", result.ClientIP),
 		)
 	}
 }

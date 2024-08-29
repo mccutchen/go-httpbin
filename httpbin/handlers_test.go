@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -69,7 +69,7 @@ func createApp(opts ...OptionFunc) *HTTPBin {
 		}),
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration),
-		WithObserver(StdLogObserver(log.New(io.Discard, "", 0))),
+		WithObserver(StdLogObserver(slog.New(slog.NewTextHandler(io.Discard, nil)))),
 		WithExcludeHeaders("x-ignore-*,x-info-this-key")),
 		opts...)...)
 }
