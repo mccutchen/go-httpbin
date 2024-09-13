@@ -115,13 +115,7 @@ func TestIndex(t *testing.T) {
 			req := newTestRequest(t, "GET", env.prefix+"/foo", env)
 			resp := must.DoReq(t, env.client, req)
 			assert.StatusCode(t, resp, http.StatusNotFound)
-			assert.ContentType(t, resp, jsonContentType)
-			got := must.Unmarshal[errorRespnose](t, resp.Body)
-			want := errorRespnose{
-				StatusCode: http.StatusNotFound,
-				Error:      "Not Found",
-			}
-			assert.DeepEqual(t, got, want, "incorrect error response")
+			assert.ContentType(t, resp, textContentType)
 		})
 	}
 }
@@ -1068,7 +1062,7 @@ func TestStatus(t *testing.T) {
 		status int
 	}{
 		{"/status", http.StatusNotFound},
-		{"/status/", http.StatusBadRequest},
+		{"/status/", http.StatusNotFound},
 		{"/status/200/foo", http.StatusNotFound},
 		{"/status/3.14", http.StatusBadRequest},
 		{"/status/foo", http.StatusBadRequest},
@@ -1305,21 +1299,21 @@ func TestRedirects(t *testing.T) {
 		expectedStatus int
 	}{
 		{"%s/redirect", http.StatusNotFound},
-		{"%s/redirect/", http.StatusBadRequest},
+		{"%s/redirect/", http.StatusNotFound},
 		{"%s/redirect/-1", http.StatusBadRequest},
 		{"%s/redirect/3.14", http.StatusBadRequest},
 		{"%s/redirect/foo", http.StatusBadRequest},
 		{"%s/redirect/10/foo", http.StatusNotFound},
 
 		{"%s/relative-redirect", http.StatusNotFound},
-		{"%s/relative-redirect/", http.StatusBadRequest},
+		{"%s/relative-redirect/", http.StatusNotFound},
 		{"%s/relative-redirect/-1", http.StatusBadRequest},
 		{"%s/relative-redirect/3.14", http.StatusBadRequest},
 		{"%s/relative-redirect/foo", http.StatusBadRequest},
 		{"%s/relative-redirect/10/foo", http.StatusNotFound},
 
 		{"%s/absolute-redirect", http.StatusNotFound},
-		{"%s/absolute-redirect/", http.StatusBadRequest},
+		{"%s/absolute-redirect/", http.StatusNotFound},
 		{"%s/absolute-redirect/-1", http.StatusBadRequest},
 		{"%s/absolute-redirect/3.14", http.StatusBadRequest},
 		{"%s/absolute-redirect/foo", http.StatusBadRequest},
@@ -2302,7 +2296,7 @@ func TestRange(t *testing.T) {
 	}{
 		{"/range/1/foo", http.StatusNotFound},
 
-		{"/range/", http.StatusBadRequest},
+		{"/range/", http.StatusNotFound},
 		{"/range/foo", http.StatusBadRequest},
 		{"/range/1.5", http.StatusBadRequest},
 		{"/range/-1", http.StatusBadRequest},
@@ -2831,39 +2825,48 @@ func TestBase64(t *testing.T) {
 
 	errorTests := []struct {
 		requestURL           string
+		expectedStatusCode   int
 		expectedBodyContains string
 	}{
 		{
 			"/base64/invalid_base64_encoded_string",
+			http.StatusBadRequest,
 			"decode failed",
 		},
 		{
 			"/base64/decode/invalid_base64_encoded_string",
+			http.StatusBadRequest,
 			"decode failed",
 		},
 		{
 			"/base64/decode/invalid_base64_encoded_string",
+			http.StatusBadRequest,
 			"decode failed",
 		},
 		{
 			"/base64/decode/" + strings.Repeat("X", int(maxBodySize)+1),
+			http.StatusBadRequest,
 			"input data exceeds max length",
 		},
 		{
+			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+			http.StatusBadRequest,
+			"invalid operation: unknown",
+		},
+		{
 			"/base64/",
-			"no input data",
+			http.StatusNotFound,
+			"not found",
 		},
 		{
 			"/base64/decode/",
-			"no input data",
+			http.StatusNotFound,
+			"not found",
 		},
 		{
 			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n/extra",
-			"decode failed",
-		},
-		{
-			"/base64/unknown/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
-			"invalid operation: unknown",
+			http.StatusNotFound,
+			"not found",
 		},
 	}
 
@@ -2874,7 +2877,7 @@ func TestBase64(t *testing.T) {
 			req := newTestRequest(t, "GET", test.requestURL)
 			resp := must.DoReq(t, client, req)
 			defer consumeAndCloseBody(resp)
-			assert.StatusCode(t, resp, http.StatusBadRequest)
+			assert.StatusCode(t, resp, test.expectedStatusCode)
 			assert.BodyContains(t, resp, test.expectedBodyContains)
 		})
 	}

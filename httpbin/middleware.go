@@ -34,24 +34,6 @@ func preflight(h http.Handler) http.Handler {
 	})
 }
 
-func methods(h http.HandlerFunc, methods ...string) http.HandlerFunc {
-	methodMap := make(map[string]struct{}, len(methods))
-	for _, m := range methods {
-		methodMap[m] = struct{}{}
-		// GET implies support for HEAD
-		if m == "GET" {
-			methodMap["HEAD"] = struct{}{}
-		}
-	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := methodMap[r.Method]; !ok {
-			http.Error(w, fmt.Sprintf("method %s not allowed", r.Method), http.StatusMethodNotAllowed)
-			return
-		}
-		h.ServeHTTP(w, r)
-	}
-}
-
 func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {

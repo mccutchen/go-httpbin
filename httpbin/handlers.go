@@ -251,16 +251,11 @@ func createSpecialCases(prefix string) map[int]*statusCase {
 // Status responds with the specified status code. TODO: support random choice
 // from multiple, optionally weighted status codes.
 func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	rawStatus := parts[2]
+	rawStatus := r.PathValue("code")
 
 	// simple case, specific status code is requested
 	if !strings.Contains(rawStatus, ",") {
-		code, err := parseStatusCode(parts[2])
+		code, err := parseStatusCode(rawStatus)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
@@ -368,12 +363,7 @@ func (h *HTTPBin) redirectLocation(r *http.Request, relative bool, n int) string
 }
 
 func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relative bool) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	n, err := strconv.Atoi(parts[2])
+	n, err := strconv.Atoi(r.PathValue("numRedirects"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid redirect count: %w", err))
 		return
@@ -381,7 +371,6 @@ func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relativ
 		writeError(w, http.StatusBadRequest, errors.New("redirect count must be > 0"))
 		return
 	}
-
 	h.doRedirect(w, h.redirectLocation(r, relative, n-1), http.StatusFound)
 }
 
@@ -490,13 +479,8 @@ func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
 
 // BasicAuth requires basic authentication
 func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	expectedUser := parts[2]
-	expectedPass := parts[3]
+	expectedUser := r.PathValue("user")
+	expectedPass := r.PathValue("password")
 
 	givenUser, givenPass, _ := r.BasicAuth()
 
@@ -516,13 +500,8 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 // HiddenBasicAuth requires HTTP Basic authentication but returns a status of
 // 404 if the request is unauthorized
 func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	expectedUser := parts[2]
-	expectedPass := parts[3]
+	expectedUser := r.PathValue("user")
+	expectedPass := r.PathValue("password")
 
 	givenUser, givenPass, _ := r.BasicAuth()
 
@@ -540,12 +519,7 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 
 // Stream responds with max(n, 100) lines of JSON-encoded request data.
 func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	n, err := strconv.Atoi(parts[2])
+	n, err := strconv.Atoi(r.PathValue("numLines"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
 		return
@@ -577,13 +551,7 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 // Delay waits for a given amount of time before responding, where the time may
 // be specified as a golang-style duration or seconds in floating point.
 func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	delay, err := parseBoundedDuration(parts[2], 0, h.MaxDuration)
+	delay, err := parseBoundedDuration(r.PathValue("duration"), 0, h.MaxDuration)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
 		return
@@ -711,13 +679,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 // This departs from httpbin by not supporting the chunk_size or duration
 // parameters.
 func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	numBytes, err := strconv.ParseInt(parts[2], 10, 64)
+	numBytes, err := strconv.ParseInt(r.PathValue("numBytes"), 10, 64)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
 		return
@@ -763,7 +725,6 @@ func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-
 	lastModified := time.Now().Format(time.RFC1123)
 	w.Header().Add("Last-Modified", lastModified)
 	w.Header().Add("ETag", sha1hash(lastModified))
@@ -772,18 +733,11 @@ func (h *HTTPBin) Cache(w http.ResponseWriter, r *http.Request) {
 
 // CacheControl sets a Cache-Control header for N seconds for /cache/N requests
 func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	seconds, err := strconv.ParseInt(parts[2], 10, 64)
+	seconds, err := strconv.ParseInt(r.PathValue("numSeconds"), 10, 64)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seconds: %w", err))
 		return
 	}
-
 	w.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%d", seconds))
 	h.Get(w, r)
 }
@@ -791,13 +745,7 @@ func (h *HTTPBin) CacheControl(w http.ResponseWriter, r *http.Request) {
 // ETag assumes the resource has the given etag and responds to If-None-Match
 // and If-Match headers appropriately.
 func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	etag := parts[2]
+	etag := r.PathValue("etag")
 	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, etag))
 	w.Header().Set("Content-Type", textContentType)
 
@@ -830,13 +778,7 @@ func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
 // and StreamBytes endpoints and knows how to write the response in chunks if
 // streaming is true.
 func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	numBytes, err := strconv.Atoi(parts[2])
+	numBytes, err := strconv.Atoi(r.PathValue("numBytes"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %w", err))
 		return
@@ -914,13 +856,7 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 
 // Links redirects to the first page in a series of N links
 func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 && len(parts) != 4 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	n, err := strconv.Atoi(parts[2])
+	n, err := strconv.Atoi(r.PathValue("numLinks"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid link count: %w", err))
 		return
@@ -930,8 +866,8 @@ func (h *HTTPBin) Links(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Are we handling /links/<n>/<offset>? If so, render an HTML page
-	if len(parts) == 4 {
-		offset, err := strconv.Atoi(parts[3])
+	if rawOffset := r.PathValue("offset"); rawOffset != "" {
+		offset, err := strconv.Atoi(rawOffset)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid offset: %w", err))
 			return
@@ -995,12 +931,7 @@ func (h *HTTPBin) ImageAccept(w http.ResponseWriter, r *http.Request) {
 
 // Image responds with an image of a specific kind, from /image/<kind>
 func (h *HTTPBin) Image(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 3 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-	doImage(w, parts[2])
+	doImage(w, r.PathValue("kind"))
 }
 
 // doImage responds with a specific kind of image, if there is an image asset
@@ -1029,21 +960,14 @@ func (h *HTTPBin) XML(w http.ResponseWriter, _ *http.Request) {
 // /digest-auth/<qop>/<user>/<passwd>
 // /digest-auth/<qop>/<user>/<passwd>/<algorithm>
 func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	count := len(parts)
-
-	if count != 5 && count != 6 {
-		writeError(w, http.StatusNotFound, nil)
-		return
-	}
-
-	qop := strings.ToLower(parts[2])
-	user := parts[3]
-	password := parts[4]
-
-	algoName := "MD5"
-	if count == 6 {
-		algoName = strings.ToUpper(parts[5])
+	var (
+		qop      = strings.ToLower(r.PathValue("qop"))
+		user     = r.PathValue("user")
+		password = r.PathValue("password")
+		algoName = strings.ToUpper(r.PathValue("algorithm"))
+	)
+	if algoName == "" {
+		algoName = "MD5"
 	}
 
 	if qop != "auth" {
@@ -1081,7 +1005,7 @@ func (h *HTTPBin) UUID(w http.ResponseWriter, _ *http.Request) {
 
 // Base64 - encodes/decodes input data
 func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
-	result, err := newBase64Helper(r.URL.Path, h.MaxBodySize).transform()
+	result, err := newBase64Helper(r, h.MaxBodySize).transform()
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
