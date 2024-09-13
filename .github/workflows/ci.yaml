@@ -33,8 +33,11 @@ jobs:
     - name: test
       run: make testci
 
-    - uses: codecov/codecov-action@v3
+    - uses: codecov/codecov-action@v4
       if: ${{ matrix.go-version == 'stable' }}
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
 
   lint:
     runs-on: ubuntu-latest
@@ -45,6 +48,6 @@ jobs:
         with:
           go-version: 'stable'
 
-      - uses: golangci/golangci-lint-action@v3
+      - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
