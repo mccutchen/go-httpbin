@@ -99,9 +99,10 @@ func New(opts ...OptionFunc) *HTTPBin {
 	}
 
 	// pre-compute some configuration values and pre-render templates
+	tmplData := struct{ Prefix string }{Prefix: h.prefix}
+	h.indexHTML = mustRenderTemplate("index.html.tmpl", tmplData)
+	h.formsPostHTML = mustRenderTemplate("forms-post.html.tmpl", tmplData)
 	h.statusSpecialCases = createSpecialCases(h.prefix)
-	h.indexHTML = h.mustRenderTemplate("index.html.tmpl")
-	h.formsPostHTML = h.mustRenderTemplate("forms-post.html.tmpl")
 
 	// compute max Server-Sent Event count based on max request size and rough
 	// estimate of a single event's size on the wire

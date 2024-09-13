@@ -24,14 +24,10 @@ func mustStaticAsset(name string) []byte {
 	return b
 }
 
-func (h *HTTPBin) mustRenderTemplate(name string) []byte {
-	t, err := template.New(name).Parse(string(mustStaticAsset(name)))
-	if err != nil {
-		panic(err)
-	}
+func mustRenderTemplate(name string, data any) []byte {
+	t := template.Must(template.New(name).Parse(string(mustStaticAsset(name)))).Option("missingkey=error")
 	var buf bytes.Buffer
-	ctx := struct{ Prefix string }{Prefix: h.prefix}
-	if err := t.Execute(&buf, ctx); err != nil {
+	if err := t.Execute(&buf, data); err != nil {
 		panic(err)
 	}
 	return buf.Bytes()
