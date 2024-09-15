@@ -607,6 +607,9 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		return
 	case <-time.After(delay):
 	}
+	w.Header().Set("Server-Timing", encodeServerTimings([]serverTiming{
+		{"initial_delay", delay, "initial delay"},
+	}))
 	h.RequestWithBody(w, r)
 }
 
@@ -691,6 +694,12 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", textContentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
+	w.Header().Set("Server-Timing", encodeServerTimings([]serverTiming{
+		{"total_duration", delay + duration, "total request duration"},
+		{"initial_delay", delay, "initial delay"},
+		{"write_duration", duration, "duration of writes after initial delay"},
+		{"pause_per_write", pause, "computed pause between writes"},
+	}))
 	w.WriteHeader(code)
 
 	// what we write with each increment of the ticker
@@ -1110,6 +1119,7 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 // SSE writes a stream of events over a duration after an optional
 // initial delay.
 func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	q := r.URL.Query()
 	var (
 		count    = h.DefaultParams.SSECount
@@ -1169,6 +1179,15 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Add("Trailer", "Server-Timing")
+	defer func() {
+		w.Header().Add("Server-Timing", encodeServerTimings([]serverTiming{
+			{"total_duration", time.Since(start), "total request duration"},
+			{"initial_delay", delay, "initial delay"},
+			{"write_duration", duration, "duration of writes after initial delay"},
+			{"pause_per_write", pause, "computed pause between writes"},
+		}))
+	}()
 	w.Header().Set("Content-Type", sseContentType)
 	w.WriteHeader(http.StatusOK)
 

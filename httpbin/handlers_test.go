@@ -1929,6 +1929,11 @@ func TestDelay(t *testing.T) {
 			if elapsed < test.expectedDelay {
 				t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
 			}
+
+			timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
+			assert.DeepEqual(t, timings, map[string]serverTiming{
+				"initial_delay": {"initial_delay", test.expectedDelay, "initial delay"},
+			}, "incorrect Server-Timing header value")
 		})
 	}
 
@@ -2223,6 +2228,38 @@ func TestDrip(t *testing.T) {
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.BodySize(t, resp, 0)
+	})
+
+	t.Run("Server-Timings header", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			duration = 100 * time.Millisecond
+			delay    = 50 * time.Millisecond
+			numBytes = 10
+		)
+
+		url := fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, delay, numBytes)
+		req := newTestRequest(t, "GET", url)
+		resp := must.DoReq(t, client, req)
+		defer consumeAndCloseBody(resp)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+
+		timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
+
+		// compute expected pause between writes to match server logic and
+		// handle lossy floating point truncation in the serialized header
+		// value
+		computedPause := duration / time.Duration(numBytes-1)
+		wantPause, _ := time.ParseDuration(fmt.Sprintf("%.2fms", computedPause.Seconds()*1e3))
+
+		assert.DeepEqual(t, timings, map[string]serverTiming{
+			"total_duration":  {"total_duration", delay + duration, "total request duration"},
+			"initial_delay":   {"initial_delay", delay, "initial delay"},
+			"pause_per_write": {"pause_per_write", wantPause, "computed pause between writes"},
+			"write_duration":  {"write_duration", duration, "duration of writes after initial delay"},
+		}, "incorrect Server-Timing header value")
 	})
 }
 
@@ -3298,6 +3335,53 @@ func TestSSE(t *testing.T) {
 		resp := must.DoReq(t, client, req)
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.BodySize(t, resp, 0)
+	})
+
+	t.Run("Server-Timings trailers", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			duration = 250 * time.Millisecond
+			delay    = 100 * time.Millisecond
+			count    = 10
+			params   = url.Values{
+				"duration": {duration.String()},
+				"delay":    {delay.String()},
+				"count":    {strconv.Itoa(count)},
+			}
+		)
+
+		req := newTestRequest(t, "GET", "/sse?"+params.Encode())
+		resp := must.DoReq(t, client, req)
+
+		// need to fully consume body for Server-Timing trailers to arrive
+		must.ReadAll(t, resp.Body)
+
+		rawTimings := resp.Trailer.Get("Server-Timing")
+		t.Logf("raw Server-Timing header value: %q", rawTimings)
+
+		timings := decodeServerTimings(rawTimings)
+
+		// Ensure total server time makes sense based on duration and delay
+		total := timings["total_duration"]
+		assert.DurationRange(t, total.dur, duration+delay, duration+delay+25*time.Millisecond)
+
+		// Ensure computed pause time makes sense based on duration, delay, and
+		// numbytes (should be exact, but we're re-parsing a truncated float in
+		// the header value)
+		pause := timings["pause_per_write"]
+		assert.RoughlyEqual(t, pause.dur, duration/time.Duration(count-1), 1*time.Millisecond)
+
+		// remaining timings should exactly match request parameters, no need
+		// to adjust for per-run variations
+		wantTimings := map[string]serverTiming{
+			"write_duration": {"write_duration", duration, "duration of writes after initial delay"},
+			"initial_delay":  {"initial_delay", delay, "initial delay"},
+		}
+		for k, want := range wantTimings {
+			got := timings[k]
+			assert.DeepEqual(t, got, want, "incorrect timing for key %q", k)
+		}
 	})
 }
 

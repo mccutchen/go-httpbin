@@ -563,3 +563,46 @@ func weightedRandomChoice[T any](choices []weightedChoice[T]) T {
 	}
 	panic("failed to select a weighted random choice")
 }
+
+// Server-Timing header/trailer helpers. See MDN docs for reference:
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing
+type serverTiming struct {
+	name string
+	dur  time.Duration
+	desc string
+}
+
+func encodeServerTimings(timings []serverTiming) string {
+	entries := make([]string, len(timings))
+	for i, t := range timings {
+		ms := t.dur.Seconds() * 1e3
+		entries[i] = fmt.Sprintf("%s;dur=%0.2f;desc=\"%s\"", t.name, ms, t.desc)
+	}
+	return strings.Join(entries, ", ")
+}
+
+func decodeServerTimings(headerVal string) map[string]serverTiming {
+	if headerVal == "" {
+		return nil
+	}
+	timings := map[string]serverTiming{}
+	for _, entry := range strings.Split(headerVal, ",") {
+		var t serverTiming
+		for _, kv := range strings.Split(entry, ";") {
+			kv = strings.TrimSpace(kv)
+			key, val, _ := strings.Cut(kv, "=")
+			switch key {
+			case "dur":
+				t.dur, _ = time.ParseDuration(val + "ms")
+			case "desc":
+				t.desc = strings.Trim(val, "\"")
+			default:
+				t.name = key
+			}
+		}
+		if t.name != "" {
+			timings[t.name] = t
+		}
+	}
+	return timings
+}
