@@ -1844,6 +1844,59 @@ func TestStream(t *testing.T) {
 	}
 }
 
+func TestTrailers(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		url          string
+		wantStatus   int
+		wantTrailers http.Header
+	}{
+		{
+			"/trailers",
+			http.StatusOK,
+			nil,
+		},
+		{
+			"/trailers?test-trailer-1=v1&Test-Trailer-2=v2",
+			http.StatusOK,
+			// note that response headers are canonicalized
+			http.Header{"Test-Trailer-1": {"v1"}, "Test-Trailer-2": {"v2"}},
+		},
+		{
+			"/trailers?test-trailer-1&Authorization=Bearer",
+			http.StatusBadRequest,
+			nil,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.url, func(t *testing.T) {
+			t.Parallel()
+
+			req := newTestRequest(t, "GET", tc.url)
+			resp := must.DoReq(t, client, req)
+
+			assert.StatusCode(t, resp, tc.wantStatus)
+			if tc.wantStatus != http.StatusOK {
+				return
+			}
+
+			// trailers only sent w/ chunked transfer encoding
+			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
+
+			// must read entire body to get trailers
+			body := must.ReadAll(t, resp.Body)
+
+			// don't really care about the contents, as long as body can be
+			// unmarshaled into the correct type
+			must.Unmarshal[bodyResponse](t, strings.NewReader(body))
+
+			assert.DeepEqual(t, resp.Trailer, tc.wantTrailers, "trailers mismatch")
+		})
+	}
+}
+
 func TestDelay(t *testing.T) {
 	t.Parallel()
 

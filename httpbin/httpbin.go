@@ -181,6 +181,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/status/{code}", h.Status)
 	mux.HandleFunc("/stream-bytes/{numBytes}", h.StreamBytes)
 	mux.HandleFunc("/stream/{numLines}", h.Stream)
+	mux.HandleFunc("/trailers", h.Trailers)
 	mux.HandleFunc("/unstable", h.Unstable)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/uuid", h.UUID)
