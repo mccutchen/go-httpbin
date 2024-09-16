@@ -70,7 +70,8 @@ func (h *HTTPBin) Anything(w http.ResponseWriter, r *http.Request) {
 	h.RequestWithBody(w, r)
 }
 
-// RequestWithBody handles POST, PUT, and PATCH requests
+// RequestWithBody handles POST, PUT, and PATCH requests by responding with a
+// JSON representation of the incoming request.
 func (h *HTTPBin) RequestWithBody(w http.ResponseWriter, r *http.Request) {
 	resp := &bodyResponse{
 		Args:    r.URL.Query(),
@@ -545,6 +546,49 @@ func (h *HTTPBin) Stream(w http.ResponseWriter, r *http.Request) {
 		line, _ := json.Marshal(resp)
 		w.Write(append(line, '\n'))
 		f.Flush()
+	}
+}
+
+// set of keys that may not be specified in trailers, per
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Trailer#directives
+var forbiddenTrailers = map[string]struct{}{
+	http.CanonicalHeaderKey("Authorization"):     {},
+	http.CanonicalHeaderKey("Cache-Control"):     {},
+	http.CanonicalHeaderKey("Content-Encoding"):  {},
+	http.CanonicalHeaderKey("Content-Length"):    {},
+	http.CanonicalHeaderKey("Content-Range"):     {},
+	http.CanonicalHeaderKey("Content-Type"):      {},
+	http.CanonicalHeaderKey("Host"):              {},
+	http.CanonicalHeaderKey("Max-Forwards"):      {},
+	http.CanonicalHeaderKey("Set-Cookie"):        {},
+	http.CanonicalHeaderKey("TE"):                {},
+	http.CanonicalHeaderKey("Trailer"):           {},
+	http.CanonicalHeaderKey("Transfer-Encoding"): {},
+}
+
+// Trailers adds the header keys and values specified in the request's query
+// parameters as HTTP trailers in the response.
+//
+// Trailers are returned in canonical form. Any forbidden trailer will result
+// in an error.
+func (h *HTTPBin) Trailers(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	// ensure all requested trailers are allowed
+	for k := range q {
+		if _, found := forbiddenTrailers[http.CanonicalHeaderKey(k)]; found {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("forbidden trailer: %s", k))
+			return
+		}
+	}
+	for k := range q {
+		w.Header().Add("Trailer", k)
+	}
+	h.RequestWithBody(w, r)
+	w.(http.Flusher).Flush() // force chunked transfer encoding even when no trailers are given
+	for k, vs := range q {
+		for _, v := range vs {
+			w.Header().Set(k, v)
+		}
 	}
 }
 
