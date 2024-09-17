@@ -79,7 +79,7 @@
 <li><a href="{{.Prefix}}/deny"><code>{{.Prefix}}/deny</code></a> Denied by robots.txt file.</li>
 <li><a href="{{.Prefix}}/digest-auth/auth/user/password"><code>{{.Prefix}}/digest-auth/:qop/:user/:password</code></a> Challenges HTTP Digest Auth using default MD5 algorithm</li>
 <li><a href="{{.Prefix}}/digest-auth/auth/user/password/SHA-256"><code>{{.Prefix}}/digest-auth/:qop/:user/:password/:algorithm</code></a> Challenges HTTP Digest Auth using specified algorithm (MD5 or SHA-256)</li>
-<li><a href="{{.Prefix}}/drip?code=200&amp;numbytes=5&amp;duration=5"><code>{{.Prefix}}/drip?numbytes=n&amp;duration=s&amp;delay=s&amp;code=code</code></a> Drips data over a duration after an optional initial delay, then (optionally) returns with the given status code.</li>
+<li><a href="{{.Prefix}}/drip?code=200&amp;numbytes=5&amp;duration=5"><code>{{.Prefix}}/drip?numbytes=n&amp;duration=s&amp;delay=s&amp;code=code</code></a> Drips data over the given duration after an optional initial delay, simulating a slow HTTP server.</li>
 <li><a href="{{.Prefix}}/dump/request"><code>{{.Prefix}}/dump/request</code></a> Returns the given request in its HTTP/1.x wire approximate representation.</li>
 <li><a href="{{.Prefix}}/encoding/utf8"><code>{{.Prefix}}/encoding/utf8</code></a> Returns page containing UTF-8 data.</li>
 <li><a href="{{.Prefix}}/etag/etag"><code>{{.Prefix}}/etag/:etag</code></a> Assumes the resource has the given etag and responds to If-None-Match header with a 200 or 304 and If-Match with a 200 or 412 as appropriate.</li>
