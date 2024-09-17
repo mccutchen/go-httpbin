@@ -129,17 +129,14 @@ func DurationRange(t *testing.T, got, min, max time.Duration) {
 	}
 }
 
-// RoughDuration asserts that a duration is within a certain tolerance of a
-// given value.
-func RoughDuration(t *testing.T, got, want time.Duration, tolerance time.Duration) {
-	t.Helper()
-	DurationRange(t, got, want-tolerance, want+tolerance)
+type Number interface {
+	~int64 | ~float64
 }
 
-// RoughlyEqual asserts that a float64 is within a certain tolerance.
-func RoughlyEqual(t *testing.T, got, want float64, epsilon float64) {
+// RoughlyEqual asserts that a numeric value is within a certain tolerance.
+func RoughlyEqual[T Number](t *testing.T, got, want T, epsilon T) {
 	t.Helper()
 	if got < want-epsilon || got > want+epsilon {
-		t.Fatalf("expected value between %f and %f, got %f", want-epsilon, want+epsilon, got)
+		t.Fatalf("expected value between %v and %v, got %v", want-epsilon, want+epsilon, got)
 	}
 }

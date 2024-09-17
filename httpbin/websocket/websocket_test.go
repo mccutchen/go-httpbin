@@ -281,7 +281,7 @@ func TestConnectionLimits(t *testing.T) {
 			elapsed := time.Since(start)
 
 			assert.Error(t, err, io.EOF)
-			assert.RoughDuration(t, elapsed, maxDuration, 25*time.Millisecond)
+			assert.RoughlyEqual(t, elapsed, maxDuration, 25*time.Millisecond)
 		}
 	})
 
@@ -363,11 +363,11 @@ func TestConnectionLimits(t *testing.T) {
 			conn.Close()
 
 			assert.Equal(t, os.IsTimeout(err), true, "expected timeout error")
-			assert.RoughDuration(t, elapsedClientTime, clientTimeout, 10*time.Millisecond)
+			assert.RoughlyEqual(t, elapsedClientTime, clientTimeout, 10*time.Millisecond)
 
 			// wait for the server to finish
 			wg.Wait()
-			assert.RoughDuration(t, elapsedServerTime, clientTimeout, 10*time.Millisecond)
+			assert.RoughlyEqual(t, elapsedServerTime, clientTimeout, 10*time.Millisecond)
 		}
 	})
 }

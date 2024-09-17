@@ -610,8 +610,15 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 	h.RequestWithBody(w, r)
 }
 
-// Drip returns data over a duration after an optional initial delay, then
-// (optionally) returns with the given status code.
+// Drip simulates a slow HTTP server by writing data over a given duration
+// after an optional initial delay.
+//
+// Because this endpoint is intended to simulate a slow HTTP connection, it
+// intentionally does NOT use chunked transfer encoding even though its
+// implementation writes the response incrementally.
+//
+// See Stream (/stream) or StreamBytes (/stream-bytes) for endpoints that
+// respond using chunked transfer encoding.
 func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -660,7 +667,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if duration+delay > h.MaxDuration {
-		http.Error(w, "Too much time", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, fmt.Errorf("too much time: %v+%v > %v", duration, delay, h.MaxDuration))
 		return
 	}
 
@@ -682,15 +689,16 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", binaryContentType)
+	w.Header().Set("Content-Type", textContentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
 	w.WriteHeader(code)
 
+	// what we write with each increment of the ticker
+	b := []byte{'*'}
+
 	// special case when we do not need to pause between each write
 	if pause == 0 {
-		for i := int64(0); i < numBytes; i++ {
-			w.Write([]byte{'*'})
-		}
+		w.Write(bytes.Repeat(b, int(numBytes)))
 		return
 	}
 
@@ -698,7 +706,6 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 	ticker := time.NewTicker(pause)
 	defer ticker.Stop()
 
-	b := []byte{'*'}
 	flusher := w.(http.Flusher)
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)

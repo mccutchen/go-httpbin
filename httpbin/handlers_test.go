@@ -738,7 +738,7 @@ func testRequestWithBodyExpect100Continue(t *testing.T, verb, path string) {
 	})
 
 	t.Run("zero content-length ignored", func(t *testing.T) {
-		// The Go stdlib's Expect:100-continue handling requires either a a)
+		// The Go stdlib's Expect:100-continue handling requires either a)
 		// non-zero Content-Length header or b) Transfer-Encoding:chunked
 		// header to be present.  Otherwise, the Expect header is ignored and
 		// the request is processed normally.
@@ -2037,7 +2037,7 @@ func TestDrip(t *testing.T) {
 			elapsed := time.Since(start)
 
 			assert.StatusCode(t, resp, test.code)
-			assert.ContentType(t, resp, binaryContentType)
+			assert.ContentType(t, resp, textContentType)
 			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
 			if elapsed < test.duration {
 				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
@@ -2125,7 +2125,7 @@ func TestDrip(t *testing.T) {
 			// (allowing for minor mismatch in local timers and server timers)
 			// after the first byte.
 			if i > 0 {
-				assert.RoughDuration(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
+				assert.RoughlyEqual(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
 			}
 		}
 
@@ -3240,7 +3240,7 @@ func TestSSE(t *testing.T) {
 			// (allowing for minor mismatch in local timers and server timers)
 			// after the first byte.
 			if i > 0 {
-				assert.RoughDuration(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
+				assert.RoughlyEqual(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
 			}
 
 			eventCount++
