@@ -580,29 +580,3 @@ func encodeServerTimings(timings []serverTiming) string {
 	}
 	return strings.Join(entries, ", ")
 }
-
-func decodeServerTimings(headerVal string) map[string]serverTiming {
-	if headerVal == "" {
-		return nil
-	}
-	timings := map[string]serverTiming{}
-	for _, entry := range strings.Split(headerVal, ",") {
-		var t serverTiming
-		for _, kv := range strings.Split(entry, ";") {
-			kv = strings.TrimSpace(kv)
-			key, val, _ := strings.Cut(kv, "=")
-			switch key {
-			case "dur":
-				t.dur, _ = time.ParseDuration(val + "ms")
-			case "desc":
-				t.desc = strings.Trim(val, "\"")
-			default:
-				t.name = key
-			}
-		}
-		if t.name != "" {
-			timings[t.name] = t
-		}
-	}
-	return timings
-}
