@@ -69,6 +69,8 @@ func getClientIP(r *http.Request) string {
 
 func getURL(r *http.Request) *url.URL {
 	log.Printf("XXX getURL: r.URL=%q", r.URL)
+	log.Printf("XXX getURL: r.URL.Host=%q", r.URL.Host)
+	log.Printf("XXX getURL: r.Host=%q", r.Host)
 	log.Printf("XXX getURL r.Headers=%#v", r.Header)
 
 	scheme := r.Header.Get("X-Forwarded-Proto")
