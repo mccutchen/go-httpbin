@@ -1,7 +1,13 @@
+BUILD_DATE       := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_GIT_COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_GIT_TAG    := $(shell git describe --tags --abbrev=0 | tr -d '\n')
+BUILD_LDFLAGS    := -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildDate=$(BUILD_DATE)' -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildGitCommit=$(BUILD_GIT_COMMIT)' -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildGitTag=$(BUILD_GIT_TAG)'
+
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
-VERSION    ?= $(shell git rev-parse --short HEAD)
+VERSION    ?= $(BUILD_GIT_TAG)
 DOCKER_TAG ?= mccutchen/go-httpbin:$(VERSION)
+
 
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
@@ -26,7 +32,7 @@ PORT ?= 8080
 # =============================================================================
 build:
 	mkdir -p $(DIST_PATH)
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
+	CGO_ENABLED=0 go build -ldflags="$(BUILD_LDFLAGS) -s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 .PHONY: build
 
 buildexamples: build
@@ -34,7 +40,7 @@ buildexamples: build
 .PHONY: buildexamples
 
 buildtests:
-	CGO_ENABLED=0 go test -ldflags="-s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
+	CGO_ENABLED=0 go test -ldflags="$(BUILD_LDFLAGS) -s -w" -v -c -o $(DIST_PATH)/go-httpbin.test ./httpbin
 .PHONY: buildtests
 
 clean:

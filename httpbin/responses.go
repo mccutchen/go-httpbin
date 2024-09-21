@@ -13,6 +13,10 @@ const (
 	textContentType   = "text/plain; charset=utf-8"
 )
 
+type versionResponse struct {
+	Version VersionInfo `json:"version"`
+}
+
 type headersResponse struct {
 	Headers http.Header `json:"headers"`
 }

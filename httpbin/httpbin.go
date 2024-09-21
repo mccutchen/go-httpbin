@@ -185,6 +185,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/unstable", h.Unstable)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/uuid", h.UUID)
+	mux.HandleFunc("/version", h.Version)
 	mux.HandleFunc("/xml", h.XML)
 
 	// existing httpbin endpoints that we do not support
