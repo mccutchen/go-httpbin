@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -38,17 +37,8 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 
 // Env - returns environment variables with HTTPBIN_ prefix, if any pre-configured by operator
 func (h *HTTPBin) Env(w http.ResponseWriter, _ *http.Request) {
-	variables := make(map[string]string)
-	for _, e := range os.Environ() {
-		v := strings.SplitN(e, "=", 2)
-		if !strings.HasPrefix(v[0], "HTTPBIN_") {
-			continue
-		}
-		variables[v[0]] = v[1]
-	}
-
 	writeJSON(http.StatusOK, w, &envResponse{
-		Env: variables,
+		Env: h.env,
 	})
 }
 

@@ -74,10 +74,20 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 		logger = slog.New(handler)
 	}
 
+	env := make(map[string]string)
+	for _, e := range os.Environ() {
+		v := strings.SplitN(e, "=", 2)
+		if !strings.HasPrefix(v[0], "HTTPBIN_") {
+			continue
+		}
+		env[v[0]] = v[1]
+	}
+
 	opts := []httpbin.OptionFunc{
 		httpbin.WithMaxBodySize(cfg.MaxBodySize),
 		httpbin.WithMaxDuration(cfg.MaxDuration),
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
+		httpbin.WithEnv(env),
 		httpbin.WithExcludeHeaders(cfg.ExcludeHeaders),
 	}
 	if cfg.Prefix != "" {
