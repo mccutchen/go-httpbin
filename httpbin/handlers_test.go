@@ -120,6 +120,16 @@ func TestIndex(t *testing.T) {
 	}
 }
 
+func TestEnv(t *testing.T) {
+	t.Run("default environment", func(t *testing.T) {
+		t.Parallel()
+		req := newTestRequest(t, "GET", "/env")
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[environmentResponse](t, resp)
+		assert.Equal(t, len(result.Environment), 0, "environment variables unexpeced")
+	})
+}
+
 func TestFormsPost(t *testing.T) {
 	t.Parallel()
 

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,22 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' camo.githubusercontent.com")
 	writeHTML(w, h.indexHTML, http.StatusOK)
+}
+
+// Env - returns environment variables with HTTPBIN_ prefix, if any pre-configured by operator
+func (h *HTTPBin) Env(w http.ResponseWriter, _ *http.Request) {
+	variables := make(map[string]string)
+	for _, e := range os.Environ() {
+		v := strings.SplitN(e, "=", 2)
+		if !strings.HasPrefix(v[0], "HTTPBIN_") {
+			continue
+		}
+		variables[v[0]] = v[1]
+	}
+
+	writeJSON(http.StatusOK, w, &environmentResponse{
+		Environment: variables,
+	})
 }
 
 // FormsPost renders an HTML form that submits a request to the /post endpoint
