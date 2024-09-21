@@ -13,8 +13,8 @@ const (
 	textContentType   = "text/plain; charset=utf-8"
 )
 
-type environmentResponse struct {
-	Environment map[string]string `json:"env"`
+type envResponse struct {
+	Env map[string]string `json:"env"`
 }
 
 type headersResponse struct {

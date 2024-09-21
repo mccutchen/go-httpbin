@@ -125,8 +125,8 @@ func TestEnv(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/env")
 		resp := must.DoReq(t, client, req)
-		result := mustParseResponse[environmentResponse](t, resp)
-		assert.Equal(t, len(result.Environment), 0, "environment variables unexpeced")
+		result := mustParseResponse[envResponse](t, resp)
+		assert.Equal(t, len(result.Env), 0, "environment variables unexpected")
 	})
 }
 

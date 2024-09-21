@@ -47,8 +47,8 @@ func (h *HTTPBin) Env(w http.ResponseWriter, _ *http.Request) {
 		variables[v[0]] = v[1]
 	}
 
-	writeJSON(http.StatusOK, w, &environmentResponse{
-		Environment: variables,
+	writeJSON(http.StatusOK, w, &envResponse{
+		Env: variables,
 	})
 }
 
