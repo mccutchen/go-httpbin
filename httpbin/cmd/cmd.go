@@ -77,7 +77,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 	httpbinEnv := make(map[string]string)
 	for _, envVar := range os.Environ() {
 		name, value, _ := strings.Cut(envVar, "=")
-		if !strings.HasPrefix(name, "HTTPBIN_") {
+		if !strings.HasPrefix(name, "HTTPBIN_ENV_") {
 			continue
 		}
 		httpbinEnv[name] = value
