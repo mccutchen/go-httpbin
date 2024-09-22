@@ -1,7 +1,8 @@
 BUILD_DATE       := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 BUILD_GIT_COMMIT := $(shell git rev-parse --short HEAD)
 BUILD_GIT_TAG    := $(shell git describe --tags --abbrev=0 | tr -d '\n')
-BUILD_LDFLAGS    := -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildDate=$(BUILD_DATE)' -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildGitCommit=$(BUILD_GIT_COMMIT)' -X 'github.com/mccutchen/go-httpbin/v2/httpbin.buildGitTag=$(BUILD_GIT_TAG)'
+BUILD_PKG_TAG    = $(shell echo $(BUILD_GIT_TAG) | cut -f1 -d.)
+BUILD_LDFLAGS    := -X 'github.com/mccutchen/go-httpbin/$(BUILD_PKG_TAG)/httpbin.buildDate=$(BUILD_DATE)' -X 'github.com/mccutchen/go-httpbin/$(BUILD_PKG_TAG)/httpbin.buildGitCommit=$(BUILD_GIT_COMMIT)' -X 'github.com/mccutchen/go-httpbin/$(BUILD_PKG_TAG)/httpbin.buildGitTag=$(BUILD_GIT_TAG)'
 
 # The version that will be used in docker tags (e.g. to push a
 # go-httpbin:latest image use `make imagepush VERSION=latest)`
