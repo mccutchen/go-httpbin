@@ -35,6 +35,13 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	writeHTML(w, h.indexHTML, http.StatusOK)
 }
 
+// Version echoes build and version info
+func (h *HTTPBin) Version(w http.ResponseWriter, r *http.Request) {
+	writeJSON(http.StatusOK, w, &versionResponse{
+		Version: getVersionInfo(),
+	})
+}
+
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, _ *http.Request) {
 	writeHTML(w, h.formsPostHTML, http.StatusOK)
