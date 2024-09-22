@@ -53,8 +53,9 @@ func TestLoadConfig(t *testing.T) {
 
 	testCases := map[string]struct {
 		args        []string
-		env         map[string]string
+		optionsEnv  map[string]string
 		getHostname func() (string, error)
+		env         []string
 		wantCfg     *config
 		wantErr     error
 		wantOut     string
@@ -83,8 +84,8 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: errors.New("invalid value \"foo\" for flag -max-body-size: parse error"),
 		},
 		"invalid MAX_BODY_SIZE": {
-			env:     map[string]string{"MAX_BODY_SIZE": "foo"},
-			wantErr: errors.New("invalid value \"foo\" for env var MAX_BODY_SIZE: parse error"),
+			optionsEnv: map[string]string{"MAX_BODY_SIZE": "foo"},
+			wantErr:    errors.New("invalid value \"foo\" for env var MAX_BODY_SIZE: parse error"),
 		},
 		"ok -max-body-size": {
 			args: []string{"-max-body-size", "99"},
@@ -97,7 +98,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok MAX_BODY_SIZE": {
-			env: map[string]string{"MAX_BODY_SIZE": "9999"},
+			optionsEnv: map[string]string{"MAX_BODY_SIZE": "9999"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -107,8 +108,8 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok max body size CLI takes precedence over env": {
-			args: []string{"-max-body-size", "1234"},
-			env:  map[string]string{"MAX_BODY_SIZE": "5678"},
+			args:       []string{"-max-body-size", "1234"},
+			optionsEnv: map[string]string{"MAX_BODY_SIZE": "5678"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -124,8 +125,8 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: errors.New("invalid value \"foo\" for flag -max-duration: parse error"),
 		},
 		"invalid MAX_DURATION": {
-			env:     map[string]string{"MAX_DURATION": "foo"},
-			wantErr: errors.New("invalid value \"foo\" for env var MAX_DURATION: parse error"),
+			optionsEnv: map[string]string{"MAX_DURATION": "foo"},
+			wantErr:    errors.New("invalid value \"foo\" for env var MAX_DURATION: parse error"),
 		},
 		"ok -max-duration": {
 			args: []string{"-max-duration", "99s"},
@@ -138,7 +139,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok MAX_DURATION": {
-			env: map[string]string{"MAX_DURATION": "9999s"},
+			optionsEnv: map[string]string{"MAX_DURATION": "9999s"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -148,8 +149,8 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok max duration size CLI takes precedence over env": {
-			args: []string{"-max-duration", "1234s"},
-			env:  map[string]string{"MAX_DURATION": "5678s"},
+			args:       []string{"-max-duration", "1234s"},
+			optionsEnv: map[string]string{"MAX_DURATION": "5678s"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -171,7 +172,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok HOST": {
-			env: map[string]string{"HOST": "192.0.0.2"},
+			optionsEnv: map[string]string{"HOST": "192.0.0.2"},
 			wantCfg: &config{
 				ListenHost:  "192.0.0.2",
 				ListenPort:  8080,
@@ -181,8 +182,8 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok host cli takes precedence over end": {
-			args: []string{"-host", "99.99.99.99"},
-			env:  map[string]string{"HOST": "11.11.11.11"},
+			args:       []string{"-host", "99.99.99.99"},
+			optionsEnv: map[string]string{"HOST": "11.11.11.11"},
 			wantCfg: &config{
 				ListenHost:  "99.99.99.99",
 				ListenPort:  8080,
@@ -198,8 +199,8 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: errors.New("invalid value \"foo\" for flag -port: parse error"),
 		},
 		"invalid PORT": {
-			env:     map[string]string{"PORT": "foo"},
-			wantErr: errors.New("invalid value \"foo\" for env var PORT: parse error"),
+			optionsEnv: map[string]string{"PORT": "foo"},
+			wantErr:    errors.New("invalid value \"foo\" for env var PORT: parse error"),
 		},
 		"ok -port": {
 			args: []string{"-port", "99"},
@@ -212,7 +213,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok PORT": {
-			env: map[string]string{"PORT": "9999"},
+			optionsEnv: map[string]string{"PORT": "9999"},
 			wantCfg: &config{
 				ListenHost:  defaultListenHost,
 				ListenPort:  9999,
@@ -222,8 +223,8 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok port CLI takes precedence over env": {
-			args: []string{"-port", "1234"},
-			env:  map[string]string{"PORT": "5678"},
+			args:       []string{"-port", "1234"},
+			optionsEnv: map[string]string{"PORT": "5678"},
 			wantCfg: &config{
 				ListenHost:  defaultListenHost,
 				ListenPort:  1234,
@@ -243,8 +244,8 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: errors.New("Prefix \"/invalidprefix2/\" must not end with a slash"),
 		},
 		"ok -prefix takes precedence over env": {
-			args: []string{"-prefix", "/prefix1"},
-			env:  map[string]string{"PREFIX": "/prefix2"},
+			args:       []string{"-prefix", "/prefix1"},
+			optionsEnv: map[string]string{"PREFIX": "/prefix2"},
 			wantCfg: &config{
 				ListenHost:  defaultListenHost,
 				ListenPort:  defaultListenPort,
@@ -255,7 +256,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok PREFIX": {
-			env: map[string]string{"PREFIX": "/prefix2"},
+			optionsEnv: map[string]string{"PREFIX": "/prefix2"},
 			wantCfg: &config{
 				ListenHost:  defaultListenHost,
 				ListenPort:  defaultListenPort,
@@ -291,7 +292,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok https env": {
-			env: map[string]string{
+			optionsEnv: map[string]string{
 				"HTTPS_CERT_FILE": "/tmp/test.crt",
 				"HTTPS_KEY_FILE":  "/tmp/test.key",
 			},
@@ -310,7 +311,7 @@ func TestLoadConfig(t *testing.T) {
 				"-https-cert-file", "/tmp/cli.crt",
 				"-https-key-file", "/tmp/cli.key",
 			},
-			env: map[string]string{
+			optionsEnv: map[string]string{
 				"HTTPS_CERT_FILE": "/tmp/env.crt",
 				"HTTPS_KEY_FILE":  "/tmp/env.key",
 			},
@@ -372,7 +373,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok USE_REAL_HOSTNAME=1": {
-			env: map[string]string{"USE_REAL_HOSTNAME": "1"},
+			optionsEnv: map[string]string{"USE_REAL_HOSTNAME": "1"},
 			wantCfg: &config{
 				ListenHost:   "0.0.0.0",
 				ListenPort:   8080,
@@ -383,7 +384,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok USE_REAL_HOSTNAME=true": {
-			env: map[string]string{"USE_REAL_HOSTNAME": "true"},
+			optionsEnv: map[string]string{"USE_REAL_HOSTNAME": "true"},
 			wantCfg: &config{
 				ListenHost:   "0.0.0.0",
 				ListenPort:   8080,
@@ -395,7 +396,7 @@ func TestLoadConfig(t *testing.T) {
 		},
 		// case sensitive
 		"ok USE_REAL_HOSTNAME=TRUE": {
-			env: map[string]string{"USE_REAL_HOSTNAME": "TRUE"},
+			optionsEnv: map[string]string{"USE_REAL_HOSTNAME": "TRUE"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -405,7 +406,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok USE_REAL_HOSTNAME=false": {
-			env: map[string]string{"USE_REAL_HOSTNAME": "false"},
+			optionsEnv: map[string]string{"USE_REAL_HOSTNAME": "false"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -415,7 +416,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"err real hostname error": {
-			env:         map[string]string{"USE_REAL_HOSTNAME": "true"},
+			optionsEnv:  map[string]string{"USE_REAL_HOSTNAME": "true"},
 			getHostname: func() (string, error) { return "", errors.New("hostname error") },
 			wantErr:     errors.New("could not look up real hostname: hostname error"),
 		},
@@ -433,7 +434,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok ALLOWED_REDIRECT_DOMAINS": {
-			env: map[string]string{"ALLOWED_REDIRECT_DOMAINS": "foo,bar"},
+			optionsEnv: map[string]string{"ALLOWED_REDIRECT_DOMAINS": "foo,bar"},
 			wantCfg: &config{
 				ListenHost:             "0.0.0.0",
 				ListenPort:             8080,
@@ -444,8 +445,8 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok allowed redirect domains CLI takes precedence over env": {
-			args: []string{"-allowed-redirect-domains", "foo.cli,bar.cli"},
-			env:  map[string]string{"ALLOWED_REDIRECT_DOMAINS": "foo.env,bar.env"},
+			args:       []string{"-allowed-redirect-domains", "foo.cli,bar.cli"},
+			optionsEnv: map[string]string{"ALLOWED_REDIRECT_DOMAINS": "foo.env,bar.env"},
 			wantCfg: &config{
 				ListenHost:             "0.0.0.0",
 				ListenPort:             8080,
@@ -496,7 +497,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		"ok use json log format using LOG_FORMAT env": {
-			env: map[string]string{"LOG_FORMAT": "json"},
+			optionsEnv: map[string]string{"LOG_FORMAT": "json"},
 			wantCfg: &config{
 				ListenHost:  "0.0.0.0",
 				ListenPort:  8080,
@@ -515,7 +516,7 @@ func TestLoadConfig(t *testing.T) {
 			if tc.getHostname == nil {
 				tc.getHostname = getHostnameDefault
 			}
-			cfg, err := loadConfig(tc.args, func(key string) string { return tc.env[key] }, tc.getHostname)
+			cfg, err := loadConfig(tc.args, func(key string) string { return tc.optionsEnv[key] }, tc.getHostname)
 
 			switch {
 			case tc.wantErr != nil && err != nil:
