@@ -35,13 +35,13 @@ const (
 // Main is the main entrypoint for the go-httpbin binary. See loadConfig() for
 // command line argument parsing.
 func Main() int {
-	return mainImpl(os.Args[1:], os.Getenv, os.Hostname, os.Stderr)
+	return mainImpl(os.Args[1:], os.Getenv, os.Environ, os.Hostname, os.Stderr)
 }
 
 // mainImpl is the real implementation of Main(), extracted for better
 // testability.
-func mainImpl(args []string, getEnv func(string) string, getHostname func() (string, error), out io.Writer) int {
-	cfg, err := loadConfig(args, getEnv, getHostname)
+func mainImpl(args []string, getEnvVal func(string) string, getEnviron func() []string, getHostname func() (string, error), out io.Writer) int {
+	cfg, err := loadConfig(args, getEnvVal, getHostname)
 	if err != nil {
 		if cfgErr, ok := err.(ConfigError); ok {
 			// for -h/-help, just print usage and exit without error
@@ -75,7 +75,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 	}
 
 	httpbinEnv := make(map[string]string)
-	for _, envVar := range os.Environ() {
+	for _, envVar := range getEnviron() {
 		name, value, _ := strings.Cut(envVar, "=")
 		if !strings.HasPrefix(name, "HTTPBIN_ENV_") {
 			continue
