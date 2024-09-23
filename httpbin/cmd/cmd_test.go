@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -540,9 +541,8 @@ func TestMainImpl(t *testing.T) {
 
 	testCases := map[string]struct {
 		args        []string
-		optionsEnv  map[string]string
+		env         map[string]string
 		getHostname func() (string, error)
-		env         []string
 		wantCode    int
 		wantOut     string
 		wantOutFn   func(t *testing.T, out string)
@@ -607,7 +607,7 @@ func TestMainImpl(t *testing.T) {
 			}
 
 			buf := &bytes.Buffer{}
-			gotCode := mainImpl(tc.args, func(key string) string { return tc.optionsEnv[key] }, func() []string { return tc.env }, tc.getHostname, buf)
+			gotCode := mainImpl(tc.args, func(key string) string { return tc.env[key] }, func() []string { return environSlice(tc.env) }, tc.getHostname, buf)
 			out := buf.String()
 
 			if gotCode != tc.wantCode {
@@ -625,4 +625,12 @@ func TestMainImpl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func environSlice(env map[string]string) []string {
+	envStrings := make([]string, 0, len(env))
+	for name, value := range env {
+		envStrings = append(envStrings, fmt.Sprintf("%s=%s", name, value))
+	}
+	return envStrings
 }
