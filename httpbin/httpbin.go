@@ -57,6 +57,10 @@ type HTTPBin struct {
 	// Set of hosts to which the /redirect-to endpoint will allow redirects
 	AllowedRedirectDomains map[string]struct{}
 
+	// The operator-controlled environment variables filtered from
+	// the process environment, based on named HTTPBIN_ prefix.
+	env map[string]string
+
 	// Pre-computed error message for the /redirect-to endpoint, based on
 	// -allowed-redirect-domains/ALLOWED_REDIRECT_DOMAINS
 	forbiddenRedirectError string
@@ -159,6 +163,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/digest-auth/{qop}/{user}/{password}/{algorithm}", h.DigestAuth)
 	mux.HandleFunc("/drip", h.Drip)
 	mux.HandleFunc("/dump/request", h.DumpRequest)
+	mux.HandleFunc("/env", h.Env)
 	mux.HandleFunc("/etag/{etag}", h.ETag)
 	mux.HandleFunc("/gzip", h.Gzip)
 	mux.HandleFunc("/headers", h.Headers)

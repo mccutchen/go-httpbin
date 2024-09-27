@@ -25,6 +25,7 @@ const (
 	defaultListenHost = "0.0.0.0"
 	defaultListenPort = 8080
 	defaultLogFormat  = "text"
+	defaultEnvPrefix  = "HTTPBIN_ENV_"
 
 	// Reasonable defaults for our http server
 	srvReadTimeout       = 5 * time.Second
@@ -35,13 +36,13 @@ const (
 // Main is the main entrypoint for the go-httpbin binary. See loadConfig() for
 // command line argument parsing.
 func Main() int {
-	return mainImpl(os.Args[1:], os.Getenv, os.Hostname, os.Stderr)
+	return mainImpl(os.Args[1:], os.Getenv, os.Environ, os.Hostname, os.Stderr)
 }
 
 // mainImpl is the real implementation of Main(), extracted for better
 // testability.
-func mainImpl(args []string, getEnv func(string) string, getHostname func() (string, error), out io.Writer) int {
-	cfg, err := loadConfig(args, getEnv, getHostname)
+func mainImpl(args []string, getEnvVal func(string) string, getEnviron func() []string, getHostname func() (string, error), out io.Writer) int {
+	cfg, err := loadConfig(args, getEnvVal, getEnviron, getHostname)
 	if err != nil {
 		if cfgErr, ok := err.(ConfigError); ok {
 			// for -h/-help, just print usage and exit without error
@@ -75,6 +76,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 	}
 
 	opts := []httpbin.OptionFunc{
+		httpbin.WithEnv(cfg.Env),
 		httpbin.WithMaxBodySize(cfg.MaxBodySize),
 		httpbin.WithMaxDuration(cfg.MaxDuration),
 		httpbin.WithObserver(httpbin.StdLogObserver(logger)),
@@ -110,6 +112,7 @@ func mainImpl(args []string, getEnv func(string) string, getHostname func() (str
 // config holds the configuration needed to initialize and run go-httpbin as a
 // standalone server.
 type config struct {
+	Env                    map[string]string
 	AllowedRedirectDomains []string
 	ListenHost             string
 	ExcludeHeaders         string
@@ -144,7 +147,7 @@ func (e ConfigError) Error() string {
 
 // loadConfig parses command line arguments and env vars into a fully resolved
 // Config struct. Command line arguments take precedence over env vars.
-func loadConfig(args []string, getEnv func(string) string, getHostname func() (string, error)) (*config, error) {
+func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() []string, getHostname func() (string, error)) (*config, error) {
 	cfg := &config{}
 
 	fs := flag.NewFlagSet("go-httpbin", flag.ContinueOnError)
@@ -192,24 +195,24 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	// Command line flags take precedence over environment vars, so we only
 	// check for environment vars if we have default values for our command
 	// line flags.
-	if cfg.MaxBodySize == httpbin.DefaultMaxBodySize && getEnv("MAX_BODY_SIZE") != "" {
-		cfg.MaxBodySize, err = strconv.ParseInt(getEnv("MAX_BODY_SIZE"), 10, 64)
+	if cfg.MaxBodySize == httpbin.DefaultMaxBodySize && getEnvVal("MAX_BODY_SIZE") != "" {
+		cfg.MaxBodySize, err = strconv.ParseInt(getEnvVal("MAX_BODY_SIZE"), 10, 64)
 		if err != nil {
-			return nil, configErr("invalid value %#v for env var MAX_BODY_SIZE: parse error", getEnv("MAX_BODY_SIZE"))
+			return nil, configErr("invalid value %#v for env var MAX_BODY_SIZE: parse error", getEnvVal("MAX_BODY_SIZE"))
 		}
 	}
 
-	if cfg.MaxDuration == httpbin.DefaultMaxDuration && getEnv("MAX_DURATION") != "" {
-		cfg.MaxDuration, err = time.ParseDuration(getEnv("MAX_DURATION"))
+	if cfg.MaxDuration == httpbin.DefaultMaxDuration && getEnvVal("MAX_DURATION") != "" {
+		cfg.MaxDuration, err = time.ParseDuration(getEnvVal("MAX_DURATION"))
 		if err != nil {
-			return nil, configErr("invalid value %#v for env var MAX_DURATION: parse error", getEnv("MAX_DURATION"))
+			return nil, configErr("invalid value %#v for env var MAX_DURATION: parse error", getEnvVal("MAX_DURATION"))
 		}
 	}
-	if cfg.ListenHost == defaultListenHost && getEnv("HOST") != "" {
-		cfg.ListenHost = getEnv("HOST")
+	if cfg.ListenHost == defaultListenHost && getEnvVal("HOST") != "" {
+		cfg.ListenHost = getEnvVal("HOST")
 	}
 	if cfg.Prefix == "" {
-		if prefix := getEnv("PREFIX"); prefix != "" {
+		if prefix := getEnvVal("PREFIX"); prefix != "" {
 			cfg.Prefix = prefix
 		}
 	}
@@ -221,29 +224,29 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 			return nil, configErr("Prefix %#v must not end with a slash", cfg.Prefix)
 		}
 	}
-	if cfg.ExcludeHeaders == "" && getEnv("EXCLUDE_HEADERS") != "" {
-		cfg.ExcludeHeaders = getEnv("EXCLUDE_HEADERS")
+	if cfg.ExcludeHeaders == "" && getEnvVal("EXCLUDE_HEADERS") != "" {
+		cfg.ExcludeHeaders = getEnvVal("EXCLUDE_HEADERS")
 	}
-	if cfg.ListenPort == defaultListenPort && getEnv("PORT") != "" {
-		cfg.ListenPort, err = strconv.Atoi(getEnv("PORT"))
+	if cfg.ListenPort == defaultListenPort && getEnvVal("PORT") != "" {
+		cfg.ListenPort, err = strconv.Atoi(getEnvVal("PORT"))
 		if err != nil {
-			return nil, configErr("invalid value %#v for env var PORT: parse error", getEnv("PORT"))
+			return nil, configErr("invalid value %#v for env var PORT: parse error", getEnvVal("PORT"))
 		}
 	}
 
-	if cfg.TLSCertFile == "" && getEnv("HTTPS_CERT_FILE") != "" {
-		cfg.TLSCertFile = getEnv("HTTPS_CERT_FILE")
+	if cfg.TLSCertFile == "" && getEnvVal("HTTPS_CERT_FILE") != "" {
+		cfg.TLSCertFile = getEnvVal("HTTPS_CERT_FILE")
 	}
-	if cfg.TLSKeyFile == "" && getEnv("HTTPS_KEY_FILE") != "" {
-		cfg.TLSKeyFile = getEnv("HTTPS_KEY_FILE")
+	if cfg.TLSKeyFile == "" && getEnvVal("HTTPS_KEY_FILE") != "" {
+		cfg.TLSKeyFile = getEnvVal("HTTPS_KEY_FILE")
 	}
 	if cfg.TLSCertFile != "" || cfg.TLSKeyFile != "" {
 		if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
 			return nil, configErr("https cert and key must both be provided")
 		}
 	}
-	if cfg.LogFormat == defaultLogFormat && getEnv("LOG_FORMAT") != "" {
-		cfg.LogFormat = getEnv("LOG_FORMAT")
+	if cfg.LogFormat == defaultLogFormat && getEnvVal("LOG_FORMAT") != "" {
+		cfg.LogFormat = getEnvVal("LOG_FORMAT")
 	}
 	if cfg.LogFormat != "text" && cfg.LogFormat != "json" {
 		return nil, configErr(`invalid log format %q, must be "text" or "json"`, cfg.LogFormat)
@@ -252,7 +255,7 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	// useRealHostname will be true if either the `-use-real-hostname`
 	// arg is given on the command line or if the USE_REAL_HOSTNAME env var
 	// is one of "1" or "true".
-	if useRealHostnameEnv := getEnv("USE_REAL_HOSTNAME"); useRealHostnameEnv == "1" || useRealHostnameEnv == "true" {
+	if useRealHostnameEnv := getEnvVal("USE_REAL_HOSTNAME"); useRealHostnameEnv == "1" || useRealHostnameEnv == "true" {
 		cfg.rawUseRealHostname = true
 	}
 	if cfg.rawUseRealHostname {
@@ -263,8 +266,8 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	}
 
 	// split comma-separated list of domains into a slice, if given
-	if cfg.rawAllowedRedirectDomains == "" && getEnv("ALLOWED_REDIRECT_DOMAINS") != "" {
-		cfg.rawAllowedRedirectDomains = getEnv("ALLOWED_REDIRECT_DOMAINS")
+	if cfg.rawAllowedRedirectDomains == "" && getEnvVal("ALLOWED_REDIRECT_DOMAINS") != "" {
+		cfg.rawAllowedRedirectDomains = getEnvVal("ALLOWED_REDIRECT_DOMAINS")
 	}
 	for _, domain := range strings.Split(cfg.rawAllowedRedirectDomains, ",") {
 		if strings.TrimSpace(domain) != "" {
@@ -275,6 +278,18 @@ func loadConfig(args []string, getEnv func(string) string, getHostname func() (s
 	// reset temporary fields to their zero values
 	cfg.rawAllowedRedirectDomains = ""
 	cfg.rawUseRealHostname = false
+
+	for _, envVar := range getEnviron() {
+		name, value, _ := strings.Cut(envVar, "=")
+		if !strings.HasPrefix(name, defaultEnvPrefix) {
+			continue
+		}
+		if cfg.Env == nil {
+			cfg.Env = make(map[string]string)
+		}
+		cfg.Env[name] = value
+	}
+
 	return cfg, nil
 }
 

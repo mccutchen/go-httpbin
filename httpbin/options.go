@@ -46,6 +46,14 @@ func WithObserver(o Observer) OptionFunc {
 	}
 }
 
+// WithEnv sets the HTTPBIN_-prefixed environment variables reported
+// by the /env endpoint.
+func WithEnv(env map[string]string) OptionFunc {
+	return func(h *HTTPBin) {
+		h.env = env
+	}
+}
+
 // WithExcludeHeaders sets the headers to exclude in outgoing responses, to
 // prevent possible information leakage.
 func WithExcludeHeaders(excludeHeaders string) OptionFunc {

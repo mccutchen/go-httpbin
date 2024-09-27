@@ -13,6 +13,10 @@ const (
 	textContentType   = "text/plain; charset=utf-8"
 )
 
+type envResponse struct {
+	Env map[string]string `json:"env"`
+}
+
 type headersResponse struct {
 	Headers http.Header `json:"headers"`
 }

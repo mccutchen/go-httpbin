@@ -35,6 +35,13 @@ func (h *HTTPBin) Index(w http.ResponseWriter, r *http.Request) {
 	writeHTML(w, h.indexHTML, http.StatusOK)
 }
 
+// Env - returns environment variables with HTTPBIN_ prefix, if any pre-configured by operator
+func (h *HTTPBin) Env(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(http.StatusOK, w, &envResponse{
+		Env: h.env,
+	})
+}
+
 // FormsPost renders an HTML form that submits a request to the /post endpoint
 func (h *HTTPBin) FormsPost(w http.ResponseWriter, _ *http.Request) {
 	writeHTML(w, h.formsPostHTML, http.StatusOK)
