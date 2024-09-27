@@ -78,6 +78,49 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: flag.ErrHelp,
 		},
 
+		// env
+		"ok env with empty variables": {
+			env: map[string]string{},
+			wantCfg: &config{
+				Env:         nil,
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
+			},
+		},
+		"ok env with recognized variables": {
+			env: map[string]string{
+				fmt.Sprintf("%sFOO", defaultEnvPrefix):                     "foo",
+				fmt.Sprintf("%s%sBAR", defaultEnvPrefix, defaultEnvPrefix): "bar",
+				fmt.Sprintf("%s123", defaultEnvPrefix):                     "123",
+			},
+			wantCfg: &config{
+				Env: map[string]string{
+					fmt.Sprintf("%sFOO", defaultEnvPrefix):                     "foo",
+					fmt.Sprintf("%s%sBAR", defaultEnvPrefix, defaultEnvPrefix): "bar",
+					fmt.Sprintf("%s123", defaultEnvPrefix):                     "123",
+				},
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
+			},
+		},
+		"ok env with unrecognized variables": {
+			env: map[string]string{"HTTPBIN_FOO": "foo", "BAR": "bar"},
+			wantCfg: &config{
+				Env:         nil,
+				ListenHost:  "0.0.0.0",
+				ListenPort:  8080,
+				MaxBodySize: httpbin.DefaultMaxBodySize,
+				MaxDuration: httpbin.DefaultMaxDuration,
+				LogFormat:   defaultLogFormat,
+			},
+		},
+
 		// max body size
 		"invalid -max-body-size": {
 			args:    []string{"-max-body-size", "foo"},
@@ -516,7 +559,7 @@ func TestLoadConfig(t *testing.T) {
 			if tc.getHostname == nil {
 				tc.getHostname = getHostnameDefault
 			}
-			cfg, err := loadConfig(tc.args, func(key string) string { return tc.env[key] }, tc.getHostname)
+			cfg, err := loadConfig(tc.args, func(key string) string { return tc.env[key] }, func() []string { return environSlice(tc.env) }, tc.getHostname)
 
 			switch {
 			case tc.wantErr != nil && err != nil:
