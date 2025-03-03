@@ -61,8 +61,8 @@
 <li><a href="{{.Prefix}}/"><code>{{.Prefix}}/</code></a> This page.</li>
 <li><a href="{{.Prefix}}/absolute-redirect/6"><code>{{.Prefix}}/absolute-redirect/:n</code></a> 302 Absolute redirects <em>n</em> times.</li>
 <li><a href="{{.Prefix}}/anything"><code>{{.Prefix}}/anything/:anything</code></a> Returns anything that is passed to request.</li>
-<li><a href="{{.Prefix}}/base64/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/:value</code></a> Decodes a Base64-encoded string.</li>
-<li><a href="{{.Prefix}}/base64/decode/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/decode/:value</code></a> Explicit URL for decoding a Base64 encoded string.</li>
+<li><a href="{{.Prefix}}/base64/eyJzZXJ2ZXIiOiAiZ28taHR0cGJpbiJ9Cg==?content-type=application/json"><code>{{.Prefix}}/base64/:value?content-type=ct</code></a> Decodes a Base64-encoded string, with optional Content-Type.</li>
+<li><a href="{{.Prefix}}/base64/decode/aHR0cGJpbmdvLm9yZw=="><code>{{.Prefix}}/base64/decode/:value?content-type=ct</code></a> Explicit URL for decoding a Base64 encoded string.</li>
 <li><a href="{{.Prefix}}/base64/encode/httpbingo.org"><code>{{.Prefix}}/base64/encode/:value</code></a> Encodes a string into URL-safe Base64.</li>
 <li><a href="{{.Prefix}}/basic-auth/user/password"><code>{{.Prefix}}/basic-auth/:user/:password</code></a> Challenges HTTPBasic Auth.</li>
 <li><a href="{{.Prefix}}/bearer"><code>{{.Prefix}}/bearer</code></a> Checks Bearer token header - returns 401 if not set.</li>

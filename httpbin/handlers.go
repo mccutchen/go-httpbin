@@ -1077,7 +1077,11 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	writeResponse(w, http.StatusOK, textContentType, result)
+	ct := r.URL.Query().Get("content-type")
+	if ct == "" {
+		ct = textContentType
+	}
+	writeResponse(w, http.StatusOK, ct, result)
 }
 
 // DumpRequest - returns the given request in its HTTP/1.x wire representation.
