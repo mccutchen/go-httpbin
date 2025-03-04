@@ -2868,32 +2868,38 @@ func TestUUID(t *testing.T) {
 
 func TestBase64(t *testing.T) {
 	okTests := []struct {
-		requestURL string
-		want       string
+		requestURL      string
+		want            string
+		wantContentType string
 	}{
 		{
 			"/base64/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
 			"valid_base64_encoded_string",
+			textContentType,
 		},
 		{
 			"/base64/decode/dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
 			"valid_base64_encoded_string",
+			textContentType,
 		},
 		{
 			"/base64/encode/valid_base64_encoded_string",
 			"dmFsaWRfYmFzZTY0X2VuY29kZWRfc3RyaW5n",
+			textContentType,
 		},
 		{
 			// make sure we correctly handle padding
 			// https://github.com/mccutchen/go-httpbin/issues/118
 			"/base64/dGVzdC1pbWFnZQ==",
 			"test-image",
+			textContentType,
 		},
 		{
 			// URL-safe base64 is used for decoding (note the - instead of + in
 			// encoded input string)
 			"/base64/decode/YWJjMTIzIT8kKiYoKSctPUB-",
 			"abc123!?$*&()'-=@~",
+			textContentType,
 		},
 		{
 			// Std base64 is also supported for decoding (+ instead of - in
@@ -2901,12 +2907,20 @@ func TestBase64(t *testing.T) {
 			// https://github.com/mccutchen/go-httpbin/issues/152
 			"/base64/decode/8J+Ziywg8J+MjSEK4oCm",
 			"🙋, 🌍!\n…",
+			textContentType,
 		},
 		{
 			// URL-safe base64 is used for encoding (note the - instead of + in
 			// encoded output string)
 			"/base64/encode/abc123%21%3F%24%2A%26%28%29%27-%3D%40~",
 			"YWJjMTIzIT8kKiYoKSctPUB-",
+			textContentType,
+		},
+		{
+			// Custom content type
+			"/base64/eyJzZXJ2ZXIiOiAiZ28taHR0cGJpbiJ9Cg==?content-type=application/json",
+			`{"server": "go-httpbin"}` + "\n",
+			"application/json",
 		},
 	}
 
@@ -2918,7 +2932,7 @@ func TestBase64(t *testing.T) {
 			resp := must.DoReq(t, client, req)
 			defer consumeAndCloseBody(resp)
 			assert.StatusCode(t, resp, http.StatusOK)
-			assert.ContentType(t, resp, textContentType)
+			assert.ContentType(t, resp, test.wantContentType)
 			assert.BodyEquals(t, resp, test.want)
 		})
 	}

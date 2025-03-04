@@ -486,7 +486,7 @@ func TestParseWeightedChoices(t *testing.T) {
 		tc := tc
 		t.Run(tc.given, func(t *testing.T) {
 			t.Parallel()
-			got, err := parseWeightedChoices[int](tc.given, strconv.Atoi)
+			got, err := parseWeightedChoices(tc.given, strconv.Atoi)
 			assert.Error(t, err, tc.wantErr)
 			assert.DeepEqual(t, got, tc.want, "incorrect weighted choices")
 		})
