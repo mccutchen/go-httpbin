@@ -5,7 +5,7 @@
 # - https://github.com/docker/build-push-action/#usage
 # - https://docs.github.com/en/actions/publishing-packages/publishing-docker-images
 
-name: Release
+name: release
 
 "on":
   release:
@@ -37,10 +37,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: pr-sha
-        if: github.event_name == 'pull_request'
-        run: echo "sha=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
-
       - uses: docker/metadata-action@v5
         with:
           images: |
@@ -52,7 +48,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             # For pull requests, use the commit SHA
-            type=raw,value=${{ steps.pr-sha.outputs.sha }},enable=${{ github.event_name == 'pull_request' }}
+            type=sha,format=short,enable=${{ github.event_name == 'pull_request' }}
         id: meta
 
       - uses: docker/build-push-action@v6
