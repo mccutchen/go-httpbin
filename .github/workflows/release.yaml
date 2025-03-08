@@ -10,8 +10,13 @@ name: release
 "on":
   release:
     types: [published]
-  pull_request:
-    branches: [main]
+
+  # we do not build and push images for every commit, only for tagged releases.
+  # uncomment this to enablle building for pull requests, to debug this
+  # workflow.
+  #
+  # pull_request:
+  #   branches: [main]
 
 jobs:
   docker:
@@ -47,7 +52,12 @@ jobs:
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+
             # For pull requests, use the commit SHA
+            #
+            # Note that this is disabled by default, but can be enabled for
+            # debugging purposes by uncommenting the pull_request trigger at
+            # top of the workflow.
             type=sha,format=short,enable=${{ github.event_name == 'pull_request' }}
         id: meta
 
