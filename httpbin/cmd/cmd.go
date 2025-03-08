@@ -27,10 +27,10 @@ const (
 	defaultLogFormat  = "text"
 	defaultEnvPrefix  = "HTTPBIN_ENV_"
 
-	// Reasonable defaults for our http server
-	srvReadTimeout       = 5 * time.Second
-	srvReadHeaderTimeout = 1 * time.Second
-	srvMaxHeaderBytes    = 16 * 1024 // 16kb
+	// Reasonable defaults for the underlying http.Server
+	defaultSrvReadTimeout       = 5 * time.Second
+	defaultSrvReadHeaderTimeout = 1 * time.Second
+	defaultSrvMaxHeaderBytes    = 16 * 1024 // 16kb
 )
 
 // Main is the main entrypoint for the go-httpbin binary. See loadConfig() for
@@ -96,9 +96,9 @@ func mainImpl(args []string, getEnvVal func(string) string, getEnviron func() []
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.ListenHost, strconv.Itoa(cfg.ListenPort)),
 		Handler:           app.Handler(),
-		MaxHeaderBytes:    srvMaxHeaderBytes,
-		ReadHeaderTimeout: srvReadHeaderTimeout,
-		ReadTimeout:       srvReadTimeout,
+		MaxHeaderBytes:    cfg.SrvMaxHeaderBytes,
+		ReadHeaderTimeout: cfg.SrvReadHeaderTimeout,
+		ReadTimeout:       cfg.SrvReadTimeout,
 	}
 
 	if err := listenAndServeGracefully(srv, cfg, logger); err != nil {
@@ -124,6 +124,9 @@ type config struct {
 	TLSCertFile            string
 	TLSKeyFile             string
 	LogFormat              string
+	SrvMaxHeaderBytes      int
+	SrvReadHeaderTimeout   time.Duration
+	SrvReadTimeout         time.Duration
 
 	// temporary placeholders for arguments that need extra processing
 	rawAllowedRedirectDomains string
@@ -162,6 +165,9 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
 	fs.StringVar(&cfg.LogFormat, "log-format", defaultLogFormat, "Log format (text or json)")
+	fs.IntVar(&cfg.SrvMaxHeaderBytes, "srv-max-header-bytes", defaultSrvMaxHeaderBytes, "Value to use for the http.Server's MaxHeaderBytes option")
+	fs.DurationVar(&cfg.SrvReadHeaderTimeout, "srv-read-header-timeout", defaultSrvReadHeaderTimeout, "Value to use for the http.Server's ReadHeaderTimeout option")
+	fs.DurationVar(&cfg.SrvReadTimeout, "srv-read-timeout", defaultSrvReadTimeout, "Value to use for the http.Server's ReadTimeout option")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
@@ -272,6 +278,26 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	for _, domain := range strings.Split(cfg.rawAllowedRedirectDomains, ",") {
 		if strings.TrimSpace(domain) != "" {
 			cfg.AllowedRedirectDomains = append(cfg.AllowedRedirectDomains, strings.TrimSpace(domain))
+		}
+	}
+
+	// set the http.Server options
+	if cfg.SrvMaxHeaderBytes == defaultSrvMaxHeaderBytes && getEnvVal("SRV_MAX_HEADER_BYTES") != "" {
+		cfg.SrvMaxHeaderBytes, err = strconv.Atoi(getEnvVal("SRV_MAX_HEADER_BYTES"))
+		if err != nil {
+			return nil, configErr("invalid value %#v for env var SRV_MAX_HEADER_BYTES: parse error", getEnvVal("SRV_MAX_HEADER_BYTES"))
+		}
+	}
+	if cfg.SrvReadHeaderTimeout == defaultSrvReadHeaderTimeout && getEnvVal("SRV_READ_HEADER_TIMEOUT") != "" {
+		cfg.SrvReadHeaderTimeout, err = time.ParseDuration(getEnvVal("SRV_READ_HEADER_TIMEOUT"))
+		if err != nil {
+			return nil, configErr("invalid value %#v for env var SRV_READ_HEADER_TIMEOUT: parse error", getEnvVal("SRV_READ_HEADER_TIMEOUT"))
+		}
+	}
+	if cfg.SrvReadTimeout == defaultSrvReadTimeout && getEnvVal("SRV_READ_TIMEOUT") != "" {
+		cfg.SrvReadTimeout, err = time.ParseDuration(getEnvVal("SRV_READ_TIMEOUT"))
+		if err != nil {
+			return nil, configErr("invalid value %#v for env var SRV_READ_TIMEOUT: parse error", getEnvVal("SRV_READ_TIMEOUT"))
 		}
 	}
 
