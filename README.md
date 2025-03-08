@@ -11,16 +11,20 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 
 ## Usage
 
-### Docker
+### Docker/OCI images
 
-Docker images are published to [Docker Hub][docker-hub]:
+Prebuilt images for the `linux/amd64` and `linux/arm64` architectures are
+automatically published to these public registries for every tagged release:
+- GitHub Container Registry: [ghcr.io/mccutchen/go-httpbin][ghcr]
+  - **Note:** Only version `2.17` and later
+- Docker Hub: [mccutchen/go-httpbin][docker-hub]
 
 ```bash
 # Run http server
-$ docker run -P mccutchen/go-httpbin
+$ docker run -P ghcr.io/mccutchen/go-httpbin
 
 # Run https server
-$ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp mccutchen/go-httpbin
+$ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp ghcr.io/mccutchen/go-httpbin
 ```
 
 ### Kubernetes
@@ -34,19 +38,19 @@ See `./kustomize` directory for further information
 ### Standalone binary
 
 Follow the [Installation](#installation) instructions to install go-httpbin as
-a standalone binary. (This currently requires a working Go runtime.)
+a standalone binary, or use `go run` to install it on demand:
 
 Examples:
 
 ```bash
 # Run http server
-$ go-httpbin -host 127.0.0.1 -port 8081
+$ go run github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@latest -host 127.0.0.1 -port 8081
 
 # Run https server
 $ openssl genrsa -out server.key 2048
 $ openssl ecparam -genkey -name secp384r1 -out server.key
 $ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
-$ go-httpbin -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
+$ go run github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@latest -host 127.0.0.1 -port 8081 -https-cert-file ./server.crt -https-key-file ./server.key
 ```
 
 ### Unit testing helper library
@@ -114,7 +118,8 @@ variables (or a combination of the two):
 
 ## Installation
 
-To add go-httpbin to an existing golang project:
+To add go-httpbin as a dependency to an existing golang project (e.g. for use
+in unit tests):
 
 ```
 go get -u github.com/mccutchen/go-httpbin/v2
@@ -123,7 +128,7 @@ go get -u github.com/mccutchen/go-httpbin/v2
 To install the `go-httpbin` binary:
 
 ```
-go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin
+go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@latest
 ```
 
 
@@ -223,8 +228,11 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 
 
 [ahmet]: https://github.com/ahmetb/go-httpbin
+[alibaba-headers]: https://www.alibabacloud.com/help/en/fc/user-guide/specification-details#section-3f8-5y1-i77
+[DEVELOPMENT.md]: ./DEVELOPMENT.md
 [docker-hub]: https://hub.docker.com/r/mccutchen/go-httpbin/
 [examples/custom-instrumentation]: ./examples/custom-instrumentation/
+[ghcr]: https://github.com/mccutchen/go-httpbin/pkgs/container/go-httpbin
 [httpbin-org]: https://httpbin.org/
 [httpbin-repo]: https://github.com/kennethreitz/httpbin
 [httpbingo.org]: https://httpbingo.org/
@@ -233,5 +241,3 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Observer]: https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2/httpbin#Observer
 [Production considerations]: #production-considerations
 [zerolog]: https://github.com/rs/zerolog
-[DEVELOPMENT.md]: ./DEVELOPMENT.md
-[alibaba-headers]: https://www.alibabacloud.com/help/en/fc/user-guide/specification-details#section-3f8-5y1-i77
