@@ -92,6 +92,7 @@ variables (or a combination of the two):
 | Argument| Env var | Documentation | Default |
 | - | - | - | - |
 | `-allowed-redirect-domains` | `ALLOWED_REDIRECT_DOMAINS` | Comma-separated list of domains the /redirect-to endpoint will allow | |
+| `-exclude-headers` | `EXCLUDE_HEADERS` | Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard suffix matching. For example: `"foo,bar,x-fc-*"` | - |
 | `-host` | `HOST` | Host to listen on | "0.0.0.0" |
 | `-https-cert-file` | `HTTPS_CERT_FILE` | HTTPS Server certificate file | |
 | `-https-key-file` | `HTTPS_KEY_FILE` | HTTPS Server private key file | |
@@ -100,8 +101,10 @@ variables (or a combination of the two):
 | `-max-duration` | `MAX_DURATION` | Maximum duration a response may take | 10s |
 | `-port` | `PORT` | Port to listen on | 8080 |
 | `-prefix` | `PREFIX` | Prefix of path to listen on (must start with slash and does not end with slash) | |
+| `-srv-max-header-bytes` | `SRV_MAX_HEADER_BYTES` | Value to use for the http.Server's MaxHeaderBytes option | 16384 |
+| `-srv-read-header-timeout` | `SRV_READ_HEADER_TIMEOUT` | Value to use for the http.Server's ReadHeaderTimeout option | 1s |
+| `-srv-read-timeout` | `SRV_READ_TIMEOUT` | Value to use for the http.Server's ReadTimeout option | 5s |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
-| `-exclude-headers` | `EXCLUDE_HEADERS` | Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard suffix matching. For example: `"foo,bar,x-fc-*"` | - |
 
 **Notes:**
 - Command line arguments take precedence over environment variables.
