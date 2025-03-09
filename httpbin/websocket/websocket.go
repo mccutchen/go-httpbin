@@ -75,7 +75,7 @@ type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
 // EchoHandler is a Handler that echoes each incoming message back to the
 // client.
-var EchoHandler Handler = func(ctx context.Context, msg *Message) (*Message, error) {
+var EchoHandler Handler = func(_ context.Context, msg *Message) (*Message, error) {
 	return msg, nil
 }
 

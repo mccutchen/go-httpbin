@@ -3485,7 +3485,7 @@ func newTestServer(handler http.Handler) (*httptest.Server, *http.Client) {
 	srv := httptest.NewServer(handler)
 	client := srv.Client()
 	client.Timeout = 5 * time.Second
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 	return srv, client

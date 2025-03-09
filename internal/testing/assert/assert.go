@@ -122,19 +122,19 @@ func BodySize(t *testing.T, resp *http.Response, want int) {
 }
 
 // DurationRange asserts that a duration is within a specific range.
-func DurationRange(t *testing.T, got, min, max time.Duration) {
+func DurationRange(t *testing.T, got, minVal, maxVal time.Duration) {
 	t.Helper()
-	if got < min || got > max {
-		t.Fatalf("expected duration between %s and %s, got %s", min, max, got)
+	if got < minVal || got > maxVal {
+		t.Fatalf("expected duration between %s and %s, got %s", minVal, maxVal, got)
 	}
 }
 
-type Number interface {
+type number interface {
 	~int64 | ~float64
 }
 
 // RoughlyEqual asserts that a numeric value is within a certain tolerance.
-func RoughlyEqual[T Number](t *testing.T, got, want T, epsilon T) {
+func RoughlyEqual[T number](t *testing.T, got, want T, epsilon T) {
 	t.Helper()
 	if got < want-epsilon || got > want+epsilon {
 		t.Fatalf("expected value between %v and %v, got %v", want-epsilon, want+epsilon, got)

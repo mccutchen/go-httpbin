@@ -17,8 +17,8 @@ func TestTestMode(t *testing.T) {
 	// will cause a panic. This happens most often when we forget to return
 	// early after writing an error response, and has helped identify and fix
 	// some subtly broken error handling.
-	observer := func(r Result) {}
-	handler := observe(observer, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	observer := func(_ Result) {}
+	handler := observe(observer, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.WriteHeader(http.StatusOK)
 	}))
