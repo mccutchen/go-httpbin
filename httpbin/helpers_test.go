@@ -148,33 +148,39 @@ func TestSyntheticByteStream(t *testing.T) {
 
 	t.Run("read", func(t *testing.T) {
 		t.Parallel()
-		s := newSyntheticByteStream(10, factory)
+		s := newSyntheticByteStream(10, 0, factory)
 
 		// read first half
-		p := make([]byte, 5)
-		count, err := s.Read(p)
-		assert.NilError(t, err)
-		assert.Equal(t, count, 5, "incorrect number of bytes read")
-		assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
+		{
+			p := make([]byte, 5)
+			count, err := s.Read(p)
+			assert.NilError(t, err)
+			assert.Equal(t, count, 5, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
+		}
 
 		// read second half
-		p = make([]byte, 5)
-		count, err = s.Read(p)
-		assert.Error(t, err, io.EOF)
-		assert.Equal(t, count, 5, "incorrect number of bytes read")
-		assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
+		{
+			p := make([]byte, 5)
+			count, err := s.Read(p)
+			assert.Error(t, err, io.EOF)
+			assert.Equal(t, count, 5, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
+		}
 
 		// can't read any more
-		p = make([]byte, 5)
-		count, err = s.Read(p)
-		assert.Error(t, err, io.EOF)
-		assert.Equal(t, count, 0, "incorrect number of bytes read")
-		assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
+		{
+			p := make([]byte, 5)
+			count, err := s.Read(p)
+			assert.Error(t, err, io.EOF)
+			assert.Equal(t, count, 0, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
+		}
 	})
 
 	t.Run("read into too-large buffer", func(t *testing.T) {
 		t.Parallel()
-		s := newSyntheticByteStream(5, factory)
+		s := newSyntheticByteStream(5, 0, factory)
 		p := make([]byte, 10)
 		count, err := s.Read(p)
 		assert.Error(t, err, io.EOF)
@@ -184,7 +190,7 @@ func TestSyntheticByteStream(t *testing.T) {
 
 	t.Run("seek", func(t *testing.T) {
 		t.Parallel()
-		s := newSyntheticByteStream(100, factory)
+		s := newSyntheticByteStream(100, 0, factory)
 
 		p := make([]byte, 5)
 		s.Seek(10, io.SeekStart)
@@ -210,6 +216,52 @@ func TestSyntheticByteStream(t *testing.T) {
 
 		_, err = s.Seek(-10, io.SeekStart)
 		assert.Equal(t, err.Error(), "Seek: invalid offset", "incorrect error for invalid offset")
+	})
+
+	t.Run("read over duration", func(t *testing.T) {
+		t.Parallel()
+		s := newSyntheticByteStream(10, 200*time.Millisecond, factory)
+
+		// read first half
+		{
+			p := make([]byte, 5)
+			start := time.Now()
+			count, err := s.Read(p)
+			elapsed := time.Since(start)
+
+			assert.NilError(t, err)
+			assert.Equal(t, count, 5, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
+			assert.DurationRange(t, elapsed, 100*time.Millisecond, 175*time.Millisecond)
+		}
+
+		// read second half
+		{
+			p := make([]byte, 5)
+			start := time.Now()
+			count, err := s.Read(p)
+			elapsed := time.Since(start)
+
+			assert.Error(t, err, io.EOF)
+			assert.Equal(t, count, 5, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
+			assert.DurationRange(t, elapsed, 100*time.Millisecond, 175*time.Millisecond)
+		}
+
+		// can't read any more
+		{
+			p := make([]byte, 5)
+			start := time.Now()
+			count, err := s.Read(p)
+			elapsed := time.Since(start)
+
+			assert.Error(t, err, io.EOF)
+			assert.Equal(t, count, 0, "incorrect number of bytes read")
+			assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
+
+			// read should fail w/ EOF ~immediately
+			assert.DurationRange(t, elapsed, 0, 25*time.Millisecond)
+		}
 	})
 }
 

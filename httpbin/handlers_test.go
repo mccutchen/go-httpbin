@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -2303,6 +2304,7 @@ func TestRange(t *testing.T) {
 		assert.Header(t, resp, "Accept-Ranges", "bytes")
 		assert.Header(t, resp, "Content-Length", "15")
 		assert.Header(t, resp, "Content-Range", "bytes 10-24/100")
+		assert.Header(t, resp, "Content-Type", textContentType)
 		assert.BodyEquals(t, resp, "klmnopqrstuvwxy")
 	})
 
@@ -2353,6 +2355,69 @@ func TestRange(t *testing.T) {
 		assert.BodyEquals(t, resp, "vwxyz")
 	})
 
+	t.Run("ok_range_with_duration", func(t *testing.T) {
+		t.Parallel()
+
+		url := "/range/100?duration=100ms"
+		req := newTestRequest(t, "GET", url)
+		req.Header.Add("Range", "bytes=10-24")
+
+		start := time.Now()
+		resp := must.DoReq(t, client, req)
+		elapsed := time.Since(start)
+
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range100")
+		assert.Header(t, resp, "Accept-Ranges", "bytes")
+		assert.Header(t, resp, "Content-Length", "15")
+		assert.Header(t, resp, "Content-Range", "bytes 10-24/100")
+		assert.Header(t, resp, "Content-Type", textContentType)
+		assert.BodyEquals(t, resp, "klmnopqrstuvwxy")
+		assert.DurationRange(t, elapsed, 100*time.Millisecond, 150*time.Millisecond)
+	})
+
+	t.Run("ok_multiple_ranges", func(t *testing.T) {
+		t.Parallel()
+
+		url := "/range/100"
+		req := newTestRequest(t, "GET", url)
+		req.Header.Add("Range", "bytes=10-24, 50-64")
+
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusPartialContent)
+		assert.Header(t, resp, "ETag", "range100")
+		assert.Header(t, resp, "Accept-Ranges", "bytes")
+
+		mediatype, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		assert.NilError(t, err)
+		assert.Equal(t, mediatype, "multipart/byteranges", "incorrect content type")
+
+		expectRanges := []struct {
+			contentRange string
+			body         string
+		}{
+			{"bytes 10-24/100", "klmnopqrstuvwxy"},
+			{"bytes 50-64/100", "yzabcdefghijklm"},
+		}
+		mpr := multipart.NewReader(resp.Body, params["boundary"])
+		for i := 0; ; i++ {
+			p, err := mpr.NextPart()
+			if err == io.EOF {
+				break
+			}
+			assert.NilError(t, err)
+
+			ct := p.Header.Get("Content-Type")
+			assert.Equal(t, ct, textContentType, "incorrect content type")
+
+			cr := p.Header.Get("Content-Range")
+			assert.Equal(t, cr, expectRanges[i].contentRange, "incorrect Content-Range header")
+
+			part := must.ReadAll(t, p)
+			assert.Equal(t, string(part), expectRanges[i].body, "incorrect range part")
+		}
+	})
+
 	t.Run("err_range_out_of_bounds", func(t *testing.T) {
 		t.Parallel()
 
@@ -2400,6 +2465,11 @@ func TestRange(t *testing.T) {
 		{"/range/foo", http.StatusBadRequest},
 		{"/range/1.5", http.StatusBadRequest},
 		{"/range/-1", http.StatusBadRequest},
+
+		// invalid durations
+		{"/range/100?duration=-1", http.StatusBadRequest},
+		{"/range/100?duration=XYZ", http.StatusBadRequest},
+		{"/range/100?duration=2h", http.StatusBadRequest},
 	}
 
 	for _, test := range badTests {

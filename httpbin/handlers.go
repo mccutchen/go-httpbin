@@ -743,13 +743,35 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 // Range returns up to N bytes, with support for HTTP Range requests.
 //
-// This departs from httpbin by not supporting the chunk_size or duration
-// parameters.
+// This departs from original httpbin in a few ways:
+//
+//   - param `chunk_size` IS NOT supported
+//
+//   - param `duration` IS supported, but functions more as a delay before the
+//     whole response is written
+//
+//   - multiple ranges ARE correctly supported (i.e. `Range: bytes=0-1,2-3`
+//     will return a multipart/byteranges response)
+//
+// Most of the heavy lifting is done by the stdlib's http.ServeContent, which
+// handles range requests automatically. Supporting chunk sizes would require
+// an extensive reimplementation, especially to support multiple ranges for
+// correctness. For now, we choose not to take that work on.
 func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 	numBytes, err := strconv.ParseInt(r.PathValue("numBytes"), 10, 64)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
 		return
+	}
+
+	var duration time.Duration
+	if durationVal := r.URL.Query().Get("duration"); durationVal != "" {
+		var err error
+		duration, err = parseBoundedDuration(r.URL.Query().Get("duration"), 0, h.MaxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
+			return
+		}
 	}
 
 	w.Header().Add("ETag", fmt.Sprintf("range%d", numBytes))
@@ -760,7 +782,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := newSyntheticByteStream(numBytes, func(offset int64) byte {
+	content := newSyntheticByteStream(numBytes, duration, func(offset int64) byte {
 		return byte(97 + (offset % 26))
 	})
 	var modtime time.Time

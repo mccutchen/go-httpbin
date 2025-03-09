@@ -314,17 +314,21 @@ func parseSeed(rawSeed string) (*rand.Rand, error) {
 type syntheticByteStream struct {
 	mu sync.Mutex
 
-	size    int64
-	offset  int64
-	factory func(int64) byte
+	size         int64
+	factory      func(int64) byte
+	pausePerByte time.Duration
+
+	// internal offset for tracking the current position in the stream
+	offset int64
 }
 
 // newSyntheticByteStream returns a new stream of bytes of a specific size,
 // given a factory function for generating the byte at a given offset.
-func newSyntheticByteStream(size int64, factory func(int64) byte) io.ReadSeeker {
+func newSyntheticByteStream(size int64, duration time.Duration, factory func(int64) byte) io.ReadSeeker {
 	return &syntheticByteStream{
-		size:    size,
-		factory: factory,
+		size:         size,
+		pausePerByte: duration / time.Duration(size),
+		factory:      factory,
 	}
 }
 
@@ -344,8 +348,11 @@ func (s *syntheticByteStream) Read(p []byte) (int, error) {
 	for idx := start; idx < end; idx++ {
 		p[idx-start] = s.factory(idx)
 	}
-
 	s.offset = end
+
+	if s.pausePerByte > 0 {
+		time.Sleep(s.pausePerByte * time.Duration(end-start))
+	}
 
 	return int(end - start), err
 }
