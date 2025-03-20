@@ -248,13 +248,13 @@ func parseStatusCode(input string) (int, error) {
 	return parseBoundedStatusCode(input, 100, 599)
 }
 
-func parseBoundedStatusCode(input string, min, max int) (int, error) {
+func parseBoundedStatusCode(input string, minVal, maxVal int) (int, error) {
 	code, err := strconv.Atoi(input)
 	if err != nil {
 		return 0, fmt.Errorf("invalid status code: %q: %w", input, err)
 	}
-	if code < min || code > max {
-		return 0, fmt.Errorf("invalid status code: %d not in range [%d, %d]", code, min, max)
+	if code < minVal || code > maxVal {
+		return 0, fmt.Errorf("invalid status code: %d not in range [%d, %d]", code, minVal, maxVal)
 	}
 	return code, nil
 }
@@ -276,16 +276,16 @@ func parseDuration(input string) (time.Duration, error) {
 
 // parseBoundedDuration parses a time.Duration from user input and ensures that
 // it is within a given maximum and minimum time
-func parseBoundedDuration(input string, min, max time.Duration) (time.Duration, error) {
+func parseBoundedDuration(input string, minVal, maxVal time.Duration) (time.Duration, error) {
 	d, err := parseDuration(input)
 	if err != nil {
 		return 0, err
 	}
 
-	if d > max {
-		err = fmt.Errorf("duration %s longer than %s", d, max)
-	} else if d < min {
-		err = fmt.Errorf("duration %s shorter than %s", d, min)
+	if d > maxVal {
+		err = fmt.Errorf("duration %s longer than %s", d, maxVal)
+	} else if d < minVal {
+		err = fmt.Errorf("duration %s shorter than %s", d, minVal)
 	}
 	return d, err
 }

@@ -12,9 +12,10 @@ COVERAGE_ARGS ?= -covermode=atomic -coverprofile=$(COVERAGE_PATH)
 TEST_ARGS     ?= -race
 
 # 3rd party tools
-LINT        := go run github.com/mgechev/revive@v1.3.4
+FMT         := go run mvdan.cc/gofumpt@v0.7.0
+LINT        := go run github.com/mgechev/revive@v1.7.0
 REFLEX      := go run github.com/cespare/reflex@v0.3.1
-STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2023.1.3
+STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2025.1.1
 
 # Host and port to use when running locally via `make run` or `make watch`
 HOST ?= 127.0.0.1
@@ -66,7 +67,7 @@ testautobahn:
 .PHONY: autobahntests
 
 lint:
-	test -z "$$(gofmt -d -s -e .)" || (echo "Error: gofmt failed"; gofmt -d -s -e . ; exit 1)
+	test -z "$$($(FMT) -d -e .)" || (echo "Error: $(FMT) failed"; $(FMT) -d -e . ; exit 1)
 	go vet ./...
 	$(LINT) -set_exit_status ./...
 	$(STATICCHECK) ./...
