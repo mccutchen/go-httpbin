@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -586,4 +587,27 @@ func encodeServerTimings(timings []serverTiming) string {
 		entries[i] = fmt.Sprintf("%s;dur=%0.2f;desc=\"%s\"", t.name, ms, t.desc)
 	}
 	return strings.Join(entries, ", ")
+}
+
+// The following content types are considered safe enough to skip HTML-escaping
+// response bodies.
+//
+// See [1] for an example of the wide variety of unsafe content types, which
+// varies by browser vendor and could change in the future.
+//
+// [1]: https://github.com/BlackFan/content-type-research/blob/4e4347254/XSS.md
+var safeContentTypes = map[string]bool{
+	"text/plain":               true,
+	"application/json":         true,
+	"application/octet-string": true,
+}
+
+// isDangerousContentType determines whether the given Content-Type header
+// value could be unsafe (e.g. at risk of XSS) when rendered by a web browser.
+func isDangerousContentType(ct string) bool {
+	mediatype, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return true
+	}
+	return !safeContentTypes[mediatype]
 }

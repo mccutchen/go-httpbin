@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"mime"
@@ -1255,6 +1256,92 @@ func TestResponseHeaders(t *testing.T) {
 
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.ContentType(t, resp, contentType)
+	})
+
+	t.Run("escaping HTML content", func(t *testing.T) {
+		dangerousString := "<img/src/onerror=alert('xss')>"
+
+		for _, tc := range []struct {
+			contentType  string
+			shouldEscape bool
+		}{
+			// a tiny number of content types are considered safe and do not
+			// require escaping (see isDangerousContentType)
+			{"application/json; charset=utf8", false},
+			{"text/plain", false},
+			{"application/octet-string", false},
+
+			// everything else requires escaping
+			{"", true},
+			{"application/xml", true},
+			{"image/png", true},
+			{"text/html; charset=utf8", true},
+			{"text/html", true},
+		} {
+			tc := tc
+			t.Run(tc.contentType, func(t *testing.T) {
+				t.Parallel()
+
+				params := url.Values{}
+				if tc.contentType != "" {
+					params.Set("Content-Type", tc.contentType)
+				}
+				// need to ensure dangerous strings are escaped as both keys
+				// and values
+				params.Set("xss", dangerousString)
+				params.Set(dangerousString, "xss")
+
+				req, _ := http.NewRequest("GET", fmt.Sprintf("%s/response-headers?%s", srv.URL, params.Encode()), nil)
+				resp := must.DoReq(t, client, req)
+
+				assert.StatusCode(t, resp, http.StatusOK)
+				if tc.contentType != "" {
+					assert.ContentType(t, resp, tc.contentType)
+				} else {
+					assert.ContentType(t, resp, jsonContentType)
+				}
+
+				gotParams := must.Unmarshal[url.Values](t, resp.Body)
+				for key, wantVals := range params {
+					if tc.shouldEscape {
+						key = html.EscapeString(key)
+					}
+					gotVals := gotParams[key]
+					assert.Equal(t, len(gotVals), len(wantVals), "unexpected number of values for key %q (escaped=%v)", key, tc.shouldEscape)
+					for i, wantVal := range wantVals {
+						gotVal := gotVals[i]
+						if tc.shouldEscape {
+							assert.Equal(t, gotVal, html.EscapeString(wantVal), "expected HTML-escaped value")
+						} else {
+							assert.Equal(t, gotVal, wantVal, "expected unescaped value")
+						}
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("dangerously not escaping responses", func(t *testing.T) {
+		t.Parallel()
+
+		app := createApp(WithUnsafeAllowDangerousResponses())
+		srv := httptest.NewServer(app)
+		defer srv.Close()
+
+		dangerousString := "<img/src/onerror=alert('xss')>"
+
+		params := url.Values{}
+		params.Set("Content-Type", "text/html")
+		params.Set("xss", dangerousString)
+
+		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/response-headers?%s", srv.URL, params.Encode()), nil)
+		resp := must.DoReq(t, client, req)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, "text/html")
+
+		// dangerous string is not escaped
+		assert.BodyContains(t, resp, dangerousString)
 	})
 }
 
@@ -2991,6 +3078,12 @@ func TestBase64(t *testing.T) {
 			"/base64/eyJzZXJ2ZXIiOiAiZ28taHR0cGJpbiJ9Cg==?content-type=application/json",
 			`{"server": "go-httpbin"}` + "\n",
 			"application/json",
+		},
+		{
+			// XSS prevention w/ dangerous content type
+			"/base64/PGltZy9zcmMvb25lcnJvcj1hbGVydCgneHNzJyk+?content-type=text/html",
+			html.EscapeString("<img/src/onerror=alert('xss')>"),
+			"text/html",
 		},
 	}
 

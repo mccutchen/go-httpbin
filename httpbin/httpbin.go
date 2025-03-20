@@ -57,6 +57,14 @@ type HTTPBin struct {
 	// Set of hosts to which the /redirect-to endpoint will allow redirects
 	AllowedRedirectDomains map[string]struct{}
 
+	// If true, endpoints that allow clients to specify a response
+	// Conntent-Type will NOT escape HTML entities in the response body, which
+	// can enable (e.g.) reflected XSS attacks.
+	//
+	// This configuration is only supported for backwards compatibility if
+	// absolutely necessary.
+	unsafeAllowDangerousResponses bool
+
 	// The operator-controlled environment variables filtered from
 	// the process environment, based on named HTTPBIN_ prefix.
 	env map[string]string
@@ -218,4 +226,13 @@ func (h *HTTPBin) setExcludeHeaders(excludeHeaders string) {
 	if regex != nil {
 		h.excludeHeadersProcessor = createExcludeHeadersProcessor(regex)
 	}
+}
+
+// mustEscapeResponse returns true if the response body should be HTML-escaped
+// to prevent XSS and similar attacks when rendered by a web browser.
+func (h *HTTPBin) mustEscapeResponse(contentType string) bool {
+	if h.unsafeAllowDangerousResponses {
+		return false
+	}
+	return isDangerousContentType(contentType)
 }

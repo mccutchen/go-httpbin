@@ -110,6 +110,15 @@ variables (or a combination of the two):
 | `-srv-read-timeout` | `SRV_READ_TIMEOUT` | Value to use for the http.Server's ReadTimeout option | 5s |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
 
+#### ⚠️ **HERE BE DRAGONS** ⚠️
+
+These configuration options are dangerous and/or deprecated and should be
+avoided unless backwards compatibility is absolutely required.
+
+| Argument| Env var | Documentation | Default |
+| - | - | - | - |
+| `-unsafe-allow-dangerous-responses` | `UNSAFE_ALLOW_DANGEROUS_RESPONSES` | Allow endpoints to return unescaped HTML when clients control response Content-Type (enables XSS attacks) | false |
+
 **Notes:**
 - Command line arguments take precedence over environment variables.
 - See [Production considerations] for recommendations around safe configuration
@@ -201,6 +210,10 @@ public internet, consider tuning it appropriately:
 
 See [DEVELOPMENT.md][].
 
+## Security
+
+See [SECURITY.md][].
+
 ## Motivation & prior art
 
 I've been a longtime user of [Kenneith Reitz][kr]'s original
@@ -240,4 +253,5 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [mccutchen/httpbingo.org]: https://github.com/mccutchen/httpbingo.org
 [Observer]: https://pkg.go.dev/github.com/mccutchen/go-httpbin/v2/httpbin#Observer
 [Production considerations]: #production-considerations
+[SECURITY.md]: ./SECURITY.md
 [zerolog]: https://github.com/rs/zerolog

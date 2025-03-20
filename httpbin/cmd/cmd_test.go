@@ -46,6 +46,8 @@ const usage = `Usage of go-httpbin:
     	Value to use for the http.Server's ReadHeaderTimeout option (default 1s)
   -srv-read-timeout duration
     	Value to use for the http.Server's ReadTimeout option (default 5s)
+  -unsafe-allow-dangerous-responses
+    	Allow endpoints to return unescaped HTML when clients control response Content-Type (enables XSS attacks)
   -use-real-hostname
     	Expose value of os.Hostname() in the /hostname endpoint instead of dummy value
 `
@@ -474,6 +476,54 @@ func TestLoadConfig(t *testing.T) {
 			wantCfg: mergedConfig(defaultCfg, &config{
 				SrvReadTimeout: 1234 * time.Second,
 			}),
+		},
+
+		// unsafe-allow-dangerous-responses
+		"ok -unsafe-allow-dangerous-responses": {
+			args: []string{"-unsafe-allow-dangerous-responses"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		"ok -unsafe-allow-dangerous-responses=1": {
+			args: []string{"-unsafe-allow-dangerous-responses", "1"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		"ok -unsafe-allow-dangerous-responses=true": {
+			args: []string{"-unsafe-allow-dangerous-responses", "true"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		// any value for the argument is interpreted as true
+		"ok -unsafe-allow-dangerous-responses=0": {
+			args: []string{"-unsafe-allow-dangerous-responses", "0"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		"ok UNSAFE_ALLOW_DANGEROUS_RESPONSES=1": {
+			env: map[string]string{"UNSAFE_ALLOW_DANGEROUS_RESPONSES": "1"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		"ok UNSAFE_ALLOW_DANGEROUS_RESPONSES=true": {
+			env: map[string]string{"UNSAFE_ALLOW_DANGEROUS_RESPONSES": "true"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UnsafeAllowDangerousResponses: true,
+			}),
+		},
+		// case sensitive
+		"ok UNSAFE_ALLOW_DANGEROUS_RESPONSES=TRUE": {
+			env:     map[string]string{"UNSAFE_ALLOW_DANGEROUS_RESPONSES": "TRUE"},
+			wantCfg: defaultCfg,
+		},
+		"ok UNSAFE_ALLOW_DANGEROUS_RESPONSES=false": {
+			env:     map[string]string{"UNSAFE_ALLOW_DANGEROUS_RESPONSES": "false"},
+			wantCfg: defaultCfg,
 		},
 	}
 

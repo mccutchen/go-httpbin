@@ -91,6 +91,9 @@ func mainImpl(args []string, getEnvVal func(string) string, getEnviron func() []
 	if len(cfg.AllowedRedirectDomains) > 0 {
 		opts = append(opts, httpbin.WithAllowedRedirectDomains(cfg.AllowedRedirectDomains))
 	}
+	if cfg.UnsafeAllowDangerousResponses {
+		opts = append(opts, httpbin.WithUnsafeAllowDangerousResponses())
+	}
 	app := httpbin.New(opts...)
 
 	srv := &http.Server{
@@ -127,6 +130,14 @@ type config struct {
 	SrvMaxHeaderBytes      int
 	SrvReadHeaderTimeout   time.Duration
 	SrvReadTimeout         time.Duration
+
+	// If true, endpoints that allow clients to specify a response
+	// Conntent-Type will NOT escape HTML entities in the response body, which
+	// can enable (e.g.) reflected XSS attacks.
+	//
+	// This configuration is only supported for backwards compatibility if
+	// absolutely necessary.
+	UnsafeAllowDangerousResponses bool
 
 	// temporary placeholders for arguments that need extra processing
 	rawAllowedRedirectDomains string
@@ -168,6 +179,10 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	fs.IntVar(&cfg.SrvMaxHeaderBytes, "srv-max-header-bytes", defaultSrvMaxHeaderBytes, "Value to use for the http.Server's MaxHeaderBytes option")
 	fs.DurationVar(&cfg.SrvReadHeaderTimeout, "srv-read-header-timeout", defaultSrvReadHeaderTimeout, "Value to use for the http.Server's ReadHeaderTimeout option")
 	fs.DurationVar(&cfg.SrvReadTimeout, "srv-read-timeout", defaultSrvReadTimeout, "Value to use for the http.Server's ReadTimeout option")
+
+	// Here be dragons! This flag is only for backwards compatibility and
+	// should not be used in production.
+	fs.BoolVar(&cfg.UnsafeAllowDangerousResponses, "unsafe-allow-dangerous-responses", false, "Allow endpoints to return unescaped HTML when clients control response Content-Type (enables XSS attacks)")
 
 	// in order to fully control error output whether CLI arguments or env vars
 	// are used to configure the app, we need to take control away from the
@@ -258,10 +273,7 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 		return nil, configErr(`invalid log format %q, must be "text" or "json"`, cfg.LogFormat)
 	}
 
-	// useRealHostname will be true if either the `-use-real-hostname`
-	// arg is given on the command line or if the USE_REAL_HOSTNAME env var
-	// is one of "1" or "true".
-	if useRealHostnameEnv := getEnvVal("USE_REAL_HOSTNAME"); useRealHostnameEnv == "1" || useRealHostnameEnv == "true" {
+	if getEnvBool(getEnvVal("USE_REAL_HOSTNAME")) {
 		cfg.rawUseRealHostname = true
 	}
 	if cfg.rawUseRealHostname {
@@ -301,6 +313,10 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 		}
 	}
 
+	if getEnvBool(getEnvVal("UNSAFE_ALLOW_DANGEROUS_RESPONSES")) {
+		cfg.UnsafeAllowDangerousResponses = true
+	}
+
 	// reset temporary fields to their zero values
 	cfg.rawAllowedRedirectDomains = ""
 	cfg.rawUseRealHostname = false
@@ -317,6 +333,10 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	}
 
 	return cfg, nil
+}
+
+func getEnvBool(val string) bool {
+	return val == "1" || val == "true"
 }
 
 func listenAndServeGracefully(srv *http.Server, cfg *config, logger *slog.Logger) error {

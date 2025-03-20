@@ -587,6 +587,80 @@ func TestWeightedRandomChoice(t *testing.T) {
 	}
 }
 
+func TestIsDangerousContentType(t *testing.T) {
+	testCases := []struct {
+		contentType string
+		dangerous   bool
+	}{
+		// We only cosider a handful of content types "safe", everything else
+		// is considered dangerous by default.
+		{"application/json", false},
+		{"application/octet-string", false},
+		{"text/plain", false},
+
+		// Content-Types that can be used for XSS, via:
+		// https://github.com/BlackFan/content-type-research/blob/4e43747254XSS.md#content-type-that-can-be-used-for-xss
+		{"application/mathml+xml", true},
+		{"application/rdf+xml", true},
+		{"application/vnd.wap.xhtml+xml", true},
+		{"application/xhtml+xml", true},
+		{"application/xml", true},
+		{"image/svg+xml", true},
+		{"multipart/x-mixed-replace", true},
+		{"text/cache-manifest", true},
+		{"text/html", true},
+		{"text/rdf", true},
+		{"text/vtt", true},
+		{"text/xml", true},
+		{"text/xsl", true},
+		{"text/xsl", true},
+
+		// weird edge cases
+		{"", true},
+		{"html", true},
+		{"TEXT/HTML", true},
+		{"tExT/HtMl", true},
+	}
+	params := []string{
+		"charset=utf-8",
+		"charset=utf-8; boundary=foo",
+		"charset=utf-8; boundary=foo; foo=bar",
+	}
+	// Suffixes that can trick or confuse browsers, via:
+	// https://github.com/BlackFan/content-type-research/blob/4e43747254XSS.md#content-type-that-can-be-used-for-xss
+	suffixTricks := []string{
+		"; x=x, text/html, foobar",
+		"(xxx",
+		" xxx",
+		",xxx",
+	}
+	for _, tc := range testCases {
+		tc := tc
+
+		// baseline test
+		t.Run(tc.contentType, func(t *testing.T) {
+			assert.Equal(t, isDangerousContentType(tc.contentType), tc.dangerous, "incorrect result")
+		})
+
+		// ensure that valid mime params do not affect outcome
+		for _, param := range params {
+			contentType := tc.contentType + "; " + param
+			t.Run(tc.contentType+param, func(t *testing.T) {
+				assert.Equal(t, isDangerousContentType(contentType), tc.dangerous, "incorrect result")
+			})
+		}
+
+		// ensure that tricky variations/corruptions are always considered
+		// dangerous
+		for _, trick := range suffixTricks {
+			contentType := tc.contentType + trick
+			t.Run(contentType, func(t *testing.T) {
+				assert.Equal(t, isDangerousContentType(contentType), true, "incorrect dangerous content type")
+			})
+		}
+	}
+}
+
 func normalizeChoices[T any](choices []weightedChoice[T]) []weightedChoice[T] {
 	var totalWeight float64
 	for _, wc := range choices {

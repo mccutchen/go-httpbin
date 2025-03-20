@@ -88,3 +88,15 @@ Allowed redirect destinations:
 %s`, strings.Join(formattedListItems, "\n"))
 	}
 }
+
+// WithUnsafeAllowDangerousResponses means endpoints that allow clients to
+// specify a response Conntent-Type WILL NOT escape HTML entities in the
+// response body, which can enable (e.g.) reflected XSS attacks.
+//
+// This configuration is only supported for backwards compatibility if
+// absolutely necessary.
+func WithUnsafeAllowDangerousResponses() OptionFunc {
+	return func(h *HTTPBin) {
+		h.unsafeAllowDangerousResponses = true
+	}
+}

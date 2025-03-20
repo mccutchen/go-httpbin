@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -332,17 +333,40 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(status)
 }
 
-// ResponseHeaders responds with a map of header values
+// ResponseHeaders sets every incoming query parameter as a response header and
+// returns the headers serialized as JSON.
+//
+// If the Content-Type query parameter is given and set to a "dangerous" value
+// (i.e. one that might be rendered as HTML in a web browser), the keys and
+// values in the JSON response body will be escaped.
 func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
+	contentType := args.Get("Content-Type")
+
+	// response headers are not escaped, regardless of content type
 	for k, vs := range args {
 		for _, v := range vs {
 			w.Header().Add(k, v)
 		}
 	}
-	if contentType := w.Header().Get("Content-Type"); contentType == "" {
+	// only set our own content type if one was not already set based on
+	// incoming request params
+	if contentType == "" {
 		w.Header().Set("Content-Type", jsonContentType)
 	}
+
+	// if response content type is dangrous, escape keys and values before
+	// serializing response body
+	if h.mustEscapeResponse(contentType) {
+		tmp := make(url.Values, len(args))
+		for k, vs := range args {
+			for _, v := range vs {
+				tmp.Add(html.EscapeString(k), html.EscapeString(v))
+			}
+		}
+		args = tmp
+	}
+
 	mustMarshalJSON(w, args)
 }
 
@@ -1102,6 +1126,10 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 	ct := r.URL.Query().Get("content-type")
 	if ct == "" {
 		ct = textContentType
+	}
+	// prevent XSS and other client side vulns if the content type is dangerous
+	if h.mustEscapeResponse(ct) {
+		result = []byte(html.EscapeString(string(result)))
 	}
 	writeResponse(w, http.StatusOK, ct, result)
 }
