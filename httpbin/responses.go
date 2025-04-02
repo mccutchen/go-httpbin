@@ -1,7 +1,6 @@
 package httpbin
 
 import (
-	"net/http"
 	"net/url"
 )
 
@@ -18,7 +17,7 @@ type envResponse struct {
 }
 
 type headersResponse struct {
-	Headers http.Header `json:"headers"`
+	Headers map[string]string `json:"headers"`
 }
 
 type ipResponse struct {
@@ -32,11 +31,11 @@ type userAgentResponse struct {
 // A generic response for any incoming request that should not contain a body
 // (GET, HEAD, OPTIONS, etc).
 type noBodyResponse struct {
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Method  string      `json:"method"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
+	Args    map[string]string `json:"args"`
+	Headers map[string]string `json:"headers"`
+	Method  string            `json:"method"`
+	Origin  string            `json:"origin"`
+	URL     string            `json:"url"`
 
 	Deflated bool `json:"deflated,omitempty"`
 	Gzipped  bool `json:"gzipped,omitempty"`
@@ -45,16 +44,16 @@ type noBodyResponse struct {
 // A generic response for any incoming request that might contain a body (POST,
 // PUT, PATCH, etc).
 type bodyResponse struct {
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Method  string      `json:"method"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
+	Args    map[string]string `json:"args"`
+	Headers map[string]string `json:"headers"`
+	Method  string            `json:"method"`
+	Origin  string            `json:"origin"`
+	URL     string            `json:"url"`
 
-	Data  string      `json:"data"`
-	Files url.Values  `json:"files"`
-	Form  url.Values  `json:"form"`
-	JSON  interface{} `json:"json"`
+	Data  string            `json:"data"`
+	Files url.Values        `json:"files"`
+	Form  map[string]string `json:"form"`
+	JSON  interface{}       `json:"json"`
 }
 
 type cookiesResponse map[string]string
@@ -67,11 +66,11 @@ type authResponse struct {
 // An actual stream response body will be made up of one or more of these
 // structs, encoded as JSON and separated by newlines
 type streamResponse struct {
-	ID      int         `json:"id"`
-	Args    url.Values  `json:"args"`
-	Headers http.Header `json:"headers"`
-	Origin  string      `json:"origin"`
-	URL     string      `json:"url"`
+	ID      int               `json:"id"`
+	Args    map[string]string `json:"args"`
+	Headers map[string]string `json:"headers"`
+	Origin  string            `json:"origin"`
+	URL     string            `json:"url"`
 }
 
 type uuidResponse struct {

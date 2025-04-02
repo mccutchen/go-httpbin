@@ -27,16 +27,16 @@ import (
 // This is necessary to ensure that the incoming Host and Transfer-Encoding
 // headers are included, because golang only exposes those values on the
 // http.Request struct itself.
-func getRequestHeaders(r *http.Request, fn headersProcessorFunc) http.Header {
+func getRequestHeaders(r *http.Request, fn headersProcessorFunc) map[string]string {
 	h := r.Header
 	h.Set("Host", r.Host)
 	if len(r.TransferEncoding) > 0 {
 		h.Set("Transfer-Encoding", strings.Join(r.TransferEncoding, ","))
 	}
 	if fn != nil {
-		return fn(h)
+		return mapValues(fn(h))
 	}
-	return h
+	return mapValues(h)
 }
 
 // getClientIP tries to get a reasonable value for the IP address of the
@@ -205,7 +205,7 @@ func parseBody(r *http.Request, resp *bodyResponse) error {
 		if err := r.ParseForm(); err != nil {
 			return err
 		}
-		resp.Form = r.PostForm
+		resp.Form = mapValues(r.PostForm)
 
 	case "multipart/form-data":
 		// The memory limit here only restricts how many parts will be kept in
@@ -214,7 +214,7 @@ func parseBody(r *http.Request, resp *bodyResponse) error {
 		if err := r.ParseMultipartForm(1024); err != nil {
 			return err
 		}
-		resp.Form = r.PostForm
+		resp.Form = mapValues(r.PostForm)
 		files, err := parseFiles(r.MultipartForm.File)
 		if err != nil {
 			return err
@@ -610,4 +610,14 @@ func isDangerousContentType(ct string) bool {
 		return true
 	}
 	return !safeContentTypes[mediatype]
+}
+
+func mapValues(data map[string][]string) map[string]string {
+	shrunkValues := make(map[string]string)
+	for key, values := range data {
+		if len(values) > 0 {
+			shrunkValues[key] = values[0]
+		}
+	}
+	return shrunkValues
 }
