@@ -1241,6 +1241,13 @@ func TestResponseHeaders(t *testing.T) {
 			resultValues := result[k]
 			assert.DeepEqual(t, resultValues, expectedValues, "JSON response headers mismatch")
 		}
+
+		// if no content-type is specified in the request params, the response
+		// defaults to JSON.
+		//
+		// Note that if this changes, we need to ensure we maintain safety
+		// around escapig HTML in the response (see the subtest below)
+		assert.Header(t, resp, "Content-Type", jsonContentType)
 	})
 
 	t.Run("override content-type", func(t *testing.T) {
@@ -1271,8 +1278,11 @@ func TestResponseHeaders(t *testing.T) {
 			{"text/plain", false},
 			{"application/octet-string", false},
 
+			// if no content-type is provided, we default to JSON, which is
+			// safe
+			{"", false},
+
 			// everything else requires escaping
-			{"", true},
 			{"application/xml", true},
 			{"image/png", true},
 			{"text/html; charset=utf8", true},
