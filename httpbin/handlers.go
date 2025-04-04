@@ -341,18 +341,22 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 // values in the JSON response body will be escaped.
 func (h *HTTPBin) ResponseHeaders(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
-	contentType := args.Get("Content-Type")
 
-	// response headers are not escaped, regardless of content type
+	// only set our own content type if one was not already set based on
+	// incoming request params
+	contentType := args.Get("Content-Type")
+	if contentType == "" {
+		contentType = jsonContentType
+		args.Set("Content-Type", contentType)
+	}
+
+	// actual HTTP response headers are not escaped, regardless of content type
+	// (unlike the JSON serialized representation of those headers in the
+	// response body, which MAY be escaped based on content type)
 	for k, vs := range args {
 		for _, v := range vs {
 			w.Header().Add(k, v)
 		}
-	}
-	// only set our own content type if one was not already set based on
-	// incoming request params
-	if contentType == "" {
-		w.Header().Set("Content-Type", jsonContentType)
 	}
 
 	// if response content type is dangrous, escape keys and values before
