@@ -21,6 +21,21 @@ STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2025.1.1
 HOST ?= 127.0.0.1
 PORT ?= 8080
 
+# Determine the name of the static binary for the release build
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+ifeq (x$(GOOS)x,xwindowsx)
+GOENVS ?= GOOS=$(GOOS) GOARCH=$(GOARCH)
+BINNAME ?= go-httpbin-$(GOOS)-$(GOARCH).exe
+else
+ifeq (x$(GOARCH)x,xarmx)
+GOENVS ?= GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM)
+BINNAME ?= go-httpbin-$(GOOS)-$(GOARCH)v$(GOARM)
+else
+GOENVS ?= GOOS=$(GOOS) GOARCH=$(GOARCH)
+BINNAME ?= go-httpbin-$(GOOS)-$(GOARCH)
+endif
+endif
 
 # =============================================================================
 # build
@@ -99,3 +114,11 @@ imagepush:
 	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG) .
 	docker buildx rm httpbin
 .PHONY: imagepush
+
+# =============================================================================
+# release build
+# =============================================================================
+release:
+	mkdir -p $(DIST_PATH)
+	CGO_ENABLED=0 $(GOENVS) go build -trimpath -ldflags '-s -w -buildid=' -o $(DIST_PATH)/$(BINNAME) ./cmd/go-httpbin
+.PHONY: release
