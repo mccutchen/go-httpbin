@@ -65,7 +65,7 @@ jobs:
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v2
       # Since the necessary permissions cannot be set in the pull_request event, it is limited to push events.
-      if: ${{ !startsWith(github.event_name, 'pull') }}
+      if: ${{ github.event_name != 'pull_request' }}
       with:
         subject-path: dist/go-httpbin-*
 
