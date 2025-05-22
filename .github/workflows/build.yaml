@@ -114,7 +114,6 @@ jobs:
     - name: Generate sha256 checksums
       run: |
         cd dist
-        echo -n > SHA256SUMS
         for f in $(find . -type f -name 'go-httpbin-*' -printf '%f\n' | sort); do
           sha256sum "$f" | tee -a SHA256SUMS;
         done
