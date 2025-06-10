@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -64,7 +65,8 @@ func getClientIP(r *http.Request) string {
 	}
 
 	// Finally, fall back on the actual remote addr from the request.
-	return r.RemoteAddr
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return ip
 }
 
 func getURL(r *http.Request) *url.URL {
