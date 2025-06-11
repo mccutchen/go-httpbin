@@ -406,6 +406,25 @@ func TestIP(t *testing.T) {
 			assert.Equal(t, result.Origin, tc.wantOrigin, "incorrect origin")
 		})
 	}
+
+	t.Run("via real connection", func(t *testing.T) {
+		// (*Request).RemoteAddr includes the local port for real incoming TCP
+		// connections but not for direct ServeHTTP calls as the used in the
+		// httptest.NewRecorder tests above, so we need to use a real server
+		// to verify handling of both cases.
+		srv := httptest.NewServer(app)
+		defer srv.Close()
+
+		resp, err := client.Get(srv.URL + "/ip")
+		assert.NilError(t, err)
+		defer resp.Body.Close()
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, jsonContentType)
+
+		result := must.Unmarshal[ipResponse](t, resp.Body)
+		assert.Equal(t, result.Origin, "127.0.0.1", "incorrect origin")
+	})
 }
 
 func TestUserAgent(t *testing.T) {
