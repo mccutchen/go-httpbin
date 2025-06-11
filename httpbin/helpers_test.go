@@ -335,6 +335,63 @@ func TestGetClientIP(t *testing.T) {
 			},
 			want: "0.0.0.0",
 		},
+		"fly header strips port": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"Fly-Client-IP": "9.9.9.9:47782",
+				}),
+				RemoteAddr: "0.0.0.0:80",
+			},
+			want: "9.9.9.9",
+		},
+		"cloudflare header strips port": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"CF-Connecting-IP": "8.8.8.8:12345",
+				}),
+				RemoteAddr: "0.0.0.0:80",
+			},
+			want: "8.8.8.8",
+		},
+		"fastly header strips port": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"Fastly-Client-IP": "7.7.7.7:9999",
+				}),
+				RemoteAddr: "0.0.0.0:80",
+			},
+			want: "7.7.7.7",
+		},
+		"akamai header strips port": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"True-Client-IP": "6.6.6.6:5555",
+				}),
+				RemoteAddr: "0.0.0.0:80",
+			},
+			want: "6.6.6.6",
+		},
+		"x-forwarded-for strips port from first ip": {
+			given: &http.Request{
+				Header: makeHeaders(map[string]string{
+					"X-Forwarded-For": "1.1.1.1:47782,2.2.2.2,3.3.3.3",
+				}),
+				RemoteAddr: "0.0.0.0:80",
+			},
+			want: "1.1.1.1",
+		},
+		"remoteaddr strips port": {
+			given: &http.Request{
+				RemoteAddr: "127.0.0.1:47782",
+			},
+			want: "127.0.0.1",
+		},
+		"ipv6 remoteaddr strips port": {
+			given: &http.Request{
+				RemoteAddr: "[::1]:47782",
+			},
+			want: "::1",
+		},
 	}
 	for name, tc := range testCases {
 		tc := tc

@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -43,28 +44,39 @@ func getRequestHeaders(r *http.Request, fn headersProcessorFunc) http.Header {
 // client making the request. Note that this value will likely be trivial to
 // spoof, so do not rely on it for security purposes.
 func getClientIP(r *http.Request) string {
+	// stripPortFromIP removes port number from IP address if present
+	stripPortFromIP := func(addr string) string {
+		if strings.IndexByte(addr, ':') > 0 {
+			if ip, _, err := net.SplitHostPort(addr); err == nil {
+				return ip
+			}
+		}
+		return addr
+	}
+
 	// Special case some hosting platforms that provide the value directly.
 	if clientIP := r.Header.Get("Fly-Client-IP"); clientIP != "" {
-		return clientIP
+		return stripPortFromIP(clientIP)
 	}
 	if clientIP := r.Header.Get("CF-Connecting-IP"); clientIP != "" {
-		return clientIP
+		return stripPortFromIP(clientIP)
 	}
 	if clientIP := r.Header.Get("Fastly-Client-IP"); clientIP != "" {
-		return clientIP
+		return stripPortFromIP(clientIP)
 	}
 	if clientIP := r.Header.Get("True-Client-IP"); clientIP != "" {
-		return clientIP
+		return stripPortFromIP(clientIP)
 	}
 
 	// Try to pull a reasonable value from the X-Forwarded-For header, if
 	// present, by taking the first entry in a comma-separated list of IPs.
 	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
-		return strings.TrimSpace(strings.SplitN(forwardedFor, ",", 2)[0])
+		firstIP := strings.TrimSpace(strings.SplitN(forwardedFor, ",", 2)[0])
+		return stripPortFromIP(firstIP)
 	}
 
 	// Finally, fall back on the actual remote addr from the request.
-	return r.RemoteAddr
+	return stripPortFromIP(r.RemoteAddr)
 }
 
 func getURL(r *http.Request) *url.URL {
