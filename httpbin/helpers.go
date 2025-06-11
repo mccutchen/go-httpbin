@@ -65,8 +65,12 @@ func getClientIP(r *http.Request) string {
 	}
 
 	// Finally, fall back on the actual remote addr from the request.
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return ip
+	remoteAddr := r.RemoteAddr
+	if strings.IndexByte(remoteAddr, ':') > 0 {
+		ip, _, _ := net.SplitHostPort(remoteAddr)
+		return ip
+	}
+	return remoteAddr
 }
 
 func getURL(r *http.Request) *url.URL {
