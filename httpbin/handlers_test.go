@@ -412,8 +412,7 @@ func TestIP(t *testing.T) {
 		// connections but not for direct ServeHTTP calls as the used in the
 		// httptest.NewRecorder tests above, so we need to use a real server
 		// to verify handling of both cases.
-		srv := httptest.NewServer(app)
-		defer srv.Close()
+		t.Parallel()
 
 		resp, err := client.Get(srv.URL + "/ip")
 		assert.NilError(t, err)
