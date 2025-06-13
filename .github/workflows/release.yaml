@@ -77,13 +77,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           annotations: |
             ${{ steps.meta.outputs.annotations }}
-            org.opencontainers.image.title=go-httpbin
             org.opencontainers.image.description=A reasonably complete and well-tested golang port of httpbin
             org.opencontainers.image.authors=Will McCutchen <will@mccutch.org>
-            org.opencontainers.image.url=https://github.com/mccutchen/go-httpbin
             org.opencontainers.image.documentation=https://github.com/mccutchen/go-httpbin/blob/main/README.md
             org.opencontainers.image.base.name=gcr.io/distroless/base
-
-#            org.opencontainers.image.source=https://github.com/mccutchen/go-httpbin
-#            org.opencontainers.image.revision=${{ github.sha }}
-#            org.opencontainers.image.licenses=MIT
