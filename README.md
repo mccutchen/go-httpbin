@@ -15,9 +15,8 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 
 Prebuilt images for the `linux/amd64` and `linux/arm64` architectures are
 automatically published to these public registries for every tagged release:
-- GitHub Container Registry: [ghcr.io/mccutchen/go-httpbin][ghcr]
-  - **Note:** Only version `2.17` and later
-- Docker Hub: [mccutchen/go-httpbin][docker-hub]
+- [ghcr.io/mccutchen/go-httpbin][ghcr]
+- [mccutchen/go-httpbin][docker-hub]
 
 ```bash
 # Run http server
