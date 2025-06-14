@@ -43,6 +43,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        id: meta
+        env:
+          # https://docs.docker.com/build/ci/github-actions/annotations/#configure-annotation-level
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             mccutchen/go-httpbin
@@ -59,7 +63,6 @@ jobs:
             # debugging purposes by uncommenting the pull_request trigger at
             # top of the workflow.
             type=sha,format=short,enable=${{ github.event_name == 'pull_request' }}
-        id: meta
 
       - uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
