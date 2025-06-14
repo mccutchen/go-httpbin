@@ -78,10 +78,14 @@ jobs:
           provenance: mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          outputs: >-
-            type=image,name=target,
-            annotation-index.org.opencontainers.image.description=A reasonably complete and well-tested golang port of httpbin,
+          annotations: |
+            ${{ steps.meta.outputs.annotations }}
             annotation-index.org.opencontainers.image.authors=Will McCutchen <will@mccutch.org>,
             annotation-index.org.opencontainers.image.documentation=https://github.com/mccutchen/go-httpbin/blob/main/README.md,
             annotation-index.org.opencontainers.image.base.name=gcr.io/distroless/base
+          # outputs: >-
+          #   type=image,name=target,
+          #   annotation-index.org.opencontainers.image.description=A reasonably complete and well-tested golang port of httpbin,
+          #   annotation-index.org.opencontainers.image.authors=Will McCutchen <will@mccutch.org>,
+          #   annotation-index.org.opencontainers.image.documentation=https://github.com/mccutchen/go-httpbin/blob/main/README.md,
+          #   annotation-index.org.opencontainers.image.base.name=gcr.io/distroless/base
