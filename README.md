@@ -15,9 +15,8 @@ A reasonably complete and well-tested golang port of [Kenneth Reitz][kr]'s
 
 Prebuilt images for the `linux/amd64` and `linux/arm64` architectures are
 automatically published to these public registries for every tagged release:
-- GitHub Container Registry: [ghcr.io/mccutchen/go-httpbin][ghcr]
-  - **Note:** Only version `2.17` and later
-- Docker Hub: [mccutchen/go-httpbin][docker-hub]
+- [ghcr.io/mccutchen/go-httpbin][ghcr] (recommended)
+- [mccutchen/go-httpbin][docker-hub]
 
 ```bash
 # Run http server
@@ -87,6 +86,12 @@ func TestSlowResponse(t *testing.T) {
 	}
 }
 ```
+
+### GitHub Actions/Workflows
+
+This external repository provides a GitHub Action for deploying go-httpbin in workflows:
+
+lfreleng-actions/go-httpbin-action][]
 
 ### Configuration
 
@@ -255,3 +260,4 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Production considerations]: #production-considerations
 [SECURITY.md]: ./SECURITY.md
 [zerolog]: https://github.com/rs/zerolog
+[lfreleng-actions/go-httpbin-action]: https://github.com/lfreleng-actions/go-httpbin-action/
