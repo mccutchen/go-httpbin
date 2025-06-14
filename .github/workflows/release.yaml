@@ -15,8 +15,8 @@ name: release
   # uncomment this to enablle building for pull requests, to debug this
   # workflow.
   #
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 jobs:
   docker:
@@ -64,12 +64,6 @@ jobs:
             # top of the workflow.
             type=sha,format=short,enable=${{ github.event_name == 'pull_request' }}
 
-      - name: debug metadata outputs
-        run: |
-          echo "tags: ${{ steps.meta.outputs.tags }}"
-          echo "labels: ${{ steps.meta.outputs.labels }}"
-          echo "annotations: ${{ steps.meta.outputs.annotations }}"
-
       - uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           platforms: linux/amd64,linux/arm64
@@ -78,14 +72,4 @@ jobs:
           provenance: mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          annotations: |
-            ${{ steps.meta.outputs.annotations }}
-            annotation-index.org.opencontainers.image.authors=Will McCutchen <will@mccutch.org>,
-            annotation-index.org.opencontainers.image.documentation=https://github.com/mccutchen/go-httpbin/blob/main/README.md,
-            annotation-index.org.opencontainers.image.base.name=gcr.io/distroless/base
-          # outputs: >-
-          #   type=image,name=target,
-          #   annotation-index.org.opencontainers.image.description=A reasonably complete and well-tested golang port of httpbin,
-          #   annotation-index.org.opencontainers.image.authors=Will McCutchen <will@mccutch.org>,
-          #   annotation-index.org.opencontainers.image.documentation=https://github.com/mccutchen/go-httpbin/blob/main/README.md,
-          #   annotation-index.org.opencontainers.image.base.name=gcr.io/distroless/base
+          annotations: ${{ steps.meta.outputs.annotations }}
