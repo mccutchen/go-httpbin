@@ -110,7 +110,6 @@ func TestParseDuration(t *testing.T) {
 		{"-2.5", -2500 * time.Millisecond},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run(fmt.Sprintf("ok/%s", test.input), func(t *testing.T) {
 			t.Parallel()
 			result, err := parseDuration(test.input)
@@ -129,7 +128,6 @@ func TestParseDuration(t *testing.T) {
 		{"0xFF"},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.input), func(t *testing.T) {
 			t.Parallel()
 			_, err := parseDuration(test.input)
@@ -337,7 +335,6 @@ func TestGetClientIP(t *testing.T) {
 		},
 	}
 	for name, tc := range testCases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, getClientIP(tc.given), tc.want, "incorrect client ip")
@@ -535,7 +532,6 @@ func TestParseWeightedChoices(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.given, func(t *testing.T) {
 			t.Parallel()
 			got, err := parseWeightedChoices(tc.given, strconv.Atoi)
@@ -561,7 +557,6 @@ func TestWeightedRandomChoice(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			choices, err := parseWeightedChoices(tc, func(s string) (string, error) { return s, nil })
@@ -573,7 +568,7 @@ func TestWeightedRandomChoice(t *testing.T) {
 			t.Logf("normalized choices: %v", normalizedChoices)
 
 			result := make(map[string]int, len(choices))
-			for i := 0; i < 1_000; i++ {
+			for range 1_000 {
 				choice := weightedRandomChoice(choices)
 				result[choice]++
 			}
@@ -635,7 +630,6 @@ func TestIsDangerousContentType(t *testing.T) {
 		",xxx",
 	}
 	for _, tc := range testCases {
-		tc := tc
 
 		// baseline test
 		t.Run(tc.contentType, func(t *testing.T) {

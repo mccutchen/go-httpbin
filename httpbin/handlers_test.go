@@ -98,7 +98,6 @@ func TestMain(m *testing.M) {
 
 func TestIndex(t *testing.T) {
 	for _, env := range envs {
-		env := env
 		t.Run("ok"+env.prefix, func(t *testing.T) {
 			t.Parallel()
 
@@ -246,7 +245,6 @@ func TestGet(t *testing.T) {
 		{"X-Forwarded-Ssl", "on"},
 	}
 	for _, test := range protoTests {
-		test := test
 		t.Run(test.key, func(t *testing.T) {
 			t.Parallel()
 			headers := http.Header{}
@@ -272,7 +270,6 @@ func TestHead(t *testing.T) {
 		{"GET", "/head", http.StatusMethodNotAllowed},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(fmt.Sprintf("%s %s", tc.verb, tc.path), func(t *testing.T) {
 			t.Parallel()
 
@@ -378,7 +375,6 @@ func TestIP(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -512,14 +508,14 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 	// function.
 	//
 	// Cribbed from https://stackoverflow.com/a/70535822/151221
-	getFuncName := func(f interface{}) string {
+	getFuncName := func(f any) string {
 		parts := strings.Split((runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()), ".")
 		return parts[len(parts)-1]
 	}
 
 	// getTestName expects a function named like testRequestWithBody__BodyTooBig
 	// and returns only the trailing BodyTooBig part.
-	getTestName := func(prefix string, f interface{}) string {
+	getTestName := func(prefix string, f any) string {
 		name := strings.TrimPrefix(getFuncName(f), "testRequestWithBody")
 		return fmt.Sprintf("%s/%s", prefix, name)
 	}
@@ -544,7 +540,6 @@ func testRequestWithBody(t *testing.T, verb, path string) {
 		testRequestWithBodyTransferEncoding,
 	}
 	for _, testFunc := range testFuncs {
-		testFunc := testFunc
 		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
 			t.Parallel()
 			testFunc(t, verb, path)
@@ -564,7 +559,6 @@ func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
 		{"unknown", "encodeMe-unknown"},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run("content type/"+test.contentType, func(t *testing.T) {
 			t.Parallel()
 
@@ -597,7 +591,6 @@ func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
 		{"multipart/form-data; foo"},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run("content type/"+test.contentType, func(t *testing.T) {
 			t.Parallel()
 
@@ -1012,7 +1005,6 @@ func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
 		{"chunked", "chunked"},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run("transfer-encoding/"+tc.given, func(t *testing.T) {
 			t.Parallel()
 
@@ -1073,7 +1065,6 @@ func TestStatus(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("ok/status/%d", test.code), func(t *testing.T) {
 			t.Parallel()
 			req, _ := http.NewRequest("GET", srv.URL+fmt.Sprintf("/status/%d", test.code), nil)
@@ -1101,7 +1092,6 @@ func TestStatus(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
-		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1189,7 +1179,6 @@ func TestUnstable(t *testing.T) {
 		{"/unstable?seed=1234567890&failure_rate=0.07", 200},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run("ok_"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1204,7 +1193,6 @@ func TestUnstable(t *testing.T) {
 		"/unstable?seed=-12345",
 	}
 	for _, test := range edgeCaseTests {
-		test := test
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
@@ -1226,7 +1214,6 @@ func TestUnstable(t *testing.T) {
 		"/unstable?seed=foo",
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test)
@@ -1306,7 +1293,6 @@ func TestResponseHeaders(t *testing.T) {
 			{"text/html; charset=utf8", true},
 			{"text/html", true},
 		} {
-			tc := tc
 			t.Run(tc.contentType, func(t *testing.T) {
 				t.Parallel()
 
@@ -1478,7 +1464,6 @@ func TestRedirectTo(t *testing.T) {
 	}
 
 	for _, test := range okTests {
-		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1501,7 +1486,6 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?url=http%3A%2F%2Ffoo%25%25bar&status_code=418", http.StatusBadRequest}, // invalid URL
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1525,7 +1509,6 @@ func TestRedirectTo(t *testing.T) {
 		{"/redirect-to?url=//evil.com", http.StatusForbidden}, // missing scheme to attempt to bypass allowlist
 	}
 	for _, test := range allowListTests {
-		test := test
 		t.Run("allowlist"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1541,7 +1524,6 @@ func TestRedirectTo(t *testing.T) {
 
 func TestCookies(t *testing.T) {
 	for _, env := range envs {
-		env := env
 		t.Run("get"+env.prefix, func(t *testing.T) {
 			testCases := map[string]struct {
 				cookies cookiesResponse
@@ -1564,7 +1546,6 @@ func TestCookies(t *testing.T) {
 			}
 
 			for name, tc := range testCases {
-				tc := tc
 				t.Run(name, func(t *testing.T) {
 					t.Parallel()
 
@@ -1650,7 +1631,6 @@ func TestCookies(t *testing.T) {
 func TestBasicAuth(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
-			method := method
 			t.Run(method, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, method, "/basic-auth/user/pass")
@@ -1669,7 +1649,6 @@ func TestBasicAuth(t *testing.T) {
 
 	t.Run("error/no auth", func(t *testing.T) {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
-			method := method
 			t.Run(method, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, method, "/basic-auth/user/pass")
@@ -1690,7 +1669,6 @@ func TestBasicAuth(t *testing.T) {
 
 	t.Run("error/bad auth", func(t *testing.T) {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
-			method := method
 			t.Run(method, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, method, "/basic-auth/user/pass")
@@ -1720,7 +1698,6 @@ func TestBasicAuth(t *testing.T) {
 		{"/basic-auth/user/pass/extra", http.StatusNotFound},
 	}
 	for _, test := range errorTests {
-		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1774,7 +1751,6 @@ func TestHiddenBasicAuth(t *testing.T) {
 		{"/hidden-basic-auth/user/pass/extra", http.StatusNotFound},
 	}
 	for _, test := range errorTests {
-		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1806,7 +1782,6 @@ func TestDigestAuth(t *testing.T) {
 		{"/digest-auth/auth/user/pass/SHA-512", http.StatusBadRequest},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1925,7 +1900,6 @@ func TestStream(t *testing.T) {
 		{"/stream/-100", 1},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 
@@ -1959,7 +1933,6 @@ func TestStream(t *testing.T) {
 	}
 
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -1996,7 +1969,6 @@ func TestTrailers(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.url, func(t *testing.T) {
 			t.Parallel()
 
@@ -2040,7 +2012,6 @@ func TestDelay(t *testing.T) {
 		{"/delay/1", maxDuration},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 
@@ -2106,7 +2077,6 @@ func TestDelay(t *testing.T) {
 	}
 
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2154,7 +2124,6 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
 
@@ -2337,7 +2306,6 @@ func TestDrip(t *testing.T) {
 		{&url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
 			url := "/drip?" + test.params.Encode()
@@ -2559,7 +2527,6 @@ func TestRange(t *testing.T) {
 		{"/range/26", "bytes=0-40"},
 	}
 	for _, test := range badRangeTests {
-		test := test
 		t.Run(fmt.Sprintf("ok_bad_range_header/%s", test.rangeHeader), func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2588,7 +2555,6 @@ func TestRange(t *testing.T) {
 	}
 
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2647,7 +2613,6 @@ func TestCache(t *testing.T) {
 		{"If-Modified-Since", "my-custom-date"},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("ok_cache/%s", test.headerKey), func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", "/cache")
@@ -2680,7 +2645,6 @@ func TestCacheControl(t *testing.T) {
 		{"/cache/3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2721,7 +2685,6 @@ func TestETag(t *testing.T) {
 		{"if_match_has_no_match", "abc", "If-Match", `"xxxxxx"`, http.StatusPreconditionFailed},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run("ok_"+test.name, func(t *testing.T) {
 			t.Parallel()
 			url := "/etag/" + test.etag
@@ -2740,7 +2703,6 @@ func TestETag(t *testing.T) {
 		{"/etag/foo/bar", http.StatusNotFound},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.url), func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2789,7 +2751,6 @@ func TestBytes(t *testing.T) {
 		{"/bytes/16?seed=-12345", 16},
 	}
 	for _, test := range edgeCaseTests {
-		test := test
 		t.Run("edge"+test.url, func(t *testing.T) {
 			t.Parallel()
 
@@ -2820,7 +2781,6 @@ func TestBytes(t *testing.T) {
 		{"/bytes/16?seed=3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2848,7 +2808,6 @@ func TestStreamBytes(t *testing.T) {
 		{"/stream-bytes/256?chunk_size=-10", 256},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 
@@ -2877,7 +2836,6 @@ func TestStreamBytes(t *testing.T) {
 		{"/stream-bytes/16?chunk_size=3.14", http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -2890,7 +2848,6 @@ func TestStreamBytes(t *testing.T) {
 
 func TestLinks(t *testing.T) {
 	for _, env := range envs {
-		env := env
 
 		redirectTests := []struct {
 			url              string
@@ -2901,7 +2858,6 @@ func TestLinks(t *testing.T) {
 		}
 
 		for _, test := range redirectTests {
-			test := test
 			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, "GET", env.prefix+test.url, env)
@@ -2929,7 +2885,6 @@ func TestLinks(t *testing.T) {
 		}
 
 		for _, test := range errorTests {
-			test := test
 			t.Run("error"+env.prefix+test.url, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, "GET", env.prefix+test.url, env)
@@ -2952,7 +2907,6 @@ func TestLinks(t *testing.T) {
 			{"/links/2/-1", `<html><head><title>Links</title></head><body><a href="%[1]s/links/2/0">0</a> <a href="%[1]s/links/2/1">1</a> </body></html>`},
 		}
 		for _, test := range linksPageTests {
-			test := test
 			t.Run("ok"+env.prefix+test.url, func(t *testing.T) {
 				t.Parallel()
 				req := newTestRequest(t, "GET", env.prefix+test.url, env)
@@ -2986,7 +2940,6 @@ func TestImage(t *testing.T) {
 	}
 
 	for _, test := range acceptTests {
-		test := test
 		t.Run("ok/accept="+test.acceptHeader, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", "/image")
@@ -3015,7 +2968,6 @@ func TestImage(t *testing.T) {
 	}
 
 	for _, test := range imageTests {
-		test := test
 		t.Run("error"+test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -3116,7 +3068,6 @@ func TestBase64(t *testing.T) {
 	}
 
 	for _, test := range okTests {
-		test := test
 		t.Run("ok"+test.requestURL, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
@@ -3176,7 +3127,6 @@ func TestBase64(t *testing.T) {
 	}
 
 	for _, test := range errorTests {
-		test := test
 		t.Run("error"+test.requestURL, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.requestURL)
@@ -3251,7 +3201,6 @@ func TestBearer(t *testing.T) {
 		},
 	}
 	for _, test := range errorTests {
-		test := test
 		t.Run("error"+test.authorizationHeader, func(t *testing.T) {
 			t.Parallel()
 
@@ -3274,7 +3223,6 @@ func TestNotImplemented(t *testing.T) {
 		{"/brotli"},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.url, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, "GET", test.url)
@@ -3391,7 +3339,6 @@ func TestSSE(t *testing.T) {
 		{&url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10},
 	}
 	for _, test := range okTests {
-		test := test
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
 
@@ -3440,7 +3387,6 @@ func TestSSE(t *testing.T) {
 		{&url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
 	}
 	for _, test := range badTests {
-		test := test
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
 			url := "/sse?" + test.params.Encode()
@@ -3658,7 +3604,6 @@ func TestWebSocketEcho(t *testing.T) {
 		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", app.MaxBodySize+1), http.StatusBadRequest},
 	}
 	for _, tc := range paramTests {
-		tc := tc
 		t.Run(tc.query, func(t *testing.T) {
 			t.Parallel()
 			req := newTestRequest(t, http.MethodGet, "/websocket/echo?"+tc.query)
