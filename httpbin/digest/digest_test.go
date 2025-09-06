@@ -118,7 +118,6 @@ func TestHash(t *testing.T) {
 		{digestAlgorithm(10), []byte("hello, world!\n"), "910c8bc73110b0cd1bc5d2bcae782511"},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("hash/%v", test.algorithm), func(t *testing.T) {
 			t.Parallel()
 			result := hash(test.data, test.algorithm)
@@ -180,7 +179,6 @@ func TestParseDictHeader(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.input, func(t *testing.T) {
 			t.Parallel()
 			results := parseDictHeader(test.input)
@@ -272,7 +270,6 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			got := parseAuthorizationHeader(test.input)

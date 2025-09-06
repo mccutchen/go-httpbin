@@ -204,7 +204,7 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	}
 
 	// helper to generate a new ConfigError to return
-	configErr := func(format string, a ...interface{}) error {
+	configErr := func(format string, a ...any) error {
 		return ConfigError{
 			Err:   fmt.Errorf(format, a...),
 			Usage: usage,

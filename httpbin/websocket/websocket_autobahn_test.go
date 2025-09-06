@@ -111,7 +111,6 @@ func TestWebSocketServer(t *testing.T) {
 
 	for _, results := range summary {
 		for caseName, result := range results {
-			result := result
 			t.Run("autobahn/"+caseName, func(t *testing.T) {
 				if result.Behavior == "FAILED" || result.BehaviorClose == "FAILED" {
 					report := loadReport(t, testDir, result.ReportFile)
