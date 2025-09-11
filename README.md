@@ -87,6 +87,12 @@ func TestSlowResponse(t *testing.T) {
 }
 ```
 
+### GitHub Actions/Workflows
+
+This external repository provides a GitHub Action for deploying go-httpbin in workflows:
+
+- [lfreleng-actions/go-httpbin-action][]
+
 ### Configuration
 
 go-httpbin can be configured via either command line arguments or environment
@@ -254,3 +260,4 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Production considerations]: #production-considerations
 [SECURITY.md]: ./SECURITY.md
 [zerolog]: https://github.com/rs/zerolog
+[lfreleng-actions/go-httpbin-action]: https://github.com/lfreleng-actions/go-httpbin-action/
