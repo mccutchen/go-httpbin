@@ -26,6 +26,36 @@ $ docker run -P ghcr.io/mccutchen/go-httpbin
 $ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp ghcr.io/mccutchen/go-httpbin
 ```
 
+#### Run as non-root
+
+Prebuilt images now run as a non-root user by default. This improves container
+security, but some configurations may require additional care.
+
+For example, if you run go-httpbin on a privileged port (i.e. below 1024) using
+the Docker host network, you may need to run the container as root in order to
+enable the `CAP_NET_BIND_SERVICE` capability. Note that this is normally not
+required when using other network modes.
+
+```bash
+$ docker run \
+  --network host \
+  --user root \
+  --cap-drop ALL \
+  --cap-add CAP_NET_BIND_SERVICE \
+  ghcr.io/mccutchen/go-httpbin \
+  /bin/go-httpbin -port=80
+```
+
+If you enable HTTPS directly in go-httpbin, make sure that the certificate and
+private key files are readable by the user running the process.
+
+```bash
+$ chmod 644 /tmp/server.crt
+$ chmod 640 /tmp/server.key
+# GID 65532: primary group of the nonroot user in distroless/static:nonroot.
+$ chown root:65532 /tmp/server.crt /tmp/server.key
+```
+
 ### Kubernetes
 
 ```
