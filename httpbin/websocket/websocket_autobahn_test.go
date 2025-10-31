@@ -19,7 +19,7 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
-const autobahnImage = "crossbario/autobahn-testsuite:0.8.2"
+const autobahnImage = "crossbario/autobahn-testsuite:25.10.1"
 
 var defaultIncludedTestCases = []string{
 	"*",
