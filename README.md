@@ -118,6 +118,11 @@ variables (or a combination of the two):
 | - | - | - | - |
 | `-unsafe-allow-dangerous-responses` | `UNSAFE_ALLOW_DANGEROUS_RESPONSES` | Allow endpoints to return unescaped HTML when clients control response Content-Type (enables XSS attacks) | false |
 
+**Notes:**
+- Command line arguments take precedence over environment variables.
+- See [Production considerations] for recommendations around safe configuration
+  of public instances of go-httpbin
+
 #### Configuring non-root docker images
 
 Prebuilt image versions >= 2.19.0 run as a non-root user by default to improve
@@ -147,12 +152,6 @@ deployments:
   # GID 65532: primary group of the nonroot user in distroless/static:nonroot.
   $ chown root:65532 /tmp/server.crt /tmp/server.key
   ```
-
-**Notes:**
-- Command line arguments take precedence over environment variables.
-- See [Production considerations] for recommendations around safe configuration
-  of public instances of go-httpbin
-
 
 ## Installation
 
