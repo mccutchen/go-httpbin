@@ -21,6 +21,8 @@ spec:
               path: /status/200
               port: http
           resources: {}
+          securityContext:
+            runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service
