@@ -88,7 +88,13 @@ func TestSlowResponse(t *testing.T) {
 }
 ```
 
-### Configuration
+### GitHub Actions/Workflows
+
+The 3rd-party [lfreleng-actions/go-httpbin-action][] action is an easy way
+to make a local instance of go-httpbin available to other steps in a GitHub
+Actions workflow.
+
+## Configuration
 
 go-httpbin can be configured via either command line arguments or environment
 variables (or a combination of the two):
@@ -283,3 +289,4 @@ Compared to [ahmetb/go-httpbin][ahmet]:
 [Production considerations]: #production-considerations
 [SECURITY.md]: ./SECURITY.md
 [zerolog]: https://github.com/rs/zerolog
+[lfreleng-actions/go-httpbin-action]: https://github.com/lfreleng-actions/go-httpbin-action/
