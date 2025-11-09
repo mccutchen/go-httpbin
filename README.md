@@ -87,11 +87,10 @@ func TestSlowResponse(t *testing.T) {
 }
 ```
 
-### GitHub Actions/Workflows
+### GitHub Actions
 
-This external repository provides a GitHub Action for deploying go-httpbin in workflows:
-
-- [lfreleng-actions/go-httpbin-action][]
+The 3rd-party [lfreleng-actions/go-httpbin-action][] action makes a local
+go-httpbin instance available to other steps in a GitHub Actions workflow.
 
 ### Configuration
 
