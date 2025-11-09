@@ -19,12 +19,13 @@ automatically published to these public registries for every tagged release:
 - [mccutchen/go-httpbin][docker-hub]
 
 ```bash
-# Run http server
 $ docker run -P ghcr.io/mccutchen/go-httpbin
-
-# Run https server
-$ docker run -e HTTPS_CERT_FILE='/tmp/server.crt' -e HTTPS_KEY_FILE='/tmp/server.key' -p 8080:8080 -v /tmp:/tmp ghcr.io/mccutchen/go-httpbin
 ```
+
+> [!NOTE]
+> Prebuilt image versions >= 2.19.0 run as a non-root user by default. See
+> [Configuring non-root docker images](#configuring-non-root-docker-images)
+> below for details.
 
 ### Kubernetes
 
@@ -114,10 +115,9 @@ variables (or a combination of the two):
 | `-srv-read-timeout` | `SRV_READ_TIMEOUT` | Value to use for the http.Server's ReadTimeout option | 5s |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
 
-#### ⚠️ **HERE BE DRAGONS** ⚠️
-
-These configuration options are dangerous and/or deprecated and should be
-avoided unless backwards compatibility is absolutely required.
+> [!WARNING]
+> These configuration options are dangerous and/or deprecated and should be
+> avoided unless backwards compatibility is absolutely required.
 
 | Argument| Env var | Documentation | Default |
 | - | - | - | - |
@@ -128,6 +128,35 @@ avoided unless backwards compatibility is absolutely required.
 - See [Production considerations] for recommendations around safe configuration
   of public instances of go-httpbin
 
+#### Configuring non-root docker images
+
+Prebuilt image versions >= 2.19.0 run as a non-root user by default to improve
+container security at the cost of additional complexity for some non-standard
+deployments:
+
+- To run the go-httpbin image a) on a privileged port (i.e. below 1024) _and_
+  b) using the Docker host network, you may need to run the container as root
+  in order to enable the `CAP_NET_BIND_SERVICE` capability:
+
+  ```bash
+  $ docker run \
+    --network host \
+    --user root \
+    --cap-drop ALL \
+    --cap-add CAP_NET_BIND_SERVICE \
+    ghcr.io/mccutchen/go-httpbin \
+    /bin/go-httpbin -port=80
+  ```
+
+- If you enable HTTPS directly in the image, make sure that the certificate
+  and private key files are readable by the user running the process:
+
+  ```bash
+  $ chmod 644 /tmp/server.crt
+  $ chmod 640 /tmp/server.key
+  # GID 65532: primary group of the nonroot user in distroless/static:nonroot.
+  $ chown root:65532 /tmp/server.crt /tmp/server.key
+  ```
 
 ## Installation
 

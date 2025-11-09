@@ -19,7 +19,7 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
-const autobahnImage = "crossbario/autobahn-testsuite:0.8.2"
+const autobahnImage = "crossbario/autobahn-testsuite:25.10.1"
 
 var defaultIncludedTestCases = []string{
 	"*",
@@ -111,7 +111,6 @@ func TestWebSocketServer(t *testing.T) {
 
 	for _, results := range summary {
 		for caseName, result := range results {
-			result := result
 			t.Run("autobahn/"+caseName, func(t *testing.T) {
 				if result.Behavior == "FAILED" || result.BehaviorClose == "FAILED" {
 					report := loadReport(t, testDir, result.ReportFile)
