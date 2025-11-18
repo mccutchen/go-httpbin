@@ -106,6 +106,38 @@ func getURL(r *http.Request) *url.URL {
 	}
 }
 
+// getServerIP attempts to determine the current server's primary IP address
+// (e.g., Pod IP in Kubernetes). It prefers non-loopback IPv4 addresses, then
+// falls back to non-loopback IPv6 if necessary.
+func getServerIP() string {
+	// Prefer non-loopback IPv4 from interface addresses
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		var v6Fallback string
+		for _, a := range addrs {
+			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				ip := ipnet.IP
+				if v4 := ip.To4(); v4 != nil {
+					return v4.String()
+				}
+				if v6Fallback == "" {
+					v6Fallback = ip.String()
+				}
+			}
+		}
+		if v6Fallback != "" {
+			return v6Fallback
+		}
+	}
+	// As a last resort, infer via a UDP dial (no packets actually sent)
+	if conn, err := net.Dial("udp", "8.8.8.8:80"); err == nil {
+		defer conn.Close()
+		if udp, ok := conn.LocalAddr().(*net.UDPAddr); ok && udp.IP != nil {
+			return udp.IP.String()
+		}
+	}
+	return ""
+}
+
 func writeResponse(w http.ResponseWriter, status int, contentType string, body []byte) {
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)

@@ -166,6 +166,13 @@ func (h *HTTPBin) Headers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ServerIP echoes the IP address of the server handling the request
+func (h *HTTPBin) ServerIP(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(http.StatusOK, w, &serverIPResponse{
+		ServerIP: getServerIP(),
+	})
+}
+
 type statusCase struct {
 	headers map[string]string
 	body    []byte

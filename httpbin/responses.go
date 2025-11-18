@@ -87,6 +87,10 @@ type hostnameResponse struct {
 	Hostname string `json:"hostname"`
 }
 
+type serverIPResponse struct {
+	ServerIP string `json:"server_ip"`
+}
+
 type errorRespnose struct {
 	StatusCode int    `json:"status_code"`
 	Error      string `json:"error"`
