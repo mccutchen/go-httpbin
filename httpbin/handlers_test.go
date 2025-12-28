@@ -20,9 +20,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -504,155 +502,143 @@ func TestAnything(t *testing.T) {
 }
 
 func testRequestWithBody(t *testing.T, verb, path string) {
-	// getFuncName uses runtime type reflection to get the name of the given
-	// function.
-	//
-	// Cribbed from https://stackoverflow.com/a/70535822/151221
-	getFuncName := func(f any) string {
-		parts := strings.Split((runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()), ".")
-		return parts[len(parts)-1]
-	}
-
-	// getTestName expects a function named like testRequestWithBody__BodyTooBig
-	// and returns only the trailing BodyTooBig part.
-	getTestName := func(prefix string, f any) string {
-		name := strings.TrimPrefix(getFuncName(f), "testRequestWithBody")
-		return fmt.Sprintf("%s/%s", prefix, name)
-	}
-
-	type testFunc func(t *testing.T, verb, path string)
-	testFuncs := []testFunc{
-		testRequestWithBodyBinaryBody,
-		testRequestWithBodyBodyTooBig,
-		testRequestWithBodyEmptyBody,
-		testRequestWithBodyExpect100Continue,
-		testRequestWithBodyFormEncodedBody,
-		testRequestWithBodyFormEncodedBodyNoContentType,
-		testRequestWithBodyHTML,
-		testRequestWithBodyInvalidFormEncodedBody,
-		testRequestWithBodyInvalidJSON,
-		testRequestWithBodyInvalidMultiPartBody,
-		testRequestWithBodyJSON,
-		testRequestWithBodyMultiPartBody,
-		testRequestWithBodyMultiPartBodyFiles,
-		testRequestWithBodyQueryParams,
-		testRequestWithBodyQueryParamsAndBody,
-		testRequestWithBodyTransferEncoding,
-	}
-	for _, testFunc := range testFuncs {
-		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
-			t.Parallel()
-			testFunc(t, verb, path)
-		})
-	}
+	testRequestWithBodyBinaryBody(t, verb, path)
+	testRequestWithBodyBodyTooBig(t, verb, path)
+	testRequestWithBodyEmptyBody(t, verb, path)
+	testRequestWithBodyExpect100Continue(t, verb, path)
+	testRequestWithBodyFormEncodedBody(t, verb, path)
+	testRequestWithBodyFormEncodedBodyNoContentType(t, verb, path)
+	testRequestWithBodyHTML(t, verb, path)
+	testRequestWithBodyInvalidFormEncodedBody(t, verb, path)
+	testRequestWithBodyInvalidJSON(t, verb, path)
+	testRequestWithBodyInvalidMultiPartBody(t, verb, path)
+	testRequestWithBodyJSON(t, verb, path)
+	testRequestWithBodyMultiPartBody(t, verb, path)
+	testRequestWithBodyMultiPartBodyFiles(t, verb, path)
+	testRequestWithBodyQueryParams(t, verb, path)
+	testRequestWithBodyQueryParamsAndBody(t, verb, path)
+	testRequestWithBodyTransferEncoding(t, verb, path)
 }
 
 func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
-	tests := []struct {
-		contentType string
-		requestBody string
-	}{
-		{"application/octet-stream", "encodeMe"},
-		{"image/png", "encodeMe-png"},
-		{"image/webp", "encodeMe-webp"},
-		{"image/jpeg", "encodeMe-jpeg"},
-		{"unknown", "encodeMe-unknown"},
-	}
-	for _, test := range tests {
-		t.Run("content type/"+test.contentType, func(t *testing.T) {
-			t.Parallel()
+	t.Run(verb+"/BinaryBody", func(t *testing.T) {
+		tests := []struct {
+			contentType string
+			requestBody string
+		}{
+			{"application/octet-stream", "encodeMe"},
+			{"image/png", "encodeMe-png"},
+			{"image/webp", "encodeMe-webp"},
+			{"image/jpeg", "encodeMe-jpeg"},
+			{"unknown", "encodeMe-unknown"},
+		}
+		for _, test := range tests {
+			t.Run("content type/"+test.contentType, func(t *testing.T) {
+				t.Parallel()
 
-			req := newTestRequestWithBody(t, verb, path, bytes.NewReader([]byte(test.requestBody)))
-			req.Header.Set("Content-Type", test.contentType)
+				req := newTestRequestWithBody(t, verb, path, bytes.NewReader([]byte(test.requestBody)))
+				req.Header.Set("Content-Type", test.contentType)
 
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
+				resp := must.DoReq(t, client, req)
+				defer consumeAndCloseBody(resp)
 
-			result := mustParseResponse[bodyResponse](t, resp)
-			assert.Equal(t, result.Method, verb, "method mismatch")
-			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-			assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-			assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
-			assert.DeepEqual(t, result.JSON, nil, "expected nil json")
+				result := mustParseResponse[bodyResponse](t, resp)
+				assert.Equal(t, result.Method, verb, "method mismatch")
+				assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+				assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+				assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+				assert.DeepEqual(t, result.JSON, nil, "expected nil json")
 
-			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
-			assert.Equal(t, result.Data, expected, "expected binary encoded response data")
-		})
-	}
+				expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
+				assert.Equal(t, result.Data, expected, "expected binary encoded response data")
+			})
+		}
+	})
 }
 
 func testRequestWithBodyEmptyBody(t *testing.T, verb string, path string) {
-	tests := []struct {
-		contentType string
-	}{
-		{""},
-		{"application/json; charset=utf-8"},
-		{"application/x-www-form-urlencoded"},
-		{"multipart/form-data; foo"},
-	}
-	for _, test := range tests {
-		t.Run("content type/"+test.contentType, func(t *testing.T) {
-			t.Parallel()
+	t.Run(verb+"/EmptyBody", func(t *testing.T) {
+		tests := []struct {
+			contentType string
+		}{
+			{""},
+			{"application/json; charset=utf-8"},
+			{"application/x-www-form-urlencoded"},
+			{"multipart/form-data; foo"},
+		}
+		for _, test := range tests {
+			t.Run("content type/"+test.contentType, func(t *testing.T) {
+				t.Parallel()
 
-			req := newTestRequest(t, verb, path)
-			req.Header.Set("Content-Type", test.contentType)
+				req := newTestRequest(t, verb, path)
+				req.Header.Set("Content-Type", test.contentType)
 
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
+				resp := must.DoReq(t, client, req)
+				defer consumeAndCloseBody(resp)
 
-			result := mustParseResponse[bodyResponse](t, resp)
-			assert.Equal(t, result.Data, "", "expected empty response data")
-			assert.Equal(t, result.Method, verb, "method mismatch")
-			assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-			assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-			assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
-			assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
-		})
-	}
+				result := mustParseResponse[bodyResponse](t, resp)
+				assert.Equal(t, result.Data, "", "expected empty response data")
+				assert.Equal(t, result.Method, verb, "method mismatch")
+				assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+				assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+				assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+				assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+			})
+		}
+	})
 }
 
 func testRequestWithBodyFormEncodedBody(t *testing.T, verb, path string) {
-	params := url.Values{}
-	params.Set("foo", "foo")
-	params.Add("bar", "bar1")
-	params.Add("bar", "bar2")
+	t.Run(verb+"/FormEncodedBody", func(t *testing.T) {
+		t.Parallel()
 
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		params := url.Values{}
+		params.Set("foo", "foo")
+		params.Add("bar", "bar1")
+		params.Add("bar", "bar2")
 
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	assert.DeepEqual(t, result.Form, params, "form data mismatch")
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-	assert.DeepEqual(t, result.JSON, nil, "expected nil json")
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
+
+		assert.DeepEqual(t, result.Form, params, "form data mismatch")
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+		assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+		assert.DeepEqual(t, result.JSON, nil, "expected nil json")
+	})
 }
 
 func testRequestWithBodyHTML(t *testing.T, verb, path string) {
-	data := "<html><body><h1>hello world</h1></body></html>"
+	t.Run(verb+"/HTML", func(t *testing.T) {
+		t.Parallel()
 
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader(data))
-	req.Header.Set("Content-Type", htmlContentType)
+		data := "<html><body><h1>hello world</h1></body></html>"
 
-	resp := must.DoReq(t, client, req)
-	assert.StatusCode(t, resp, http.StatusOK)
-	assert.ContentType(t, resp, jsonContentType)
-	assert.BodyContains(t, resp, data)
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader(data))
+		req.Header.Set("Content-Type", htmlContentType)
+
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, jsonContentType)
+		assert.BodyContains(t, resp, data)
+	})
 }
 
 func testRequestWithBodyExpect100Continue(t *testing.T, verb, path string) {
-	// The stdlib http client automagically handles 100 Continue responses
-	// by continuing the request until a "final" 200 OK response is
-	// received, which prevents us from confirming that a 100 Continue
-	// response is sent when using the http client directly.
-	//
-	// So, here we instead manally write the request to the wire in two
-	// steps, confirming that we receive a 100 Continue response before
-	// sending the body and getting the normal expected response.
+	t.Run(verb+"/Expect100Continue", func(t *testing.T) {
+		// The stdlib http client automagically handles 100 Continue responses
+		// by continuing the request until a "final" 200 OK response is
+		// received, which prevents us from confirming that a 100 Continue
+		// response is sent when using the http client directly.
+		//
+		// So, here we instead manally write the request to the wire in two
+		// steps, confirming that we receive a 100 Continue response before
+		// sending the body and getting the normal expected response.
 
-	t.Run("non-zero content-length okay", func(t *testing.T) {
+		t.Run("non-zero content-length okay", func(t *testing.T) {
 		t.Parallel()
 
 		conn, err := net.Dial("tcp", srv.Listener.Addr().String())
@@ -798,229 +784,272 @@ func testRequestWithBodyExpect100Continue(t *testing.T, verb, path string) {
 		resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 		assert.NilError(t, err)
 
-		// Note: the server should NOT send a 100 Continue response here,
-		// because we send a request without a Content-Length header or with a
-		// Content-Length: 0 header.
-		assert.StatusCode(t, resp, http.StatusOK)
+			// Note: the server should NOT send a 100 Continue response here,
+			// because we send a request without a Content-Length header or with a
+			// Content-Length: 0 header.
+			assert.StatusCode(t, resp, http.StatusOK)
 
-		got := must.Unmarshal[bodyResponse](t, resp.Body)
-		assert.Equal(t, got.Data, "", "incorrect body")
+			got := must.Unmarshal[bodyResponse](t, resp.Body)
+			assert.Equal(t, got.Data, "", "incorrect body")
+		})
 	})
 }
 
 func testRequestWithBodyFormEncodedBodyNoContentType(t *testing.T, verb, path string) {
-	params := url.Values{}
-	params.Set("foo", "foo")
-	params.Add("bar", "bar1")
-	params.Add("bar", "bar2")
+	t.Run(verb+"/FormEncodedBodyNoContentType", func(t *testing.T) {
+		t.Parallel()
 
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		params := url.Values{}
+		params.Set("foo", "foo")
+		params.Add("bar", "bar1")
+		params.Add("bar", "bar2")
 
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-	assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
-	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader(params.Encode()))
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
 
-	// Because we did not set an content type, httpbin will return the base64 encoded data.
-	expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
-	assert.Equal(t, result.Data, expectedBody, "response data mismatch")
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+		assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+		assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+		assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+
+		// Because we did not set an content type, httpbin will return the base64 encoded data.
+		expectedBody := "data:application/octet-stream;base64," + base64.StdEncoding.EncodeToString([]byte(params.Encode()))
+		assert.Equal(t, result.Data, expectedBody, "response data mismatch")
+	})
 }
 
 func testRequestWithBodyMultiPartBody(t *testing.T, verb, path string) {
-	params := url.Values{
-		"foo": {"foo"},
-		"bar": {"bar1", "bar2"},
-	}
+	t.Run(verb+"/MultiPartBody", func(t *testing.T) {
+		t.Parallel()
 
-	// Prepare a form that you will submit to that URL.
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
-
-	for k, vs := range params {
-		for _, v := range vs {
-			fw, err := mw.CreateFormField(k)
-			assert.NilError(t, err)
-			_, err = fw.Write([]byte(v))
-			assert.NilError(t, err)
+		params := url.Values{
+			"foo": {"foo"},
+			"bar": {"bar1", "bar2"},
 		}
-	}
-	mw.Close()
 
-	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
-	req.Header.Set("Content-Type", mw.FormDataContentType())
+		// Prepare a form that you will submit to that URL.
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
 
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		for k, vs := range params {
+			for _, v := range vs {
+				fw, err := mw.CreateFormField(k)
+				assert.NilError(t, err)
+				_, err = fw.Write([]byte(v))
+				assert.NilError(t, err)
+			}
+		}
+		mw.Close()
 
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-	assert.DeepEqual(t, result.Form, params, "form values mismatch")
-	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+		req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
+
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+		assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+		assert.DeepEqual(t, result.Form, params, "form values mismatch")
+		assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+	})
 }
 
 func testRequestWithBodyMultiPartBodyFiles(t *testing.T, verb, path string) {
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
+	t.Run(verb+"/MultiPartBodyFiles", func(t *testing.T) {
+		t.Parallel()
 
-	// Add a file to the multipart request
-	part, _ := mw.CreateFormFile("fieldname", "filename")
-	part.Write([]byte("hello world"))
-	mw.Close()
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
 
-	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
-	req.Header.Set("Content-Type", mw.FormDataContentType())
+		// Add a file to the multipart request
+		part, _ := mw.CreateFormFile("fieldname", "filename")
+		part.Write([]byte("hello world"))
+		mw.Close()
 
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body.Bytes()))
+		req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-	assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
-	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
 
-	// verify that the file we added is present in the `files` attribute of the
-	// response, with the field as key and content as value
-	wantFiles := url.Values{
-		"fieldname": {"hello world"},
-	}
-	assert.DeepEqual(t, result.Files, wantFiles, "files mismatch")
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+		assert.DeepEqual(t, result.Form, nilValues, "expected empty form")
+		assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+
+		// verify that the file we added is present in the `files` attribute of the
+		// response, with the field as key and content as value
+		wantFiles := url.Values{
+			"fieldname": {"hello world"},
+		}
+		assert.DeepEqual(t, result.Files, wantFiles, "files mismatch")
+	})
 }
 
 func testRequestWithBodyInvalidFormEncodedBody(t *testing.T, verb, path string) {
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp := must.DoReq(t, client, req)
-	assert.StatusCode(t, resp, http.StatusBadRequest)
+	t.Run(verb+"/InvalidFormEncodedBody", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
 }
 
 func testRequestWithBodyInvalidMultiPartBody(t *testing.T, verb, path string) {
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
-	req.Header.Set("Content-Type", "multipart/form-data; etc")
-	resp := must.DoReq(t, client, req)
-	assert.StatusCode(t, resp, http.StatusBadRequest)
+	t.Run(verb+"/InvalidMultiPartBody", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader("%ZZ"))
+		req.Header.Set("Content-Type", "multipart/form-data; etc")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
 }
 
 func testRequestWithBodyJSON(t *testing.T, verb, path string) {
-	type testInput struct {
-		Foo  string
-		Bar  int
-		Baz  []float64
-		Quux map[int]string
-	}
-	input := testInput{
-		Foo:  "foo",
-		Bar:  123,
-		Baz:  []float64{1.0, 1.1, 1.2},
-		Quux: map[int]string{1: "one", 2: "two", 3: "three"},
-	}
-	inputBody, _ := json.Marshal(input)
+	t.Run(verb+"/JSON", func(t *testing.T) {
+		t.Parallel()
 
-	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(inputBody))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		type testInput struct {
+			Foo  string
+			Bar  int
+			Baz  []float64
+			Quux map[int]string
+		}
+		input := testInput{
+			Foo:  "foo",
+			Bar:  123,
+			Baz:  []float64{1.0, 1.1, 1.2},
+			Quux: map[int]string{1: "one", 2: "two", 3: "three"},
+		}
+		inputBody, _ := json.Marshal(input)
 
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		req := newTestRequestWithBody(t, verb, path, bytes.NewReader(inputBody))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	assert.Equal(t, result.Data, string(inputBody), "response data mismatch")
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
-	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-	assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
 
-	// Need to re-marshall just the JSON field from the response in order to
-	// re-unmarshall it into our expected type
-	roundTrippedInputBytes, err := json.Marshal(result.JSON)
-	assert.NilError(t, err)
+		assert.Equal(t, result.Data, string(inputBody), "response data mismatch")
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Args, nilValues, "expected empty args")
+		assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+		assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
 
-	roundTrippedInput := must.Unmarshal[testInput](t, bytes.NewReader(roundTrippedInputBytes))
-	assert.DeepEqual(t, roundTrippedInput, input, "round-tripped JSON mismatch")
+		// Need to re-marshall just the JSON field from the response in order to
+		// re-unmarshall it into our expected type
+		roundTrippedInputBytes, err := json.Marshal(result.JSON)
+		assert.NilError(t, err)
+
+		roundTrippedInput := must.Unmarshal[testInput](t, bytes.NewReader(roundTrippedInputBytes))
+		assert.DeepEqual(t, roundTrippedInput, input, "round-tripped JSON mismatch")
+	})
 }
 
 func testRequestWithBodyInvalidJSON(t *testing.T, verb, path string) {
-	req := newTestRequestWithBody(t, verb, path, strings.NewReader("foo"))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp := must.DoReq(t, client, req)
-	assert.StatusCode(t, resp, http.StatusBadRequest)
+	t.Run(verb+"/InvalidJSON", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequestWithBody(t, verb, path, strings.NewReader("foo"))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
 }
 
 func testRequestWithBodyBodyTooBig(t *testing.T, verb, path string) {
-	body := make([]byte, maxBodySize+1)
-	req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body))
-	resp := must.DoReq(t, client, req)
-	assert.StatusCode(t, resp, http.StatusBadRequest)
+	t.Run(verb+"/BodyTooBig", func(t *testing.T) {
+		t.Parallel()
+
+		body := make([]byte, maxBodySize+1)
+		req := newTestRequestWithBody(t, verb, path, bytes.NewReader(body))
+		resp := must.DoReq(t, client, req)
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
 }
 
 func testRequestWithBodyQueryParams(t *testing.T, verb, path string) {
-	params := url.Values{}
-	params.Set("foo", "foo")
-	params.Add("bar", "bar1")
-	params.Add("bar", "bar2")
+	t.Run(verb+"/QueryParams", func(t *testing.T) {
+		t.Parallel()
 
-	req := newTestRequest(t, verb, fmt.Sprintf("%s?%s", path, params.Encode()))
-	resp := must.DoReq(t, client, req)
-	result := mustParseResponse[bodyResponse](t, resp)
+		params := url.Values{}
+		params.Set("foo", "foo")
+		params.Add("bar", "bar1")
+		params.Add("bar", "bar2")
 
-	assert.DeepEqual(t, result.Args, params, "args mismatch")
+		req := newTestRequest(t, verb, fmt.Sprintf("%s?%s", path, params.Encode()))
+		resp := must.DoReq(t, client, req)
+		result := mustParseResponse[bodyResponse](t, resp)
 
-	// extra validation
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
-	assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
-	assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+		assert.DeepEqual(t, result.Args, params, "args mismatch")
+
+		// extra validation
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.DeepEqual(t, result.Files, nilValues, "expected empty files")
+		assert.DeepEqual(t, result.Form, nilValues, "form values mismatch")
+		assert.DeepEqual(t, result.JSON, nil, "expected nil JSON")
+	})
 }
 
 func testRequestWithBodyQueryParamsAndBody(t *testing.T, verb, path string) {
-	args := url.Values{}
-	args.Set("query1", "foo")
-	args.Add("query2", "bar1")
-	args.Add("query2", "bar2")
+	t.Run(verb+"/QueryParamsAndBody", func(t *testing.T) {
+		t.Parallel()
 
-	form := url.Values{}
-	form.Set("form1", "foo")
-	form.Add("form2", "bar1")
-	form.Add("form2", "bar2")
+		args := url.Values{}
+		args.Set("query1", "foo")
+		args.Add("query2", "bar1")
+		args.Add("query2", "bar2")
 
-	url := fmt.Sprintf("%s?%s", path, args.Encode())
-	req := newTestRequestWithBody(t, verb, url, strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp := must.DoReq(t, client, req)
+		form := url.Values{}
+		form.Set("form1", "foo")
+		form.Add("form2", "bar1")
+		form.Add("form2", "bar2")
 
-	result := mustParseResponse[bodyResponse](t, resp)
-	assert.Equal(t, result.Method, verb, "method mismatch")
-	assert.Equal(t, result.Args.Encode(), args.Encode(), "args mismatch")
-	assert.Equal(t, result.Form.Encode(), form.Encode(), "form mismatch")
+		url := fmt.Sprintf("%s?%s", path, args.Encode())
+		req := newTestRequestWithBody(t, verb, url, strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp := must.DoReq(t, client, req)
+
+		result := mustParseResponse[bodyResponse](t, resp)
+		assert.Equal(t, result.Method, verb, "method mismatch")
+		assert.Equal(t, result.Args.Encode(), args.Encode(), "args mismatch")
+		assert.Equal(t, result.Form.Encode(), form.Encode(), "form mismatch")
+	})
 }
 
 func testRequestWithBodyTransferEncoding(t *testing.T, verb, path string) {
-	testCases := []struct {
-		given string
-		want  string
-	}{
-		{"", ""},
-		{"identity", ""},
-		{"chunked", "chunked"},
-	}
-	for _, tc := range testCases {
-		t.Run("transfer-encoding/"+tc.given, func(t *testing.T) {
-			t.Parallel()
+	t.Run(verb+"/TransferEncoding", func(t *testing.T) {
+		testCases := []struct {
+			given string
+			want  string
+		}{
+			{"", ""},
+			{"identity", ""},
+			{"chunked", "chunked"},
+		}
+		for _, tc := range testCases {
+			t.Run("transfer-encoding/"+tc.given, func(t *testing.T) {
+				t.Parallel()
 
-			req := newTestRequestWithBody(t, verb, path, bytes.NewReader([]byte("{}")))
-			if tc.given != "" {
-				req.TransferEncoding = []string{tc.given}
-			}
+				req := newTestRequestWithBody(t, verb, path, bytes.NewReader([]byte("{}")))
+				if tc.given != "" {
+					req.TransferEncoding = []string{tc.given}
+				}
 
-			resp := must.DoReq(t, client, req)
-			defer consumeAndCloseBody(resp)
+				resp := must.DoReq(t, client, req)
+				defer consumeAndCloseBody(resp)
 
-			result := mustParseResponse[bodyResponse](t, resp)
-			got := result.Headers.Get("Transfer-Encoding")
-			assert.Equal(t, got, tc.want, "Transfer-Encoding header mismatch")
-		})
-	}
+				result := mustParseResponse[bodyResponse](t, resp)
+				got := result.Headers.Get("Transfer-Encoding")
+				assert.Equal(t, got, tc.want, "Transfer-Encoding header mismatch")
+			})
+		}
+	})
 }
 
 // TODO: implement and test more complex /status endpoint
