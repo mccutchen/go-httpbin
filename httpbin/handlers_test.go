@@ -289,14 +289,14 @@ func TestHead(t *testing.T) {
 }
 
 func TestCORS(t *testing.T) {
-	t.Run("CORS/no_request_origin", func(t *testing.T) {
+	t.Run("no_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
 		resp := must.DoReq(t, client, req)
 		assert.Header(t, resp, "Access-Control-Allow-Origin", "*")
 	})
 
-	t.Run("CORS/with_request_origin", func(t *testing.T) {
+	t.Run("with_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
 		req.Header.Set("Origin", "origin")
@@ -304,7 +304,7 @@ func TestCORS(t *testing.T) {
 		assert.Header(t, resp, "Access-Control-Allow-Origin", "origin")
 	})
 
-	t.Run("CORS/options_request", func(t *testing.T) {
+	t.Run("options_request", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "OPTIONS", "/get")
 		resp := must.DoReq(t, client, req)
@@ -325,7 +325,7 @@ func TestCORS(t *testing.T) {
 		}
 	})
 
-	t.Run("CORS/allow_headers", func(t *testing.T) {
+	t.Run("allow_headers", func(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "OPTIONS", "/get")
