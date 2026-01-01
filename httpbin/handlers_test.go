@@ -502,22 +502,54 @@ func TestAnything(t *testing.T) {
 }
 
 func testRequestWithBody(t *testing.T, verb, path string) {
-	testRequestWithBodyBinaryBody(t, verb, path)
-	testRequestWithBodyBodyTooBig(t, verb, path)
-	testRequestWithBodyEmptyBody(t, verb, path)
-	testRequestWithBodyExpect100Continue(t, verb, path)
-	testRequestWithBodyFormEncodedBody(t, verb, path)
-	testRequestWithBodyFormEncodedBodyNoContentType(t, verb, path)
-	testRequestWithBodyHTML(t, verb, path)
-	testRequestWithBodyInvalidFormEncodedBody(t, verb, path)
-	testRequestWithBodyInvalidJSON(t, verb, path)
-	testRequestWithBodyInvalidMultiPartBody(t, verb, path)
-	testRequestWithBodyJSON(t, verb, path)
-	testRequestWithBodyMultiPartBody(t, verb, path)
-	testRequestWithBodyMultiPartBodyFiles(t, verb, path)
-	testRequestWithBodyQueryParams(t, verb, path)
-	testRequestWithBodyQueryParamsAndBody(t, verb, path)
-	testRequestWithBodyTransferEncoding(t, verb, path)
+	t.Run("BinaryBody", func(t *testing.T) {
+		testRequestWithBodyBinaryBody(t, verb, path)
+	})
+	t.Run("BodyTooBig", func(t *testing.T) {
+		testRequestWithBodyBodyTooBig(t, verb, path)
+	})
+	t.Run("EmptyBody", func(t *testing.T) {
+		testRequestWithBodyEmptyBody(t, verb, path)
+	})
+	t.Run("Expect100Continue", func(t *testing.T) {
+		testRequestWithBodyExpect100Continue(t, verb, path)
+	})
+	t.Run("FormEncodedBody", func(t *testing.T) {
+		testRequestWithBodyFormEncodedBody(t, verb, path)
+	})
+	t.Run("FormEncodedBodyNoContentType", func(t *testing.T) {
+		testRequestWithBodyFormEncodedBodyNoContentType(t, verb, path)
+	})
+	t.Run("HTML", func(t *testing.T) {
+		testRequestWithBodyHTML(t, verb, path)
+	})
+	t.Run("InvalidFormEncodedBody", func(t *testing.T) {
+		testRequestWithBodyInvalidFormEncodedBody(t, verb, path)
+	})
+	t.Run("InvalidJSON", func(t *testing.T) {
+		testRequestWithBodyInvalidJSON(t, verb, path)
+	})
+	t.Run("InvalidMultiPartBody", func(t *testing.T) {
+		testRequestWithBodyInvalidMultiPartBody(t, verb, path)
+	})
+	t.Run("JSON", func(t *testing.T) {
+		testRequestWithBodyJSON(t, verb, path)
+	})
+	t.Run("MultiPartBody", func(t *testing.T) {
+		testRequestWithBodyMultiPartBody(t, verb, path)
+	})
+	t.Run("MultiPartBodyFiles", func(t *testing.T) {
+		testRequestWithBodyMultiPartBodyFiles(t, verb, path)
+	})
+	t.Run("QueryParams", func(t *testing.T) {
+		testRequestWithBodyQueryParams(t, verb, path)
+	})
+	t.Run("QueryParamsAndBody", func(t *testing.T) {
+		testRequestWithBodyQueryParamsAndBody(t, verb, path)
+	})
+	t.Run("TransferEncoding", func(t *testing.T) {
+		testRequestWithBodyTransferEncoding(t, verb, path)
+	})
 }
 
 func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
