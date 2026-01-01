@@ -20,9 +20,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -291,14 +289,14 @@ func TestHead(t *testing.T) {
 }
 
 func TestCORS(t *testing.T) {
-	t.Run("CORS/no_request_origin", func(t *testing.T) {
+	t.Run("no_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
 		resp := must.DoReq(t, client, req)
 		assert.Header(t, resp, "Access-Control-Allow-Origin", "*")
 	})
 
-	t.Run("CORS/with_request_origin", func(t *testing.T) {
+	t.Run("with_request_origin", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "GET", "/get")
 		req.Header.Set("Origin", "origin")
@@ -306,7 +304,7 @@ func TestCORS(t *testing.T) {
 		assert.Header(t, resp, "Access-Control-Allow-Origin", "origin")
 	})
 
-	t.Run("CORS/options_request", func(t *testing.T) {
+	t.Run("options_request", func(t *testing.T) {
 		t.Parallel()
 		req := newTestRequest(t, "OPTIONS", "/get")
 		resp := must.DoReq(t, client, req)
@@ -327,7 +325,7 @@ func TestCORS(t *testing.T) {
 		}
 	})
 
-	t.Run("CORS/allow_headers", func(t *testing.T) {
+	t.Run("allow_headers", func(t *testing.T) {
 		t.Parallel()
 
 		req := newTestRequest(t, "OPTIONS", "/get")
@@ -504,47 +502,54 @@ func TestAnything(t *testing.T) {
 }
 
 func testRequestWithBody(t *testing.T, verb, path string) {
-	// getFuncName uses runtime type reflection to get the name of the given
-	// function.
-	//
-	// Cribbed from https://stackoverflow.com/a/70535822/151221
-	getFuncName := func(f any) string {
-		parts := strings.Split((runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()), ".")
-		return parts[len(parts)-1]
-	}
-
-	// getTestName expects a function named like testRequestWithBody__BodyTooBig
-	// and returns only the trailing BodyTooBig part.
-	getTestName := func(prefix string, f any) string {
-		name := strings.TrimPrefix(getFuncName(f), "testRequestWithBody")
-		return fmt.Sprintf("%s/%s", prefix, name)
-	}
-
-	type testFunc func(t *testing.T, verb, path string)
-	testFuncs := []testFunc{
-		testRequestWithBodyBinaryBody,
-		testRequestWithBodyBodyTooBig,
-		testRequestWithBodyEmptyBody,
-		testRequestWithBodyExpect100Continue,
-		testRequestWithBodyFormEncodedBody,
-		testRequestWithBodyFormEncodedBodyNoContentType,
-		testRequestWithBodyHTML,
-		testRequestWithBodyInvalidFormEncodedBody,
-		testRequestWithBodyInvalidJSON,
-		testRequestWithBodyInvalidMultiPartBody,
-		testRequestWithBodyJSON,
-		testRequestWithBodyMultiPartBody,
-		testRequestWithBodyMultiPartBodyFiles,
-		testRequestWithBodyQueryParams,
-		testRequestWithBodyQueryParamsAndBody,
-		testRequestWithBodyTransferEncoding,
-	}
-	for _, testFunc := range testFuncs {
-		t.Run(getTestName(verb, testFunc), func(t *testing.T) {
-			t.Parallel()
-			testFunc(t, verb, path)
-		})
-	}
+	t.Run("BinaryBody", func(t *testing.T) {
+		testRequestWithBodyBinaryBody(t, verb, path)
+	})
+	t.Run("BodyTooBig", func(t *testing.T) {
+		testRequestWithBodyBodyTooBig(t, verb, path)
+	})
+	t.Run("EmptyBody", func(t *testing.T) {
+		testRequestWithBodyEmptyBody(t, verb, path)
+	})
+	t.Run("Expect100Continue", func(t *testing.T) {
+		testRequestWithBodyExpect100Continue(t, verb, path)
+	})
+	t.Run("FormEncodedBody", func(t *testing.T) {
+		testRequestWithBodyFormEncodedBody(t, verb, path)
+	})
+	t.Run("FormEncodedBodyNoContentType", func(t *testing.T) {
+		testRequestWithBodyFormEncodedBodyNoContentType(t, verb, path)
+	})
+	t.Run("HTML", func(t *testing.T) {
+		testRequestWithBodyHTML(t, verb, path)
+	})
+	t.Run("InvalidFormEncodedBody", func(t *testing.T) {
+		testRequestWithBodyInvalidFormEncodedBody(t, verb, path)
+	})
+	t.Run("InvalidJSON", func(t *testing.T) {
+		testRequestWithBodyInvalidJSON(t, verb, path)
+	})
+	t.Run("InvalidMultiPartBody", func(t *testing.T) {
+		testRequestWithBodyInvalidMultiPartBody(t, verb, path)
+	})
+	t.Run("JSON", func(t *testing.T) {
+		testRequestWithBodyJSON(t, verb, path)
+	})
+	t.Run("MultiPartBody", func(t *testing.T) {
+		testRequestWithBodyMultiPartBody(t, verb, path)
+	})
+	t.Run("MultiPartBodyFiles", func(t *testing.T) {
+		testRequestWithBodyMultiPartBodyFiles(t, verb, path)
+	})
+	t.Run("QueryParams", func(t *testing.T) {
+		testRequestWithBodyQueryParams(t, verb, path)
+	})
+	t.Run("QueryParamsAndBody", func(t *testing.T) {
+		testRequestWithBodyQueryParamsAndBody(t, verb, path)
+	})
+	t.Run("TransferEncoding", func(t *testing.T) {
+		testRequestWithBodyTransferEncoding(t, verb, path)
+	})
 }
 
 func testRequestWithBodyBinaryBody(t *testing.T, verb string, path string) {
