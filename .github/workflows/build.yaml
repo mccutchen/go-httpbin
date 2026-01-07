@@ -1,0 +1,170 @@
+---
+name: build
+
+on:
+  push:
+    branches: [main] # pushes TO main
+  pull_request:
+    branches: [main] # pull requests AGAINST main
+  release:
+    types: [published] # for release build
+
+# cancel CI runs when a new commit is pushed to any branch except main
+concurrency:
+  group: 'build-${{ github.ref }}'
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read # for uses: actions/checkout
+      id-token: write # for actions/attest-build-provenance
+      attestations: write # for actions/attest-build-provenance
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Static binaries are built with the `stable` version
+        # If you want to add a target, add it below.
+        include:
+        - {goos: 'darwin', goarch: 'amd64'}
+        - {goos: 'darwin', goarch: 'arm64'}
+        - {goos: 'linux', goarch: 'amd64'}
+        - {goos: 'linux', goarch: 'arm', goarm: '6'}
+        - {goos: 'linux', goarch: 'arm', goarm: '7'}
+        - {goos: 'linux', goarch: 'arm64'}
+        - {goos: 'linux', goarch: 'riscv64'}
+        - {goos: 'windows', goarch: 'amd64'}
+        - {goos: 'windows', goarch: 'arm64',}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        # Security measures
+        # See also: https://github.com/actions/checkout/issues/485
+        persist-credentials: false
+
+    - name: Setup golang
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        # Disabled in multi-platform builds due to complex caching strategies
+        cache: false
+
+    - run: make release
+      env:
+        DIST_PATH: dist
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        GOARM: ${{ matrix.goarch == 'arm' && matrix.goarm || '' }}
+
+    - name: Generate artifact attestation
+      uses: actions/attest-build-provenance@v2
+      # Since the necessary permissions cannot be set in the pull_request event, it is limited to push events.
+      if: ${{ github.event_name != 'pull_request' }}
+      with:
+        subject-path: dist/go-httpbin-*
+
+    - name: Check artifacts
+      run: |
+        file dist/go-httpbin-*
+        stat dist/go-httpbin-*
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-httpbin-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarch == 'arm' && format('v{0}', matrix.goarm) || '' }}
+        path: dist/
+
+  checksum:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      id-token: write # for uses: aactions/attest-build-provenance
+      attestations: write # for uses: aactions/attest-build-provenance
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
+        pattern: go-httpbin-*
+        merge-multiple: true
+
+    - name: Check artifacts
+      run: tree --charset ASCII dist/
+
+    - name: Verify artifacts
+      # Since the necessary permissions cannot be set in the pull_request event, it is limited to push events.
+      if: ${{ !startsWith(github.event_name, 'pull') }}
+      run: |
+        cd dist
+        for f in go-httpbin-*; do
+          gh attestation verify "$f" -R "${GITHUB_REPOSITORY}";
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate sha256 checksums
+      run: |
+        cd dist
+        for f in $(find . -type f -name 'go-httpbin-*' -printf '%f\n' | sort); do
+          sha256sum "$f" | tee -a SHA256SUMS;
+        done
+
+    - name: Verify sha256 checksums
+      run: cd dist && sha256sum -c SHA256SUMS
+
+    - name: Generate artifact attestation
+      # Since the necessary permissions cannot be set in the pull_request event, it is limited to push events.
+      if: ${{ !startsWith(github.event_name, 'pull') }}
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: dist/SHA256SUMS
+
+    - name: Upload sha256 checksum
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksum-sha256sums
+        path: dist/SHA256SUMS
+
+  publish:
+    needs: [build, checksum]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write # for gh release upload
+      id-token: write # for actions/attest-build-provenance
+      attestations: write # for actions/attest-build-provenance
+
+    steps:
+    - name: Download binary artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
+        pattern: go-httpbin-*
+        merge-multiple: true
+
+    - name: Download checksum artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
+        pattern: checksum-*
+        merge-multiple: true
+
+    - name: Check artifacts
+      run: tree --charset ASCII dist/
+
+    - name: Publish artifacts
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |-
+        gh release upload "$(echo "${GITHUB_REF}" | sed -E 's!refs/tags/!!')" dist/* -R "${GITHUB_REPOSITORY}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
