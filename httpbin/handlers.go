@@ -882,19 +882,19 @@ func (h *HTTPBin) ETag(w http.ResponseWriter, r *http.Request) {
 
 // Bytes returns N random bytes generated with an optional seed
 func (h *HTTPBin) Bytes(w http.ResponseWriter, r *http.Request) {
-	handleBytes(w, r, false)
+	h.handleBytes(w, r, false)
 }
 
 // StreamBytes streams N random bytes generated with an optional seed in chunks
 // of a given size.
 func (h *HTTPBin) StreamBytes(w http.ResponseWriter, r *http.Request) {
-	handleBytes(w, r, true)
+	h.handleBytes(w, r, true)
 }
 
 // handleBytes consolidates the logic for validating input params of the Bytes
 // and StreamBytes endpoints and knows how to write the response in chunks if
 // streaming is true.
-func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
+func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 	numBytes, err := strconv.Atoi(r.PathValue("numBytes"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %w", err))
@@ -921,8 +921,9 @@ func handleBytes(w http.ResponseWriter, r *http.Request, streaming bool) {
 		return
 	}
 
-	if numBytes > 100*1024 {
-		numBytes = 100 * 1024
+	if numBytes > int(h.MaxBodySize) {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %d not in range [1, %d]", numBytes, h.MaxBodySize))
+		return
 	}
 
 	var chunkSize int

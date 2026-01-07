@@ -2750,7 +2750,6 @@ func TestBytes(t *testing.T) {
 	}{
 		{"/bytes/0", 0},
 		{"/bytes/1", 1},
-		{"/bytes/99999999", 100 * 1024},
 
 		// negative seed allowed
 		{"/bytes/16?seed=-12345", 16},
@@ -2774,6 +2773,7 @@ func TestBytes(t *testing.T) {
 		expectedStatus int
 	}{
 		{"/bytes/-1", http.StatusBadRequest},
+		{"/bytes/99999999", http.StatusBadRequest}, // exceeds MaxBodySize
 
 		{"/bytes", http.StatusNotFound},
 		{"/bytes/16/foo", http.StatusNotFound},
