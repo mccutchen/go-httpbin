@@ -62,6 +62,9 @@ type cookiesResponse map[string]string
 type authResponse struct {
 	Authenticated bool   `json:"authenticated"`
 	User          string `json:"user"`
+
+	// kept for backwards-compatibility with go-httpbin versions <= 2.20
+	Authorized bool `json:"authorized"`
 }
 
 // An actual stream response body will be made up of one or more of these

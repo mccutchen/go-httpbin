@@ -1646,6 +1646,7 @@ func TestBasicAuth(t *testing.T) {
 				expectedResult := authResponse{
 					Authenticated: true,
 					User:          "user",
+					Authorized:    true,
 				}
 				assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 			})
@@ -1666,6 +1667,7 @@ func TestBasicAuth(t *testing.T) {
 				expectedResult := authResponse{
 					Authenticated: false,
 					User:          "",
+					Authorized:    false,
 				}
 				assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 			})
@@ -1688,6 +1690,7 @@ func TestBasicAuth(t *testing.T) {
 				expectedResult := authResponse{
 					Authenticated: false,
 					User:          "bad",
+					Authorized:    false,
 				}
 				assert.DeepEqual(t, result, expectedResult, "expected unauthorized user")
 			})
@@ -1726,6 +1729,7 @@ func TestHiddenBasicAuth(t *testing.T) {
 		expectedResult := authResponse{
 			Authenticated: true,
 			User:          "user",
+			Authorized:    true,
 		}
 		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
@@ -1821,6 +1825,7 @@ func TestDigestAuth(t *testing.T) {
 		expectedResult := authResponse{
 			Authenticated: true,
 			User:          "user",
+			Authorized:    true,
 		}
 		assert.DeepEqual(t, result, expectedResult, "expected authorized user")
 	})
