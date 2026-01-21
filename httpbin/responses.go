@@ -60,8 +60,8 @@ type bodyResponse struct {
 type cookiesResponse map[string]string
 
 type authResponse struct {
-	Authorized bool   `json:"authorized"`
-	User       string `json:"user"`
+	Authenticated bool   `json:"authenticated"`
+	User          string `json:"user"`
 }
 
 // An actual stream response body will be made up of one or more of these
