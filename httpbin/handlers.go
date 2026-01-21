@@ -529,8 +529,8 @@ func (h *HTTPBin) BasicAuth(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(status, w, authResponse{
 		Authenticated: authorized,
-		User:          givenUser,
 		Authorized:    authorized,
+		User:          givenUser,
 	})
 }
 
@@ -550,8 +550,8 @@ func (h *HTTPBin) HiddenBasicAuth(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(http.StatusOK, w, authResponse{
 		Authenticated: authorized,
-		User:          givenUser,
 		Authorized:    authorized,
+		User:          givenUser,
 	})
 }
 
@@ -1112,8 +1112,8 @@ func (h *HTTPBin) DigestAuth(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(http.StatusOK, w, authResponse{
 		Authenticated: true,
-		User:          user,
 		Authorized:    true,
+		User:          user,
 	})
 }
 
