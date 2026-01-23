@@ -57,7 +57,9 @@ type bodyResponse struct {
 	JSON  any        `json:"json"`
 }
 
-type cookiesResponse map[string]string
+type cookiesResponse struct {
+	Cookies map[string]string `json:"cookies"`
+}
 
 type authResponse struct {
 	Authenticated bool   `json:"authenticated"`

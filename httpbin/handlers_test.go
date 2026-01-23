@@ -1534,18 +1534,22 @@ func TestCookies(t *testing.T) {
 				cookies cookiesResponse
 			}{
 				"ok/no cookies": {
-					cookies: cookiesResponse{},
+					cookies: cookiesResponse{Cookies: map[string]string{}},
 				},
 				"ok/one cookie": {
 					cookies: cookiesResponse{
-						"k1": "v1",
+						Cookies: map[string]string{
+							"k1": "v1",
+						},
 					},
 				},
 				"ok/many cookies": {
 					cookies: cookiesResponse{
-						"k1": "v1",
-						"k2": "v2",
-						"k3": "v3",
+						Cookies: map[string]string{
+							"k1": "v1",
+							"k2": "v2",
+							"k3": "v3",
+						},
 					},
 				},
 			}
@@ -1555,7 +1559,7 @@ func TestCookies(t *testing.T) {
 					t.Parallel()
 
 					req := newTestRequest(t, "GET", env.prefix+"/cookies", env)
-					for k, v := range tc.cookies {
+					for k, v := range tc.cookies.Cookies {
 						req.AddCookie(&http.Cookie{
 							Name:  k,
 							Value: v,
@@ -1575,11 +1579,13 @@ func TestCookies(t *testing.T) {
 			t.Parallel()
 
 			cookies := cookiesResponse{
-				"k1": "v1",
-				"k2": "v2",
+				Cookies: map[string]string{
+					"k1": "v1",
+					"k2": "v2",
+				},
 			}
 			params := &url.Values{}
-			for k, v := range cookies {
+			for k, v := range cookies.Cookies {
 				params.Set(k, v)
 			}
 
@@ -1590,7 +1596,7 @@ func TestCookies(t *testing.T) {
 			assert.Header(t, resp, "Location", env.prefix+"/cookies")
 
 			for _, c := range resp.Cookies() {
-				v, ok := cookies[c.Name]
+				v, ok := cookies.Cookies[c.Name]
 				if !ok {
 					t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
 				}
@@ -1602,8 +1608,10 @@ func TestCookies(t *testing.T) {
 			t.Parallel()
 
 			cookies := cookiesResponse{
-				"k1": "v1",
-				"k2": "v2",
+				Cookies: map[string]string{
+					"k1": "v1",
+					"k2": "v2",
+				},
 			}
 
 			toDelete := "k2"
@@ -1611,7 +1619,7 @@ func TestCookies(t *testing.T) {
 			params.Set(toDelete, "")
 
 			req := newTestRequest(t, "GET", env.prefix+"/cookies/delete?"+params.Encode(), env)
-			for k, v := range cookies {
+			for k, v := range cookies.Cookies {
 				req.AddCookie(&http.Cookie{
 					Name:  k,
 					Value: v,

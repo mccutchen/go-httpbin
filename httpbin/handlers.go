@@ -476,9 +476,9 @@ func (h *HTTPBin) RedirectTo(w http.ResponseWriter, r *http.Request) {
 
 // Cookies responds with the cookies in the incoming request
 func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
-	resp := cookiesResponse{}
+	resp := cookiesResponse{Cookies: make(map[string]string)}
 	for _, c := range r.Cookies() {
-		resp[c.Name] = c.Value
+		resp.Cookies[c.Name] = c.Value
 	}
 	writeJSON(http.StatusOK, w, resp)
 }
