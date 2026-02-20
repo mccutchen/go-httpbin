@@ -3722,7 +3722,7 @@ func TestWebSocketEcho(t *testing.T) {
 
 func newTestRequest(t *testing.T, verb, endpoint string, body io.Reader) *http.Request {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), verb, endpoint, body)
+	req, err := http.NewRequest(verb, endpoint, body)
 	assert.NilError(t, err)
 	return req
 }
