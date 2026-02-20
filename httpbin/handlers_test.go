@@ -535,7 +535,7 @@ func testRequestWithBody(t *testing.T, app *appTestInfo, verb, path string) {
 	})
 	t.Run("BodyTooBig", func(t *testing.T) {
 		t.Parallel()
-		testRequestWithBodyBinaryBody(t, app, verb, path)
+		testRequestWithBodyBodyTooBig(t, app, verb, path)
 	})
 	t.Run("EmptyBody", func(t *testing.T) {
 		t.Parallel()
@@ -623,32 +623,6 @@ func testRequestWithBodyBinaryBody(t *testing.T, app *appTestInfo, verb string, 
 
 			expected := "data:" + test.contentType + ";base64," + base64.StdEncoding.EncodeToString([]byte(test.requestBody))
 			assert.Equal(t, result.Data, expected, "expected binary encoded response data")
-		})
-	}
-}
-
-func testRequestWithBodyDiscarded(t *testing.T, app *appTestInfo, verb string, path string) {
-	tests := []struct {
-		contentType string
-		requestBody string
-	}{
-		{"application/octet-stream", "encodeMe"},
-		{"image/png", "encodeMe-png"},
-		{"image/webp", "encodeMe-webp"},
-		{"image/jpeg", "encodeMe-jpeg"},
-		{"unknown", "encodeMe-unknown"},
-	}
-	for _, test := range tests {
-		t.Run("content type/"+test.contentType, func(t *testing.T) {
-			t.Parallel()
-
-			req := newTestRequest(t, verb, app.URL(path), bytes.NewReader([]byte(test.requestBody)))
-			req.Header.Set("Content-Type", test.contentType)
-			resp := mustDoRequest(t, app, req)
-
-			result := mustParseResponse[discardedBodyResponse](t, resp)
-			assert.Equal(t, result.Method, verb, "method mismatch")
-			assert.DeepEqual(t, result.BytesReceived, int64(len(test.requestBody)), "BytesReceived should match requestedBody size")
 		})
 	}
 }
