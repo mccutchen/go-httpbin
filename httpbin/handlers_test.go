@@ -30,20 +30,6 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
 )
 
-// default configuration for HTTPBin instances under test
-var (
-	defaultParams = DefaultParams{
-		DripDelay:    0,
-		DripDuration: 100 * time.Millisecond,
-		DripNumBytes: 10,
-		SSECount:     10,
-		SSEDelay:     0,
-		SSEDuration:  100 * time.Millisecond,
-	}
-	maxBodySize int64         = 1024
-	maxDuration time.Duration = 1 * time.Second
-)
-
 // appTestInfo carries the setup necessary for each unit test below, forming
 // the basis for a mini test "framework" used across the test suite. It
 // comprises
@@ -96,9 +82,16 @@ func setupTestApp(t *testing.T, opts ...OptionFunc) *appTestInfo {
 // can be overridden by the given opts.
 func createApp(opts ...OptionFunc) *HTTPBin {
 	defaults := append([]OptionFunc{},
-		WithDefaultParams(defaultParams),
-		WithMaxBodySize(maxBodySize),
-		WithMaxDuration(maxDuration),
+		WithDefaultParams(DefaultParams{
+			DripDelay:    0,
+			DripDuration: 100 * time.Millisecond,
+			DripNumBytes: 10,
+			SSECount:     10,
+			SSEDelay:     0,
+			SSEDuration:  100 * time.Millisecond,
+		}),
+		WithMaxBodySize(1024),
+		WithMaxDuration(1*time.Second),
 		WithObserver(StdLogObserver(slog.New(slog.NewTextHandler(io.Discard, nil)))),
 	)
 	return New(append(defaults, opts...)...)
@@ -992,7 +985,7 @@ func testRequestWithBodyInvalidJSON(t *testing.T, app *appTestInfo, verb, path s
 }
 
 func testRequestWithBodyBodyTooBig(t *testing.T, app *appTestInfo, verb, path string) {
-	body := make([]byte, maxBodySize+1)
+	body := make([]byte, app.App.MaxBodySize+1)
 	req := newTestRequest(t, verb, app.URL(path), bytes.NewReader(body))
 	resp := mustDoRequest(t, app, req)
 	assert.StatusCode(t, resp, http.StatusBadRequest)
@@ -2078,7 +2071,7 @@ func TestDelay(t *testing.T) {
 		// as are floating point seconds
 		{"/delay/0", 0},
 		{"/delay/0.5", 500 * time.Millisecond},
-		{"/delay/1", maxDuration},
+		{"/delay/1", app.App.MaxDuration},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -2184,7 +2177,7 @@ func TestDrip(t *testing.T) {
 
 		{url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
 		{url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
-		{url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize)}}, 0, int(maxBodySize), http.StatusOK},
+		{url.Values{"numbytes": {fmt.Sprintf("%d", app.App.MaxBodySize)}}, 0, int(app.App.MaxBodySize), http.StatusOK},
 
 		{url.Values{"code": {"404"}}, 0, 10, http.StatusNotFound},
 		{url.Values{"code": {"599"}}, 0, 10, 599},
@@ -2360,7 +2353,7 @@ func TestDrip(t *testing.T) {
 		{url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
 		{url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
 		{url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
-		{url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize+1)}}, http.StatusBadRequest},
+		{url.Values{"numbytes": {fmt.Sprintf("%d", app.App.MaxBodySize+1)}}, http.StatusBadRequest},
 
 		{url.Values{"code": {"foo"}}, http.StatusBadRequest},
 		{url.Values{"code": {"-1"}}, http.StatusBadRequest},
@@ -2426,7 +2419,7 @@ func TestRange(t *testing.T) {
 	t.Run("ok_no_range", func(t *testing.T) {
 		t.Parallel()
 
-		wantBytes := maxBodySize - 1
+		wantBytes := app.App.MaxBodySize - 1
 		url := fmt.Sprintf("/range/%d", wantBytes)
 		req := newTestRequest(t, "GET", app.URL(url), nil)
 
@@ -3177,7 +3170,7 @@ func TestBase64(t *testing.T) {
 			"decode failed",
 		},
 		{
-			"/base64/decode/" + strings.Repeat("X", int(maxBodySize)+1),
+			"/base64/decode/" + strings.Repeat("X", int(app.App.MaxBodySize)+1),
 			http.StatusBadRequest,
 			"input data exceeds max length",
 		},
@@ -3692,20 +3685,20 @@ func TestWebSocketEcho(t *testing.T) {
 	}{
 		// ok
 		{"max_fragment_size=1&max_message_size=2", http.StatusSwitchingProtocols},
-		{fmt.Sprintf("max_fragment_size=%d&max_message_size=%d", maxBodySize, maxBodySize), http.StatusSwitchingProtocols},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=%d", app.App.MaxBodySize, app.App.MaxBodySize), http.StatusSwitchingProtocols},
 
 		// bad max_framgent_size
 		{"max_fragment_size=-1&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=0&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=3&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=foo&max_message_size=2", http.StatusBadRequest},
-		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", maxBodySize+1), http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", app.App.MaxBodySize+1), http.StatusBadRequest},
 
 		// bad max_message_size
 		{"max_fragment_size=1&max_message_size=0", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=-1", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=bar", http.StatusBadRequest},
-		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", maxBodySize+1), http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", app.App.MaxBodySize+1), http.StatusBadRequest},
 	}
 	for _, tc := range paramTests {
 		t.Run(tc.query, func(t *testing.T) {
