@@ -16,10 +16,10 @@ func TestSlowResponse(t *testing.T) {
 	defer testServer.Close()
 
 	client := http.Client{
-		Timeout: time.Duration(1 * time.Second),
+		Timeout: time.Duration(10 * time.Millisecond),
 	}
 
-	_, err := client.Get(testServer.URL + "/delay/10")
+	_, err := client.Get(testServer.URL + "/delay/500ms")
 	if !os.IsTimeout(err) {
 		t.Fatalf("expected timeout error, got %s", err)
 	}

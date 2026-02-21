@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -301,7 +302,7 @@ func (h *HTTPBin) Status(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	choice := weightedRandomChoice(choices)
+	choice := weightedRandomChoice(choices, rand.Float64)
 	h.doStatus(w, choice)
 }
 
@@ -733,12 +734,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pause := duration
-	if numBytes > 1 {
-		// compensate for lack of pause after final write (i.e. if we're
-		// writing 10 bytes, we will only pause 9 times)
-		pause = duration / time.Duration(numBytes-1)
-	}
+	pause := computePausePerWrite(duration, numBytes)
 
 	// Initial delay before we send any response data
 	if delay > 0 {
@@ -828,6 +824,7 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("ETag", fmt.Sprintf("range%d", numBytes))
 	w.Header().Add("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Type", textContentType)
 
 	if numBytes <= 0 || numBytes > h.MaxBodySize {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %d not in range [1, %d]", numBytes, h.MaxBodySize))
@@ -1252,12 +1249,7 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pause := duration
-	if count > 1 {
-		// compensate for lack of pause after final write (i.e. if we're
-		// writing 10 events, we will only pause 9 times)
-		pause = duration / time.Duration(count-1)
-	}
+	pause := computePausePerWrite(duration, int64(count))
 
 	// Initial delay before we send any response data
 	if delay > 0 {

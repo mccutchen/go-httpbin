@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
@@ -218,48 +220,51 @@ func TestSyntheticByteStream(t *testing.T) {
 
 	t.Run("read over duration", func(t *testing.T) {
 		t.Parallel()
-		s := newSyntheticByteStream(10, 200*time.Millisecond, factory)
+		synctest.Test(t, func(t *testing.T) {
+			duration := 2 * time.Second
+			s := newSyntheticByteStream(10, duration, factory)
 
-		// read first half
-		{
-			p := make([]byte, 5)
-			start := time.Now()
-			count, err := s.Read(p)
-			elapsed := time.Since(start)
+			// read first half
+			{
+				p := make([]byte, 5)
+				start := time.Now()
+				count, err := s.Read(p)
+				elapsed := time.Since(start)
 
-			assert.NilError(t, err)
-			assert.Equal(t, count, 5, "incorrect number of bytes read")
-			assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
-			assert.DurationRange(t, elapsed, 100*time.Millisecond, 175*time.Millisecond)
-		}
+				assert.NilError(t, err)
+				assert.Equal(t, count, 5, "incorrect number of bytes read")
+				assert.DeepEqual(t, p, []byte{0, 1, 2, 3, 4}, "incorrect bytes read")
+				assert.Equal(t, elapsed, duration/2, "incorrect duration")
+			}
 
-		// read second half
-		{
-			p := make([]byte, 5)
-			start := time.Now()
-			count, err := s.Read(p)
-			elapsed := time.Since(start)
+			// read second half
+			{
+				p := make([]byte, 5)
+				start := time.Now()
+				count, err := s.Read(p)
+				elapsed := time.Since(start)
 
-			assert.Error(t, err, io.EOF)
-			assert.Equal(t, count, 5, "incorrect number of bytes read")
-			assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
-			assert.DurationRange(t, elapsed, 100*time.Millisecond, 175*time.Millisecond)
-		}
+				assert.Error(t, err, io.EOF)
+				assert.Equal(t, count, 5, "incorrect number of bytes read")
+				assert.DeepEqual(t, p, []byte{5, 6, 7, 8, 9}, "incorrect bytes read")
+				assert.Equal(t, elapsed, duration/2, "incorrect duration")
+			}
 
-		// can't read any more
-		{
-			p := make([]byte, 5)
-			start := time.Now()
-			count, err := s.Read(p)
-			elapsed := time.Since(start)
+			// can't read any more
+			{
+				p := make([]byte, 5)
+				start := time.Now()
+				count, err := s.Read(p)
+				elapsed := time.Since(start)
 
-			assert.Error(t, err, io.EOF)
-			assert.Equal(t, count, 0, "incorrect number of bytes read")
-			assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
+				assert.Error(t, err, io.EOF)
+				assert.Equal(t, count, 0, "incorrect number of bytes read")
+				assert.DeepEqual(t, p, []byte{0, 0, 0, 0, 0}, "incorrect bytes read")
 
-			// read should fail w/ EOF ~immediately
-			assert.DurationRange(t, elapsed, 0, 25*time.Millisecond)
-		}
+				// read should fail w/ EOF ~immediately
+				assert.Equal(t, elapsed, 0, "incorrect duration")
+			}
+		})
 	})
 }
 
@@ -556,6 +561,13 @@ func TestWeightedRandomChoice(t *testing.T) {
 		"A:1",
 	}
 
+	assertRoughlyEqual := func(t testing.TB, got float64, want float64, epsilon float64) {
+		t.Helper()
+		if got < want-epsilon || got > want+epsilon {
+			t.Fatalf("expected value between %v and %v, got %v", want-epsilon, want+epsilon, got)
+		}
+	}
+
 	for _, tc := range testCases {
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
@@ -567,16 +579,19 @@ func TestWeightedRandomChoice(t *testing.T) {
 			t.Logf("parsed choices:     %v", choices)
 			t.Logf("normalized choices: %v", normalizedChoices)
 
+			// make test results deterministic
+			rng := rand.New(rand.NewSource(55))
+
 			result := make(map[string]int, len(choices))
 			for range 1_000 {
-				choice := weightedRandomChoice(choices)
+				choice := weightedRandomChoice(choices, rng.Float64)
 				result[choice]++
 			}
 
 			for _, choice := range normalizedChoices {
 				count := result[choice.Choice]
 				ratio := float64(count) / float64(iters)
-				assert.RoughlyEqual(t, ratio, choice.Weight, 0.05)
+				assertRoughlyEqual(t, ratio, choice.Weight, 0.05)
 			}
 		})
 	}

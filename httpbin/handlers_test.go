@@ -24,10 +24,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/netpipetestserver"
 )
 
 // appTestInfo carries the setup necessary for each unit test below, forming
@@ -71,6 +73,20 @@ func setupTestApp(t *testing.T, opts ...OptionFunc) *appTestInfo {
 		return http.ErrUseLastResponse
 	}
 
+	return &appTestInfo{
+		App:    app,
+		Srv:    srv,
+		Client: client,
+	}
+}
+
+func setupSynctestApp(t *testing.T, opts ...OptionFunc) *appTestInfo {
+	app := createApp(opts...)
+	srv, client := netpipetestserver.New(t, app)
+	client.Timeout = 5 * time.Second
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 	return &appTestInfo{
 		App:    app,
 		Srv:    srv,
@@ -2054,8 +2070,6 @@ func TestTrailers(t *testing.T) {
 func TestDelay(t *testing.T) {
 	t.Parallel()
 
-	app := setupTestApp(t)
-
 	okTests := []struct {
 		url           string
 		expectedDelay time.Duration
@@ -2067,56 +2081,64 @@ func TestDelay(t *testing.T) {
 		// as are floating point seconds
 		{"/delay/0", 0},
 		{"/delay/0.5", 500 * time.Millisecond},
-		{"/delay/1", app.App.MaxDuration},
+		{"/delay/1", time.Second},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 
-			start := time.Now()
-			req := newTestRequest(t, "GET", app.URL(test.url), nil)
-			resp := mustDoRequest(t, app, req)
-			elapsed := time.Since(start)
+			synctest.Test(t, func(t *testing.T) {
+				app := setupSynctestApp(t)
+				start := time.Now()
+				req := newTestRequest(t, "GET", app.URL(test.url), nil)
+				resp := mustDoRequest(t, app, req)
+				elapsed := time.Since(start)
 
-			_ = mustParseResponse[bodyResponse](t, resp)
+				_ = mustParseResponse[bodyResponse](t, resp)
 
-			if elapsed < test.expectedDelay {
-				t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
-			}
+				if elapsed < test.expectedDelay {
+					t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
+				}
 
-			timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
-			assert.DeepEqual(t, timings, map[string]serverTiming{
-				"initial_delay": {"initial_delay", test.expectedDelay, "initial delay"},
-			}, "incorrect Server-Timing header value")
+				timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
+				assert.DeepEqual(t, timings, map[string]serverTiming{
+					"initial_delay": {"initial_delay", test.expectedDelay, "initial delay"},
+				}, "incorrect Server-Timing header value")
+			})
 		})
 	}
 
 	t.Run("handle cancelation", func(t *testing.T) {
 		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+			defer cancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-		defer cancel()
-
-		req := newTestRequest(t, "GET", app.URL("/delay/1"), nil).WithContext(ctx)
-		_, err := app.Client.Do(req)
-		if !os.IsTimeout(err) {
-			t.Errorf("expected timeout error, got %v", err)
-		}
+			req := newTestRequest(t, "GET", app.URL("/delay/1"), nil).WithContext(ctx)
+			_, err := app.Client.Do(req)
+			if !os.IsTimeout(err) {
+				t.Errorf("expected timeout error, got %v", err)
+			}
+		})
 	})
 
 	t.Run("cancelation causes 499", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-		defer cancel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
 
-		// use httptest.NewRecorder rather than a live httptest.NewServer
-		// because only the former will let us inspect the status code.
-		app := createApp()
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequestWithContext(ctx, "GET", "/delay/1s", nil)
-		app.ServeHTTP(w, req)
-		assert.Equal(t, w.Code, 499, "incorrect status code")
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+			defer cancel()
+
+			// use httptest.NewRecorder rather than a live httptest.NewServer
+			// because only the former will let us inspect the status code.
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequestWithContext(ctx, "GET", "/delay/1s", nil)
+			app.App.ServeHTTP(w, req)
+			assert.Equal(t, w.Code, 499, "incorrect status code")
+		})
 	})
 
 	badTests := []struct {
@@ -2137,6 +2159,7 @@ func TestDelay(t *testing.T) {
 	for _, test := range badTests {
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
+			app := setupTestApp(t)
 			req := newTestRequest(t, "GET", app.URL(test.url), nil)
 			resp := mustDoRequest(t, app, req)
 			assert.StatusCode(t, resp, test.code)
@@ -2147,7 +2170,12 @@ func TestDelay(t *testing.T) {
 func TestDrip(t *testing.T) {
 	t.Parallel()
 
-	app := setupTestApp(t)
+	var (
+		maxBodySize = 1024
+		opts        = []OptionFunc{
+			WithMaxBodySize(int64(maxBodySize)),
+		}
+	)
 
 	okTests := []struct {
 		params   url.Values
@@ -2173,7 +2201,7 @@ func TestDrip(t *testing.T) {
 
 		{url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
 		{url.Values{"numbytes": {"101"}}, 0, 101, http.StatusOK},
-		{url.Values{"numbytes": {fmt.Sprintf("%d", app.App.MaxBodySize)}}, 0, int(app.App.MaxBodySize), http.StatusOK},
+		{url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize)}}, 0, maxBodySize, http.StatusOK},
 
 		{url.Values{"code": {"404"}}, 0, 10, http.StatusNotFound},
 		{url.Values{"code": {"599"}}, 0, 10, 599},
@@ -2185,26 +2213,29 @@ func TestDrip(t *testing.T) {
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				app := setupSynctestApp(t)
 
-			start := time.Now()
-			req := newTestRequest(t, "GET", app.URL("/drip", test.params), nil)
-			resp := mustDoRequest(t, app, req)
-			assert.BodySize(t, resp, test.numbytes) // must read body before measuring elapsed time
-			elapsed := time.Since(start)
+				start := time.Now()
+				req := newTestRequest(t, "GET", app.URL("/drip", test.params), nil)
+				resp := mustDoRequest(t, app, req)
+				assert.BodySize(t, resp, test.numbytes) // must read body before measuring elapsed time
+				elapsed := time.Since(start)
 
-			assert.StatusCode(t, resp, test.code)
-			assert.ContentType(t, resp, textContentType)
-			assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
-			if elapsed < test.duration {
-				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
-			}
+				assert.StatusCode(t, resp, test.code)
+				assert.ContentType(t, resp, textContentType)
+				assert.Header(t, resp, "Content-Length", strconv.Itoa(test.numbytes))
+				if elapsed < test.duration {
+					t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
+				}
 
-			// Note: while the /drip endpoint seems like an ideal use case for
-			// using chunked transfer encoding to stream data to the client, it
-			// is actually intended to simulate a slow connection between
-			// server and client, so it is important to ensure that it writes a
-			// "regular," un-chunked response.
-			assert.DeepEqual(t, resp.TransferEncoding, nil, "unexpected Transfer-Encoding header")
+				// Note: while the /drip endpoint seems like an ideal use case for
+				// using chunked transfer encoding to stream data to the client, it
+				// is actually intended to simulate a slow connection between
+				// server and client, so it is important to ensure that it writes a
+				// "regular," un-chunked response.
+				assert.DeepEqual(t, resp.TransferEncoding, nil, "unexpected Transfer-Encoding header")
+			})
 		})
 	}
 
@@ -2219,6 +2250,7 @@ func TestDrip(t *testing.T) {
 		// indication we need.
 		t.Parallel()
 
+		app := setupTestApp(t)
 		req := newTestRequest(t, "GET", app.URL("/drip?code=100"), nil)
 		reqBytes, err := httputil.DumpRequestOut(req, false)
 		assert.NilError(t, err)
@@ -2238,95 +2270,103 @@ func TestDrip(t *testing.T) {
 
 	t.Run("writes are actually incremmental", func(t *testing.T) {
 		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
 
-		var (
-			duration = 100 * time.Millisecond
-			numBytes = 3
-			endpoint = fmt.Sprintf("/drip?duration=%s&numbytes=%d", duration, numBytes)
+			var (
+				duration = 1 * time.Second
+				numBytes = 3
+				endpoint = fmt.Sprintf("/drip?duration=%s&numbytes=%d", duration, numBytes)
 
-			// Match server logic for calculating the delay between writes
-			wantPauseBetweenWrites = duration / time.Duration(numBytes-1)
-		)
-		req := newTestRequest(t, "GET", app.URL(endpoint), nil)
-		resp := mustDoRequest(t, app, req)
+				// Match server logic for calculating the delay between writes
+				wantPauseBetweenWrites = computePausePerWrite(duration, int64(numBytes))
+			)
+			req := newTestRequest(t, "GET", app.URL(endpoint), nil)
+			resp := mustDoRequest(t, app, req)
 
-		// Here we read from the response one byte at a time, and ensure that
-		// at least the expected delay occurs for each read.
-		//
-		// The request above includes an initial delay equal to the expected
-		// wait between writes so that even the first iteration of this loop
-		// expects to wait the same amount of time for a read.
-		buf := make([]byte, 1024)
-		gotBody := make([]byte, 0, numBytes)
-		for i := 0; ; i++ {
-			start := time.Now()
-			n, err := resp.Body.Read(buf)
-			gotPause := time.Since(start)
+			// Here we read from the response one byte at a time, and ensure that
+			// at least the expected delay occurs for each read.
+			//
+			// The request above includes an initial delay equal to the expected
+			// wait between writes so that even the first iteration of this loop
+			// expects to wait the same amount of time for a read.
+			buf := make([]byte, 1024)
+			gotBody := make([]byte, 0, numBytes)
+			for i := 0; ; i++ {
+				start := time.Now()
+				n, err := resp.Body.Read(buf)
+				gotPause := time.Since(start)
 
-			// We expect to read exactly one byte on each iteration. On the
-			// last iteration, we expct to hit EOF after reading the final
-			// byte, because the server does not pause after the last write.
-			assert.Equal(t, n, 1, "incorrect number of bytes read")
-			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
-			gotBody = append(gotBody, buf[:n]...)
+				// We expect to read exactly one byte on each iteration. On the
+				// last iteration, we expct to hit EOF after reading the final
+				// byte, because the server does not pause after the last write.
+				assert.Equal(t, n, 1, "incorrect number of bytes read")
+				assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
+				gotBody = append(gotBody, buf[:n]...)
 
-			if err == io.EOF {
-				break
+				if err == io.EOF {
+					break
+				}
+
+				assert.NilError(t, err)
+
+				// only ensure that we pause for the expected time between writes
+				// after the first byte.
+				if i > 0 {
+					assert.Equal(t, gotPause, wantPauseBetweenWrites, "incorrect pause between writes")
+				}
 			}
 
-			assert.NilError(t, err)
-
-			// only ensure that we pause for the expected time between writes
-			// (allowing for minor mismatch in local timers and server timers)
-			// after the first byte.
-			if i > 0 {
-				assert.RoughlyEqual(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
-			}
-		}
-
-		wantBody := bytes.Repeat([]byte{'*'}, numBytes)
-		assert.DeepEqual(t, gotBody, wantBody, "incorrect body")
+			wantBody := bytes.Repeat([]byte{'*'}, numBytes)
+			assert.DeepEqual(t, gotBody, wantBody, "incorrect body")
+		})
 	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
 		t.Parallel()
 
-		// For this test, we expect the client to time out and cancel the
-		// request after 10ms.  The handler should still be in its intitial
-		// delay period, so this will result in a request error since no status
-		// code will be written before the cancelation.
-		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
-		defer cancel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			// For this test, we expect the client to time out and cancel the
+			// request after 10ms.  The handler should still be in its intitial
+			// delay period, so this will result in a request error since no status
+			// code will be written before the cancelation.
+			ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+			defer cancel()
 
-		req := newTestRequest(t, "GET", app.URL("/drip?duration=500ms&delay=500ms"), nil).WithContext(ctx)
-		if _, err := app.Client.Do(req); !os.IsTimeout(err) {
-			t.Fatalf("expected timeout error, got %s", err)
-		}
+			req := newTestRequest(t, "GET", app.URL("/drip?duration=500ms&delay=500ms"), nil).WithContext(ctx)
+			if _, err := app.Client.Do(req); !os.IsTimeout(err) {
+				t.Fatalf("expected timeout error, got %s", err)
+			}
+		})
 	})
 
 	t.Run("handle cancelation during drip", func(t *testing.T) {
 		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-		defer cancel()
+			ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+			defer cancel()
 
-		req := newTestRequest(t, "GET", app.URL("/drip?duration=900ms&delay=100ms"), nil).WithContext(ctx)
-		resp := mustDoRequest(t, app, req)
+			req := newTestRequest(t, "GET", app.URL("/drip?duration=900ms&delay=100ms"), nil).WithContext(ctx)
+			resp := mustDoRequest(t, app, req)
 
-		// In this test, the server should have started an OK response before
-		// our client timeout cancels the request, so we should get an OK here.
-		assert.StatusCode(t, resp, http.StatusOK)
+			// In this test, the server should have started an OK response before
+			// our client timeout cancels the request, so we should get an OK here.
+			assert.StatusCode(t, resp, http.StatusOK)
 
-		// But, we should time out while trying to read the whole response
-		// body.
-		body, err := io.ReadAll(resp.Body)
-		if !os.IsTimeout(err) {
-			t.Fatalf("expected timeout reading body, got %s", err)
-		}
+			// But, we should time out while trying to read the whole response
+			// body.
+			body, err := io.ReadAll(resp.Body)
+			if !os.IsTimeout(err) {
+				t.Fatalf("expected timeout reading body, got %s", err)
+			}
 
-		// And even though the request timed out, we should get a partial
-		// response.
-		assert.DeepEqual(t, body, []byte("**"), "incorrect partial body")
+			// And even though the request timed out, we should get a partial
+			// response.
+			assert.DeepEqual(t, body, []byte("**"), "incorrect partial body")
+		})
 	})
 
 	badTests := []struct {
@@ -2349,7 +2389,7 @@ func TestDrip(t *testing.T) {
 		{url.Values{"numbytes": {"0"}}, http.StatusBadRequest},
 		{url.Values{"numbytes": {"-1"}}, http.StatusBadRequest},
 		{url.Values{"numbytes": {"0xff"}}, http.StatusBadRequest},
-		{url.Values{"numbytes": {fmt.Sprintf("%d", app.App.MaxBodySize+1)}}, http.StatusBadRequest},
+		{url.Values{"numbytes": {fmt.Sprintf("%d", maxBodySize+1)}}, http.StatusBadRequest},
 
 		{url.Values{"code": {"foo"}}, http.StatusBadRequest},
 		{url.Values{"code": {"-1"}}, http.StatusBadRequest},
@@ -2362,6 +2402,7 @@ func TestDrip(t *testing.T) {
 	for _, test := range badTests {
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
+			app := setupTestApp(t, opts...)
 			req := newTestRequest(t, "GET", app.URL("/drip", test.params), nil)
 			resp := mustDoRequest(t, app, req)
 			assert.StatusCode(t, resp, test.code)
@@ -2370,6 +2411,7 @@ func TestDrip(t *testing.T) {
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
 		t.Parallel()
+		app := setupTestApp(t, opts...)
 		req := newTestRequest(t, "HEAD", app.URL("/drip?duration=900ms&delay=100ms"), nil)
 		resp := mustDoRequest(t, app, req)
 		assert.StatusCode(t, resp, http.StatusOK)
@@ -2378,33 +2420,36 @@ func TestDrip(t *testing.T) {
 
 	t.Run("Server-Timings header", func(t *testing.T) {
 		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
 
-		var (
-			duration = 100 * time.Millisecond
-			delay    = 50 * time.Millisecond
-			numBytes = 10
-		)
+			var (
+				duration = 100 * time.Millisecond
+				delay    = 50 * time.Millisecond
+				numBytes = 10
+			)
 
-		url := fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, delay, numBytes)
-		req := newTestRequest(t, "GET", app.URL(url), nil)
-		resp := mustDoRequest(t, app, req)
+			url := fmt.Sprintf("/drip?duration=%s&delay=%s&numbytes=%d", duration, delay, numBytes)
+			req := newTestRequest(t, "GET", app.URL(url), nil)
+			resp := mustDoRequest(t, app, req)
 
-		assert.StatusCode(t, resp, http.StatusOK)
+			assert.StatusCode(t, resp, http.StatusOK)
 
-		timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
+			timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
 
-		// compute expected pause between writes to match server logic and
-		// handle lossy floating point truncation in the serialized header
-		// value
-		computedPause := duration / time.Duration(numBytes-1)
-		wantPause, _ := time.ParseDuration(fmt.Sprintf("%.2fms", computedPause.Seconds()*1e3))
+			// compute expected pause between writes to match server logic and
+			// handle lossy floating point truncation in the serialized header
+			// value
+			computedPause := duration / time.Duration(numBytes-1)
+			wantPause, _ := time.ParseDuration(fmt.Sprintf("%.2fms", computedPause.Seconds()*1e3))
 
-		assert.DeepEqual(t, timings, map[string]serverTiming{
-			"total_duration":  {"total_duration", delay + duration, "total request duration"},
-			"initial_delay":   {"initial_delay", delay, "initial delay"},
-			"pause_per_write": {"pause_per_write", wantPause, "computed pause between writes"},
-			"write_duration":  {"write_duration", duration, "duration of writes after initial delay"},
-		}, "incorrect Server-Timing header value")
+			assert.DeepEqual(t, timings, map[string]serverTiming{
+				"total_duration":  {"total_duration", delay + duration, "total request duration"},
+				"initial_delay":   {"initial_delay", delay, "initial delay"},
+				"pause_per_write": {"pause_per_write", wantPause, "computed pause between writes"},
+				"write_duration":  {"write_duration", duration, "duration of writes after initial delay"},
+			}, "incorrect Server-Timing header value")
+		})
 	})
 }
 
@@ -2494,23 +2539,25 @@ func TestRange(t *testing.T) {
 
 	t.Run("ok_range_with_duration", func(t *testing.T) {
 		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			url := "/range/100?duration=100ms"
+			req := newTestRequest(t, "GET", app.URL(url), nil)
+			req.Header.Add("Range", "bytes=10-24")
 
-		url := "/range/100?duration=100ms"
-		req := newTestRequest(t, "GET", app.URL(url), nil)
-		req.Header.Add("Range", "bytes=10-24")
+			start := time.Now()
+			resp := mustDoRequest(t, app, req)
+			elapsed := time.Since(start)
 
-		start := time.Now()
-		resp := mustDoRequest(t, app, req)
-		elapsed := time.Since(start)
-
-		assert.StatusCode(t, resp, http.StatusPartialContent)
-		assert.Header(t, resp, "ETag", "range100")
-		assert.Header(t, resp, "Accept-Ranges", "bytes")
-		assert.Header(t, resp, "Content-Length", "15")
-		assert.Header(t, resp, "Content-Range", "bytes 10-24/100")
-		assert.Header(t, resp, "Content-Type", textContentType)
-		assert.BodyEquals(t, resp, "klmnopqrstuvwxy")
-		assert.DurationRange(t, elapsed, 100*time.Millisecond, 150*time.Millisecond)
+			assert.StatusCode(t, resp, http.StatusPartialContent)
+			assert.Header(t, resp, "ETag", "range100")
+			assert.Header(t, resp, "Accept-Ranges", "bytes")
+			assert.Header(t, resp, "Content-Length", "15")
+			assert.Header(t, resp, "Content-Range", "bytes 10-24/100")
+			assert.Header(t, resp, "Content-Type", textContentType)
+			assert.BodyEquals(t, resp, "klmnopqrstuvwxy")
+			assert.Equal(t, elapsed, 15*time.Millisecond, "incorrect duration")
+		})
 	})
 
 	t.Run("ok_multiple_ranges", func(t *testing.T) {
@@ -3407,19 +3454,21 @@ func TestSSE(t *testing.T) {
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				app := setupSynctestApp(t)
+				req := newTestRequest(t, "GET", app.URL("/sse", test.params), nil)
+				start := time.Now()
+				resp := mustDoRequest(t, app, req)
+				assert.StatusCode(t, resp, http.StatusOK)
+				events := parseServerSentEventStream(t, resp)
 
-			req := newTestRequest(t, "GET", app.URL("/sse", test.params), nil)
-			start := time.Now()
-			resp := mustDoRequest(t, app, req)
-			assert.StatusCode(t, resp, http.StatusOK)
-			events := parseServerSentEventStream(t, resp)
-
-			if elapsed := time.Since(start); elapsed < test.duration {
-				t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
-			}
-			assert.ContentType(t, resp, sseContentType)
-			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "unexpected Transfer-Encoding header")
-			assert.Equal(t, len(events), test.count, "unexpected number of events")
+				if elapsed := time.Since(start); elapsed < test.duration {
+					t.Fatalf("expected minimum duration of %s, request took %s", test.duration, elapsed)
+				}
+				assert.ContentType(t, resp, sseContentType)
+				assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "unexpected Transfer-Encoding header")
+				assert.Equal(t, len(events), test.count, "unexpected number of events")
+			})
 		})
 	}
 
@@ -3471,42 +3520,44 @@ func TestSSE(t *testing.T) {
 			wantPauseBetweenWrites = duration / time.Duration(count-1)
 		)
 
-		req := newTestRequest(t, "GET", app.URL(endpoint), nil)
-		resp := mustDoRequest(t, app, req)
-		buf := bufio.NewReader(resp.Body)
-		eventCount := 0
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			req := newTestRequest(t, "GET", app.URL(endpoint), nil)
+			resp := mustDoRequest(t, app, req)
+			buf := bufio.NewReader(resp.Body)
+			eventCount := 0
 
-		// Here we read from the response one byte at a time, and ensure that
-		// at least the expected delay occurs for each read.
-		//
-		// The request above includes an initial delay equal to the expected
-		// wait between writes so that even the first iteration of this loop
-		// expects to wait the same amount of time for a read.
-		for i := 0; ; i++ {
-			start := time.Now()
-			event, err := parseServerSentEvent(t, buf)
-			if err == io.EOF {
-				break
+			// Here we read from the response one byte at a time, and ensure that
+			// at least the expected delay occurs for each read.
+			//
+			// The request above includes an initial delay equal to the expected
+			// wait between writes so that even the first iteration of this loop
+			// expects to wait the same amount of time for a read.
+			for i := 0; ; i++ {
+				start := time.Now()
+				event, err := parseServerSentEvent(t, buf)
+				if err == io.EOF {
+					break
+				}
+				assert.NilError(t, err)
+				gotPause := time.Since(start)
+
+				// We expect to read exactly one byte on each iteration. On the
+				// last iteration, we expct to hit EOF after reading the final
+				// byte, because the server does not pause after the last write.
+				assert.Equal(t, event.ID, i, "unexpected SSE event ID")
+
+				// only ensure that we pause for the expected time between writes
+				// after the first byte.
+				if i > 0 {
+					assert.Equal(t, gotPause, wantPauseBetweenWrites, "incorrect pause betwen writes")
+				}
+
+				eventCount++
 			}
-			assert.NilError(t, err)
-			gotPause := time.Since(start)
 
-			// We expect to read exactly one byte on each iteration. On the
-			// last iteration, we expct to hit EOF after reading the final
-			// byte, because the server does not pause after the last write.
-			assert.Equal(t, event.ID, i, "unexpected SSE event ID")
-
-			// only ensure that we pause for the expected time between writes
-			// (allowing for minor mismatch in local timers and server timers)
-			// after the first byte.
-			if i > 0 {
-				assert.RoughlyEqual(t, gotPause, wantPauseBetweenWrites, 3*time.Millisecond)
-			}
-
-			eventCount++
-		}
-
-		assert.Equal(t, eventCount, count, "unexpected number of events")
+			assert.Equal(t, eventCount, count, "unexpected number of events")
+		})
 	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
@@ -3528,27 +3579,31 @@ func TestSSE(t *testing.T) {
 	t.Run("handle cancelation during stream", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
 
-		req := newTestRequest(t, "GET", app.URL("/sse?duration=900ms&delay=0&count=2"), nil).WithContext(ctx)
-		resp := mustDoRequest(t, app, req)
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
 
-		// In this test, the server should have started an OK response before
-		// our client timeout cancels the request, so we should get an OK here.
-		assert.StatusCode(t, resp, http.StatusOK)
+			req := newTestRequest(t, "GET", app.URL("/sse?duration=900ms&delay=0&count=2"), nil).WithContext(ctx)
+			resp := mustDoRequest(t, app, req)
 
-		// But, we should time out while trying to read the whole response
-		// body.
-		body, err := io.ReadAll(resp.Body)
-		if !os.IsTimeout(err) {
-			t.Fatalf("expected timeout reading body, got %s", err)
-		}
+			// In this test, the server should have started an OK response before
+			// our client timeout cancels the request, so we should get an OK here.
+			assert.StatusCode(t, resp, http.StatusOK)
 
-		// partial read should include the first whole event
-		event, err := parseServerSentEvent(t, bufio.NewReader(bytes.NewReader(body)))
-		assert.NilError(t, err)
-		assert.Equal(t, event.ID, 0, "unexpected SSE event ID")
+			// But, we should time out while trying to read the whole response
+			// body.
+			body, err := io.ReadAll(resp.Body)
+			if !os.IsTimeout(err) {
+				t.Fatalf("expected timeout reading body, got %s", err)
+			}
+
+			// partial read should include the first whole event
+			event, err := parseServerSentEvent(t, bufio.NewReader(bytes.NewReader(body)))
+			assert.NilError(t, err)
+			assert.Equal(t, event.ID, 0, "unexpected SSE event ID")
+		})
 	})
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
@@ -3565,45 +3620,47 @@ func TestSSE(t *testing.T) {
 		var (
 			duration = 250 * time.Millisecond
 			delay    = 100 * time.Millisecond
-			count    = 10
+			count    = 11 // keep numbers round by ensuring (count-1) evenly divides duration (see computePausePerWrite)
 			params   = url.Values{
 				"duration": {duration.String()},
 				"delay":    {delay.String()},
 				"count":    {strconv.Itoa(count)},
 			}
 		)
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			req := newTestRequest(t, "GET", app.URL("/sse", params), nil)
+			resp := mustDoRequest(t, app, req)
 
-		req := newTestRequest(t, "GET", app.URL("/sse", params), nil)
-		resp := mustDoRequest(t, app, req)
+			// need to fully consume body for Server-Timing trailers to arrive
+			must.ReadAll(t, resp.Body)
 
-		// need to fully consume body for Server-Timing trailers to arrive
-		must.ReadAll(t, resp.Body)
+			rawTimings := resp.Trailer.Get("Server-Timing")
+			t.Logf("raw Server-Timing header value: %q", rawTimings)
 
-		rawTimings := resp.Trailer.Get("Server-Timing")
-		t.Logf("raw Server-Timing header value: %q", rawTimings)
+			timings := decodeServerTimings(rawTimings)
 
-		timings := decodeServerTimings(rawTimings)
+			// Ensure total server time makes sense based on duration and delay
+			total := timings["total_duration"]
+			assert.Equal(t, total.dur, duration+delay, "incorrect total_duration")
 
-		// Ensure total server time makes sense based on duration and delay
-		total := timings["total_duration"]
-		assert.DurationRange(t, total.dur, duration+delay, duration+delay+25*time.Millisecond)
+			// Ensure computed pause time makes sense based on duration, delay, and
+			// numbytes (should be exact, but we're re-parsing a truncated float in
+			// the header value)
+			pause := timings["pause_per_write"]
+			assert.Equal(t, pause.dur, computePausePerWrite(duration, int64(count)), "incorrect pause_per_write")
 
-		// Ensure computed pause time makes sense based on duration, delay, and
-		// numbytes (should be exact, but we're re-parsing a truncated float in
-		// the header value)
-		pause := timings["pause_per_write"]
-		assert.RoughlyEqual(t, pause.dur, duration/time.Duration(count-1), 1*time.Millisecond)
-
-		// remaining timings should exactly match request parameters, no need
-		// to adjust for per-run variations
-		wantTimings := map[string]serverTiming{
-			"write_duration": {"write_duration", duration, "duration of writes after initial delay"},
-			"initial_delay":  {"initial_delay", delay, "initial delay"},
-		}
-		for k, want := range wantTimings {
-			got := timings[k]
-			assert.DeepEqual(t, got, want, "incorrect timing for key %q", k)
-		}
+			// remaining timings should exactly match request parameters, no need
+			// to adjust for per-run variations
+			wantTimings := map[string]serverTiming{
+				"write_duration": {"write_duration", duration, "duration of writes after initial delay"},
+				"initial_delay":  {"initial_delay", delay, "initial delay"},
+			}
+			for k, want := range wantTimings {
+				got := timings[k]
+				assert.DeepEqual(t, got, want, "incorrect timing for key %q", k)
+			}
+		})
 	})
 }
 
@@ -3646,7 +3703,6 @@ func TestWebSocketEcho(t *testing.T) {
 	// ========================================================================
 
 	t.Parallel()
-	app := setupTestApp(t)
 
 	handshakeHeaders := map[string]string{
 		"Connection":            "upgrade",
@@ -3657,53 +3713,61 @@ func TestWebSocketEcho(t *testing.T) {
 
 	t.Run("handshake ok", func(t *testing.T) {
 		t.Parallel()
-
-		req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo"), nil)
-		for k, v := range handshakeHeaders {
-			req.Header.Set(k, v)
-		}
-
-		resp := mustDoRequest(t, app, req)
-		assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo"), nil)
+			for k, v := range handshakeHeaders {
+				req.Header.Set(k, v)
+			}
+			resp := mustDoRequest(t, app, req)
+			assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+		})
 	})
 
 	t.Run("handshake failed", func(t *testing.T) {
 		t.Parallel()
-		req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo"), nil)
-		resp := mustDoRequest(t, app, req)
-		assert.StatusCode(t, resp, http.StatusBadRequest)
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo"), nil)
+			resp := mustDoRequest(t, app, req)
+			assert.StatusCode(t, resp, http.StatusBadRequest)
+		})
 	})
 
+	var maxBodySize = 1024
 	paramTests := []struct {
 		query      string
 		wantStatus int
 	}{
 		// ok
 		{"max_fragment_size=1&max_message_size=2", http.StatusSwitchingProtocols},
-		{fmt.Sprintf("max_fragment_size=%d&max_message_size=%d", app.App.MaxBodySize, app.App.MaxBodySize), http.StatusSwitchingProtocols},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=%d", maxBodySize, maxBodySize), http.StatusSwitchingProtocols},
 
 		// bad max_framgent_size
 		{"max_fragment_size=-1&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=0&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=3&max_message_size=2", http.StatusBadRequest},
 		{"max_fragment_size=foo&max_message_size=2", http.StatusBadRequest},
-		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", app.App.MaxBodySize+1), http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=%d&max_message_size=2", maxBodySize+1), http.StatusBadRequest},
 
 		// bad max_message_size
 		{"max_fragment_size=1&max_message_size=0", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=-1", http.StatusBadRequest},
 		{"max_fragment_size=1&max_message_size=bar", http.StatusBadRequest},
-		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", app.App.MaxBodySize+1), http.StatusBadRequest},
+		{fmt.Sprintf("max_fragment_size=1&max_message_size=%d", maxBodySize+1), http.StatusBadRequest},
 	}
 	for _, tc := range paramTests {
 		t.Run(tc.query, func(t *testing.T) {
 			t.Parallel()
-			req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo?"+tc.query), nil)
-			for k, v := range handshakeHeaders {
-				req.Header.Set(k, v)
-			}
-			resp := mustDoRequest(t, app, req)
-			assert.StatusCode(t, resp, tc.wantStatus)
+			synctest.Test(t, func(t *testing.T) {
+				app := setupSynctestApp(t, WithMaxBodySize(int64(maxBodySize)))
+				req := newTestRequest(t, http.MethodGet, app.URL("/websocket/echo?"+tc.query), nil)
+				for k, v := range handshakeHeaders {
+					req.Header.Set(k, v)
+				}
+				resp := mustDoRequest(t, app, req)
+				assert.StatusCode(t, resp, tc.wantStatus)
+			})
 		})
 	}
 }
