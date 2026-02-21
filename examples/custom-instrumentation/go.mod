@@ -1,10 +1,10 @@
 module httpbin-instrumentation
 
-go 1.22.0
+go 1.25.0
 
 require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible
-	github.com/mccutchen/go-httpbin/v2 v2.14.1
+	github.com/mccutchen/go-httpbin/v2 v2.20.0
 )
 
 require (
@@ -12,7 +12,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 )
 
 // Always build against the local version, to make it easier to update examples

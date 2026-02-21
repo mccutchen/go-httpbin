@@ -703,7 +703,7 @@ func mergedConfig(base, override *config) *config {
 			if overrideField.Bool() {
 				resultField.SetBool(overrideField.Bool())
 			}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !overrideField.IsNil() {
 				resultField.Set(overrideField)
 			}

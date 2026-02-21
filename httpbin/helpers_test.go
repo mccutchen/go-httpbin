@@ -672,9 +672,9 @@ func decodeServerTimings(headerVal string) map[string]serverTiming {
 		return nil
 	}
 	timings := map[string]serverTiming{}
-	for _, entry := range strings.Split(headerVal, ",") {
+	for entry := range strings.SplitSeq(headerVal, ",") {
 		var t serverTiming
-		for _, kv := range strings.Split(entry, ";") {
+		for kv := range strings.SplitSeq(entry, ";") {
 			kv = strings.TrimSpace(kv)
 			key, val, _ := strings.Cut(kv, "=")
 			switch key {

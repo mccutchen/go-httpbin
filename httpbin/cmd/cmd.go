@@ -287,7 +287,7 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	if cfg.rawAllowedRedirectDomains == "" && getEnvVal("ALLOWED_REDIRECT_DOMAINS") != "" {
 		cfg.rawAllowedRedirectDomains = getEnvVal("ALLOWED_REDIRECT_DOMAINS")
 	}
-	for _, domain := range strings.Split(cfg.rawAllowedRedirectDomains, ",") {
+	for domain := range strings.SplitSeq(cfg.rawAllowedRedirectDomains, ",") {
 		if strings.TrimSpace(domain) != "" {
 			cfg.AllowedRedirectDomains = append(cfg.AllowedRedirectDomains, strings.TrimSpace(domain))
 		}

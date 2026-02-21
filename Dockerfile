@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.3
-FROM golang:1.23 AS build
+FROM golang:1.26 AS build
 
 WORKDIR /go/src/github.com/mccutchen/go-httpbin
 

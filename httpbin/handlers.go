@@ -984,7 +984,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	w.WriteHeader(http.StatusOK)
 
 	var chunk []byte
-	for i := 0; i < numBytes; i++ {
+	for range numBytes {
 		chunk = append(chunk, byte(rng.Intn(256)))
 		if len(chunk) == chunkSize {
 			write(chunk)

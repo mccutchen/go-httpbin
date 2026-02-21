@@ -1420,10 +1420,8 @@ func TestRedirects(t *testing.T) {
 	}
 
 	for _, prefix := range []string{"", "/test-prefix"} {
-		prefix := prefix
 		app := setupTestApp(t, WithPrefix(prefix))
 		for _, test := range tests {
-			test := test
 			reqPath := fmt.Sprintf(test.requestURL, prefix)
 			t.Run("ok"+reqPath, func(t *testing.T) {
 				t.Parallel()
@@ -1465,10 +1463,8 @@ func TestRedirects(t *testing.T) {
 	}
 
 	for _, prefix := range []string{"", "/test-prefix"} {
-		prefix := prefix
 		app := setupTestApp(t, WithPrefix(prefix))
 		for _, test := range errorTests {
-			test := test
 			reqPath := fmt.Sprintf(test.requestURL, prefix)
 			t.Run("error"+reqPath, func(t *testing.T) {
 				t.Parallel()
@@ -2914,7 +2910,6 @@ func TestStreamBytes(t *testing.T) {
 
 func TestLinks(t *testing.T) {
 	for _, prefix := range []string{"", "/test-prefix"} {
-		prefix := prefix
 		app := setupTestApp(t, WithPrefix(prefix))
 
 		redirectTests := []struct {
