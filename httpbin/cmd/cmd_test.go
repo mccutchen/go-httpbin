@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"testing"
@@ -80,7 +81,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxBodySize:          httpbin.DefaultMaxBodySize,
 				MaxDuration:          httpbin.DefaultMaxDuration,
 				LogFormat:            defaultLogFormat,
-				LogLevel:             defaultLogLevel,
+				LogLevel:             slog.LevelInfo,
 				SrvMaxHeaderBytes:    defaultSrvMaxHeaderBytes,
 				SrvReadHeaderTimeout: defaultSrvReadHeaderTimeout,
 				SrvReadTimeout:       defaultSrvReadTimeout,
@@ -398,20 +399,20 @@ func TestLoadConfig(t *testing.T) {
 		"ok log level OFF": {
 			args: []string{"-log-level", "OFF"},
 			wantCfg: mergedConfig(defaultCfg, &config{
-				LogLevel: "OFF",
+				LogLevel: logLevelOff,
 			}),
 		},
 		"ok log level from env": {
 			env: map[string]string{"LOG_LEVEL": "DEBUG"},
 			wantCfg: mergedConfig(defaultCfg, &config{
-				LogLevel: "DEBUG",
+				LogLevel: slog.LevelDebug,
 			}),
 		},
 		"ok log level CLI takes precedence over env": {
 			args: []string{"-log-level", "ERROR"},
 			env:  map[string]string{"LOG_LEVEL": "DEBUG"},
 			wantCfg: mergedConfig(defaultCfg, &config{
-				LogLevel: "ERROR",
+				LogLevel: slog.LevelError,
 			}),
 		},
 

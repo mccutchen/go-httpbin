@@ -126,7 +126,7 @@ type config struct {
 	TLSCertFile            string
 	TLSKeyFile             string
 	LogFormat              string
-	LogLevel               string
+	LogLevel               slog.Level
 	SrvMaxHeaderBytes      int
 	SrvReadHeaderTimeout   time.Duration
 	SrvReadTimeout         time.Duration
@@ -141,6 +141,7 @@ type config struct {
 
 	// temporary placeholders for arguments that need extra processing
 	rawAllowedRedirectDomains string
+	rawLogLevel               string
 	rawUseRealHostname        bool
 }
 
@@ -176,7 +177,7 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	fs.StringVar(&cfg.TLSKeyFile, "https-key-file", "", "HTTPS Server private key file")
 	fs.StringVar(&cfg.ExcludeHeaders, "exclude-headers", "", "Drop platform-specific headers. Comma-separated list of headers key to drop, supporting wildcard matching.")
 	fs.StringVar(&cfg.LogFormat, "log-format", defaultLogFormat, "Log format (text or json)")
-	fs.StringVar(&cfg.LogLevel, "log-level", defaultLogLevel, "Logging level (DEBUG, INFO, WARN, ERROR, OFF)")
+	fs.StringVar(&cfg.rawLogLevel, "log-level", defaultLogLevel, "Logging level (DEBUG, INFO, WARN, ERROR, OFF)")
 	fs.IntVar(&cfg.SrvMaxHeaderBytes, "srv-max-header-bytes", defaultSrvMaxHeaderBytes, "Value to use for the http.Server's MaxHeaderBytes option")
 	fs.DurationVar(&cfg.SrvReadHeaderTimeout, "srv-read-header-timeout", defaultSrvReadHeaderTimeout, "Value to use for the http.Server's ReadHeaderTimeout option")
 	fs.DurationVar(&cfg.SrvReadTimeout, "srv-read-timeout", defaultSrvReadTimeout, "Value to use for the http.Server's ReadTimeout option")
@@ -273,11 +274,12 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 	if cfg.LogFormat != "text" && cfg.LogFormat != "json" {
 		return nil, configErr(`invalid log format %q, must be "text" or "json"`, cfg.LogFormat)
 	}
-	if cfg.LogLevel == defaultLogLevel && getEnvVal("LOG_LEVEL") != "" {
-		cfg.LogLevel = getEnvVal("LOG_LEVEL")
+	if cfg.rawLogLevel == defaultLogLevel && getEnvVal("LOG_LEVEL") != "" {
+		cfg.rawLogLevel = getEnvVal("LOG_LEVEL")
 	}
-	if !isValidLogLevel(cfg.LogLevel) {
-		return nil, configErr(`invalid log level %q, must be one of "DEBUG", "INFO", "WARN", "ERROR", "OFF"`, cfg.LogLevel)
+	cfg.LogLevel, err = parseLogLevel(cfg.rawLogLevel)
+	if err != nil {
+		return nil, configErr(`invalid log level %q, must be one of "DEBUG", "INFO", "WARN", "ERROR", "OFF"`, cfg.rawLogLevel)
 	}
 
 	if getEnvBool(getEnvVal("USE_REAL_HOSTNAME")) {
@@ -326,6 +328,7 @@ func loadConfig(args []string, getEnvVal func(string) string, getEnviron func() 
 
 	// reset temporary fields to their zero values
 	cfg.rawAllowedRedirectDomains = ""
+	cfg.rawLogLevel = ""
 	cfg.rawUseRealHostname = false
 
 	for _, envVar := range getEnviron() {
@@ -346,42 +349,30 @@ func getEnvBool(val string) bool {
 	return val == "1" || val == "true"
 }
 
-func isValidLogLevel(s string) bool {
-	switch strings.ToUpper(strings.TrimSpace(s)) {
-	case "DEBUG", "INFO", "WARN", "ERROR", "OFF":
-		return true
-	default:
-		return false
-	}
-}
-
-func parseLogLevel(s string) slog.Level {
+func parseLogLevel(s string) (slog.Level, error) {
 	switch strings.ToUpper(strings.TrimSpace(s)) {
 	case "DEBUG":
-		return slog.LevelDebug
+		return slog.LevelDebug, nil
+	case "INFO":
+		return slog.LevelInfo, nil
 	case "WARN":
-		return slog.LevelWarn
+		return slog.LevelWarn, nil
 	case "ERROR":
-		return slog.LevelError
+		return slog.LevelError, nil
 	case "OFF":
-		return logLevelOff
+		return logLevelOff, nil
 	default:
-		return slog.LevelInfo
+		return 0, fmt.Errorf("invalid log level %q", s)
 	}
 }
 
-func setupLogger(out io.Writer, logFormat string, levelStr string) *slog.Logger {
-	level := parseLogLevel(levelStr)
-
+func setupLogger(out io.Writer, logFormat string, level slog.Level) *slog.Logger {
 	if level == logLevelOff {
 		out = io.Discard
 	}
 
-	levelVar := new(slog.LevelVar)
-	levelVar.Set(level)
-
 	opts := &slog.HandlerOptions{
-		Level: levelVar,
+		Level: level,
 	}
 
 	var handler slog.Handler
