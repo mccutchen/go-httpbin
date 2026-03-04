@@ -24,6 +24,11 @@ type DefaultParams struct {
 	SSECount    int
 	SSEDuration time.Duration
 	SSEDelay    time.Duration
+
+	// for the /jsonl endpoint
+	JSONLCount    int
+	JSONLDuration time.Duration
+	JSONLDelay    time.Duration
 }
 
 // DefaultDefaultParams defines the DefaultParams that are used by default. In
@@ -32,9 +37,14 @@ var DefaultDefaultParams = DefaultParams{
 	DripDuration: 2 * time.Second,
 	DripDelay:    2 * time.Second,
 	DripNumBytes: 10,
-	SSECount:     10,
-	SSEDuration:  5 * time.Second,
-	SSEDelay:     0,
+
+	SSECount:    10,
+	SSEDuration: 5 * time.Second,
+	SSEDelay:    0,
+
+	JSONLCount:    10,
+	JSONLDuration: 0,
+	JSONLDelay:    0,
 }
 
 type headersProcessorFunc func(h http.Header) http.Header
@@ -96,6 +106,10 @@ type HTTPBin struct {
 	// Max number of SSE events to send, based on rough estimate of single
 	// event's size
 	maxSSECount int64
+
+	// Max number of JSONL lines to send, based on rough estimate of single
+	// line's size
+	maxJSONLCount int64
 }
 
 // New creates a new HTTPBin instance
@@ -121,6 +135,11 @@ func New(opts ...OptionFunc) *HTTPBin {
 	var buf bytes.Buffer
 	writeServerSentEvent(&buf, 999, time.Now())
 	h.maxSSECount = h.MaxBodySize / int64(buf.Len())
+
+	// compute max JSONL line count the same way
+	buf.Reset()
+	writeJSONLSample(&buf)
+	h.maxJSONLCount = h.MaxBodySize / int64(buf.Len())
 
 	h.handler = h.Handler()
 	return h
@@ -182,6 +201,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/image/{kind}", h.Image)
 	mux.HandleFunc("/ip", h.IP)
 	mux.HandleFunc("/json", h.JSON)
+	mux.HandleFunc("/jsonl", h.JSONL)
 	mux.HandleFunc("/links/{numLinks}", h.Links)
 	mux.HandleFunc("/links/{numLinks}/{offset}", h.Links)
 	mux.HandleFunc("/range/{numBytes}", h.Range)

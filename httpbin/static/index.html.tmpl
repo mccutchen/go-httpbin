@@ -99,6 +99,7 @@
 <li><a href="{{.Prefix}}/image/webp"><code>{{.Prefix}}/image/webp</code></a> Returns a WEBP image.</li>
 <li><a href="{{.Prefix}}/ip"><code>{{.Prefix}}/ip</code></a> Returns Origin IP.</li>
 <li><a href="{{.Prefix}}/json"><code>{{.Prefix}}/json</code></a> Returns JSON.</li>
+<li><a href="{{.Prefix}}/jsonl?count=10&amp;duration=5s&amp;delay=1s&amp;jitter=0.5"><code>{{.Prefix}}/jsonl?count=10&amp;duration=5s&amp;delay=1s&amp;jitter=0.5</code></a> Streams <em>count</em> lines of JSON Lines data over an optional <em>duration</em> after an optional initial <em>delay</em>, with optional <em>jitter</em> (0-1) to randomize timing between lines.</li>
 <li><a href="{{.Prefix}}/links/10"><code>{{.Prefix}}/links/:n</code></a> Returns page containing <em>n</em> HTML links.</li>
 <li><code>{{.Prefix}}/patch</code> Returns request data.  Allows only <code>PATCH</code> requests.</li>
 <li><code>{{.Prefix}}/post</code> Returns request data.  Allows only <code>POST</code> requests.</li>

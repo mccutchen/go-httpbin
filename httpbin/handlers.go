@@ -1182,6 +1182,112 @@ func (h *HTTPBin) JSON(w http.ResponseWriter, _ *http.Request) {
 	w.Write(mustStaticAsset("sample.json"))
 }
 
+// JSONL - returns a stream of JSON Lines data, one JSON object per line.
+// Accepts optional query parameters:
+//   - count: number of lines to emit (default 10, clamped to [1, maxJSONLCount])
+//   - duration: total duration over which to stream the lines (e.g. "5s")
+//   - delay: initial delay before streaming begins (e.g. "1s")
+//   - jitter: float in [0, 1] that randomizes pause between lines (e.g. 0.5 = +/-50%)
+func (h *HTTPBin) JSONL(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	var (
+		count    = h.DefaultParams.JSONLCount
+		duration = h.DefaultParams.JSONLDuration
+		delay    = h.DefaultParams.JSONLDelay
+		jitter   float64
+		err      error
+	)
+
+	if userCount := q.Get("count"); userCount != "" {
+		count, err = strconv.Atoi(userCount)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %w", err))
+			return
+		}
+		if count < 1 {
+			count = 1
+		} else if int64(count) > h.maxJSONLCount {
+			count = int(h.maxJSONLCount)
+		}
+	}
+
+	if userDuration := q.Get("duration"); userDuration != "" {
+		duration, err = parseBoundedDuration(userDuration, 1, h.MaxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid duration: %w", err))
+			return
+		}
+	}
+
+	if userDelay := q.Get("delay"); userDelay != "" {
+		delay, err = parseBoundedDuration(userDelay, 0, h.MaxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid delay: %w", err))
+			return
+		}
+	}
+
+	if userJitter := q.Get("jitter"); userJitter != "" {
+		jitter, err = strconv.ParseFloat(userJitter, 64)
+		if err != nil || jitter < 0 || jitter > 1 {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid jitter: must be a float in [0, 1]"))
+			return
+		}
+	}
+
+	if duration+delay > h.MaxDuration {
+		http.Error(w, "Too much time", http.StatusBadRequest)
+		return
+	}
+
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-r.Context().Done():
+			w.WriteHeader(499)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", jsonlContentType)
+
+	resp := &streamResponse{
+		Args:    r.URL.Query(),
+		Headers: getRequestHeaders(r, h.excludeHeadersProcessor),
+		Origin:  getClientIP(r),
+		URL:     getURL(r).String(),
+	}
+	newline := []byte{'\n'}
+	pause := computePausePerWrite(duration, int64(count))
+	flusher := w.(http.Flusher)
+
+	for i := range newPacer(r.Context(), count, pause, jitter) {
+		resp.ID = i
+		line, _ := json.Marshal(resp)
+		w.Write(line)
+		w.Write(newline)
+		flusher.Flush()
+	}
+}
+
+// writeJSONLSample writes a representative JSONL line for estimating line size.
+func writeJSONLSample(w io.Writer) {
+	resp := &streamResponse{
+		ID:   999,
+		Args: map[string][]string{"sample": {"value"}},
+		Headers: http.Header{
+			"Host":       {"example.com"},
+			"User-Agent": {"sample-agent/1.0"},
+		},
+		Origin: "127.0.0.1",
+		URL:    "http://example.com/jsonl?count=100",
+	}
+	line, _ := json.Marshal(resp)
+	w.Write(line)
+	w.Write([]byte{'\n'})
+}
+
 // Bearer - Prompts the user for authorization using bearer authentication.
 func (h *HTTPBin) Bearer(w http.ResponseWriter, r *http.Request) {
 	reqToken := r.Header.Get("Authorization")
@@ -1213,6 +1319,7 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 		count    = h.DefaultParams.SSECount
 		duration = h.DefaultParams.SSEDuration
 		delay    = h.DefaultParams.SSEDelay
+		jitter   float64
 		err      error
 	)
 
@@ -1240,6 +1347,14 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 		delay, err = parseBoundedDuration(userDelay, 0, h.MaxDuration)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid delay: %w", err))
+			return
+		}
+	}
+
+	if userJitter := q.Get("jitter"); userJitter != "" {
+		jitter, err = strconv.ParseFloat(userJitter, 64)
+		if err != nil || jitter < 0 || jitter > 1 {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid jitter: must be a float in [0, 1]"))
 			return
 		}
 	}
@@ -1275,32 +1390,9 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	flusher := w.(http.Flusher)
-
-	// special case when we only have one event to write
-	if count == 1 {
-		writeServerSentEvent(w, 0, time.Now())
-		flusher.Flush()
-		return
-	}
-
-	ticker := time.NewTicker(pause)
-	defer ticker.Stop()
-
-	for i := 0; i < count; i++ {
+	for i := range newPacer(r.Context(), count, pause, jitter) {
 		writeServerSentEvent(w, i, time.Now())
 		flusher.Flush()
-
-		// don't pause after last byte
-		if i == count-1 {
-			return
-		}
-
-		select {
-		case <-ticker.C:
-			// ok
-		case <-r.Context().Done():
-			return
-		}
 	}
 }
 

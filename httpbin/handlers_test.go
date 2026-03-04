@@ -102,9 +102,14 @@ func createApp(opts ...OptionFunc) *HTTPBin {
 			DripDelay:    0,
 			DripDuration: 100 * time.Millisecond,
 			DripNumBytes: 10,
-			SSECount:     10,
-			SSEDelay:     0,
-			SSEDuration:  100 * time.Millisecond,
+
+			SSECount:    10,
+			SSEDelay:    0,
+			SSEDuration: 100 * time.Millisecond,
+
+			JSONLCount:    10,
+			JSONLDelay:    0,
+			JSONLDuration: 0,
 		}),
 		WithMaxBodySize(1024),
 		WithMaxDuration(1*time.Second),
@@ -3272,6 +3277,190 @@ func TestJSON(t *testing.T) {
 	assert.BodyContains(t, resp, `Wake up to WonderWidgets!`)
 }
 
+func TestJSONL(t *testing.T) {
+	t.Parallel()
+
+	app := setupTestApp(t)
+
+	okTests := []struct {
+		url           string
+		expectedLines int
+	}{
+		{"/jsonl", 10},                                          // default count
+		{"/jsonl?count=1", 1},                                   // minimum
+		{"/jsonl?count=5", 5},                                   // custom count
+		{"/jsonl?count=0", 1},                                   // clamped to min
+		{"/jsonl?count=-5", 1},                                  // clamped to min
+		{"/jsonl?count=3&duration=1s", 3},                       // with duration
+		{"/jsonl?count=1&duration=1s", 1},                       // single line with duration
+		{"/jsonl?count=3&delay=0s", 3},                          // with zero delay
+		{"/jsonl?count=2&duration=1s&delay=0s", 2},              // with both
+		{"/jsonl?count=3&duration=1s&jitter=0", 3},              // jitter=0 (no effect)
+		{"/jsonl?count=3&duration=1s&jitter=0.5", 3},            // jitter=0.5
+		{"/jsonl?count=3&duration=1s&jitter=1", 3},              // jitter=1 (max)
+	}
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
+
+			req := newTestRequest(t, "GET", app.URL(test.url), nil)
+			resp := mustDoRequest(t, app, req)
+
+			assert.StatusCode(t, resp, http.StatusOK)
+			assert.ContentType(t, resp, jsonlContentType)
+
+			// Expect chunked transfer encoding for streaming
+			assert.Header(t, resp, "Content-Length", "")
+			assert.DeepEqual(t, resp.TransferEncoding, []string{"chunked"}, "expected Transfer-Encoding: chunked")
+
+			i := 0
+			scanner := bufio.NewScanner(resp.Body)
+			for scanner.Scan() {
+				var sr streamResponse
+				err := json.Unmarshal(scanner.Bytes(), &sr)
+				assert.NilError(t, err)
+				assert.Equal(t, sr.ID, i, "bad id")
+				i++
+			}
+			assert.NilError(t, scanner.Err())
+			assert.Equal(t, i, test.expectedLines, "wrong number of lines")
+		})
+	}
+
+	t.Run("ok/count clamped to max", func(t *testing.T) {
+		t.Parallel()
+		maxCount := int(app.App.maxJSONLCount)
+		url := fmt.Sprintf("/jsonl?count=%d", maxCount+500)
+		req := newTestRequest(t, "GET", app.URL(url), nil)
+		resp := mustDoRequest(t, app, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		i := 0
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			var sr streamResponse
+			err := json.Unmarshal(scanner.Bytes(), &sr)
+			assert.NilError(t, err)
+			i++
+		}
+		assert.NilError(t, scanner.Err())
+		assert.Equal(t, i, maxCount, "wrong number of lines")
+	})
+
+	badTests := []struct {
+		url  string
+		code int
+	}{
+		{"/jsonl?count=foo", http.StatusBadRequest},
+		{"/jsonl?count=3.14", http.StatusBadRequest},
+		{"/jsonl?duration=foo", http.StatusBadRequest},
+		{"/jsonl?delay=foo", http.StatusBadRequest},
+		{"/jsonl?duration=5s&delay=8s", http.StatusBadRequest}, // exceeds max duration
+		{"/jsonl?jitter=-0.1", http.StatusBadRequest},          // jitter below range
+		{"/jsonl?jitter=1.5", http.StatusBadRequest},           // jitter above range
+		{"/jsonl?jitter=abc", http.StatusBadRequest},           // jitter not a number
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
+			req := newTestRequest(t, "GET", app.URL(test.url), nil)
+			resp := mustDoRequest(t, app, req)
+			assert.StatusCode(t, resp, test.code)
+		})
+	}
+
+	t.Run("writes are actually incremental", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			duration = 100 * time.Millisecond
+			count    = 3
+			endpoint = fmt.Sprintf("/jsonl?duration=%s&count=%d", duration, count)
+
+			wantPauseBetweenWrites = duration / time.Duration(count-1)
+		)
+
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+			req := newTestRequest(t, "GET", app.URL(endpoint), nil)
+			resp := mustDoRequest(t, app, req)
+			scanner := bufio.NewScanner(resp.Body)
+			lineCount := 0
+
+			for i := 0; ; i++ {
+				start := time.Now()
+				if !scanner.Scan() {
+					break
+				}
+				gotPause := time.Since(start)
+
+				var sr streamResponse
+				err := json.Unmarshal(scanner.Bytes(), &sr)
+				assert.NilError(t, err)
+				assert.Equal(t, sr.ID, i, "unexpected JSONL line ID")
+
+				if i > 0 {
+					assert.Equal(t, gotPause, wantPauseBetweenWrites, "incorrect pause between writes")
+				}
+
+				lineCount++
+			}
+			assert.NilError(t, scanner.Err())
+			assert.Equal(t, lineCount, count, "unexpected number of lines")
+		})
+	})
+
+	t.Run("handle cancelation during initial delay", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+		defer cancel()
+
+		req := newTestRequest(t, "GET", app.URL("/jsonl?duration=500ms&delay=500ms"), nil).WithContext(ctx)
+		if _, err := app.Client.Do(req); !os.IsTimeout(err) {
+			t.Fatalf("expected timeout error, got %s", err)
+		}
+	})
+
+	t.Run("handle cancelation during stream", func(t *testing.T) {
+		t.Parallel()
+
+		synctest.Test(t, func(t *testing.T) {
+			app := setupSynctestApp(t)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			req := newTestRequest(t, "GET", app.URL("/jsonl?duration=900ms&delay=0&count=2"), nil).WithContext(ctx)
+			resp := mustDoRequest(t, app, req)
+
+			assert.StatusCode(t, resp, http.StatusOK)
+
+			// Should time out while trying to read the whole body
+			body, err := io.ReadAll(resp.Body)
+			if !os.IsTimeout(err) {
+				t.Fatalf("expected timeout reading body, got %s", err)
+			}
+
+			// Partial read should include the first line
+			var sr streamResponse
+			scanner := bufio.NewScanner(bytes.NewReader(body))
+			if !scanner.Scan() {
+				t.Fatal("expected at least one JSONL line in partial body")
+			}
+			assert.NilError(t, json.Unmarshal(scanner.Bytes(), &sr))
+			assert.Equal(t, sr.ID, 0, "unexpected JSONL line ID")
+		})
+	})
+
+	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
+		t.Parallel()
+		req := newTestRequest(t, "HEAD", app.URL("/jsonl?duration=900ms&delay=100ms"), nil)
+		resp := mustDoRequest(t, app, req)
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.BodySize(t, resp, 0)
+	})
+}
+
 func TestBearer(t *testing.T) {
 	t.Parallel()
 	app := setupTestApp(t)
@@ -3450,6 +3639,10 @@ func TestSSE(t *testing.T) {
 
 		{url.Values{"duration": {"250ms"}, "delay": {"250ms"}}, 500 * time.Millisecond, 10},
 		{url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10},
+
+		{url.Values{"duration": {"250ms"}, "jitter": {"0"}}, 250 * time.Millisecond, 10},
+		{url.Values{"duration": {"250ms"}, "jitter": {"0.5"}}, 0, 10},
+		{url.Values{"duration": {"250ms"}, "jitter": {"1"}}, 0, 10},
 	}
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
@@ -3495,6 +3688,10 @@ func TestSSE(t *testing.T) {
 		{url.Values{"count": {"-1"}}, http.StatusBadRequest},
 		{url.Values{"count": {"0xff"}}, http.StatusBadRequest},
 		{url.Values{"count": {fmt.Sprintf("%d", app.App.maxSSECount+1)}}, http.StatusBadRequest},
+
+		{url.Values{"jitter": {"-0.1"}}, http.StatusBadRequest},
+		{url.Values{"jitter": {"1.5"}}, http.StatusBadRequest},
+		{url.Values{"jitter": {"abc"}}, http.StatusBadRequest},
 
 		// request would take too long
 		{url.Values{"duration": {"750ms"}, "delay": {"500ms"}}, http.StatusBadRequest},
