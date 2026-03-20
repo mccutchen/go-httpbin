@@ -9,6 +9,7 @@ const (
 	binaryContentType = "application/octet-stream"
 	htmlContentType   = "text/html; charset=utf-8"
 	jsonContentType   = "application/json; charset=utf-8"
+	jsonlContentType  = "application/x-ndjson; charset=utf-8"
 	sseContentType    = "text/event-stream; charset=utf-8"
 	textContentType   = "text/plain; charset=utf-8"
 )

@@ -2,6 +2,7 @@ package httpbin
 
 import (
 	"bytes"
+	"context"
 	crypto_rand "crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
@@ -327,6 +328,45 @@ func computePausePerWrite(duration time.Duration, count int64) time.Duration {
 		pause = (duration + n - 1) / n
 	}
 	return pause
+}
+
+// newPacer returns a channel that emits indices 0..count-1, waiting pause
+// (with jitter) between each. The channel closes when all indices are sent
+// or ctx is cancelled.
+func newPacer(ctx context.Context, count int, pause time.Duration, jitter float64) <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		for i := 0; i < count; i++ {
+			if i > 0 && pause > 0 {
+				select {
+				case <-time.After(applyJitter(pause, jitter)):
+				case <-ctx.Done():
+					return
+				}
+			}
+			select {
+			case ch <- i:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return ch
+}
+
+// applyJitter randomizes a duration by +/- jitter fraction.
+// jitter must be in [0, 1]; 0 returns d unchanged.
+func applyJitter(d time.Duration, jitter float64) time.Duration {
+	if jitter <= 0 {
+		return d
+	}
+	scale := 1.0 + jitter*(2*rand.Float64()-1)
+	j := time.Duration(float64(d) * scale)
+	if j < 0 {
+		return 0
+	}
+	return j
 }
 
 // syntheticByteStream implements the ReadSeeker interface to allow reading
