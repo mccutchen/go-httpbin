@@ -1,0 +1,120 @@
+version: 2
+
+# sort tags by date, so that a final release tag will be chosen over a
+# pre-release tag when they point to the same commit.
+git:
+  tag_sort: "-creatordate"
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.buildDate={{.Date}}
+
+# replace per-arch macos binaries with a single universal binary
+universal_binaries:
+  - replace: true
+
+source:
+  enabled: true
+
+sboms:
+  - id: archive
+    artifacts: archive
+  - id: source
+    artifacts: source
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}-
+      {{- .Os | tolower }}-
+      {{- .Arch }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+release:
+  draft: false
+  prerelease: auto
+  mode: replace
+
+dockers_v2:
+  - images:
+      - index.docker.io/mccutchen/go-app-template
+      - ghcr.io/mccutchen/go-app-template
+    tags:
+      - "{{.Version}}"
+      - '{{ if not .Prerelease }}{{.Major}}.{{.Minor}}{{ end }}'
+      - '{{ if not .Prerelease }}latest{{ end }}'
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    dockerfile: Dockerfile.release
+    sbom: true
+    labels:
+      org.opencontainers.image.created: "{{.Date}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.version: "{{.Version}}"
+      org.opencontainers.image.source: "{{.GitURL}}"
+      org.opencontainers.image.url: "{{.GitURL}}"
+      org.opencontainers.image.title: "{{.ProjectName}}"
+      org.opencontainers.image.licenses: MIT
+    annotations:
+      org.opencontainers.image.created: "{{.Date}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.version: "{{.Version}}"
+      org.opencontainers.image.source: "{{.GitURL}}"
+      org.opencontainers.image.url: "{{.GitURL}}"
+      org.opencontainers.image.title: "{{.ProjectName}}"
+      org.opencontainers.image.licenses: MIT
+
+docker_signs:
+  - cmd: cosign
+    args:
+      - sign
+      - --yes
+      - "${artifact}@${digest}"
+    # '' is for images built by dockers_v2, per the docs:
+    # https://goreleaser.com/customization/sign/docker_sign/
+    artifacts: ''
+
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "QUILL_SIGN_P12" }}'
+      sign:
+        certificate: "{{.Env.QUILL_SIGN_P12}}"
+        password: "{{.Env.QUILL_SIGN_PASSWORD}}"
+      notarize:
+        issuer_id: "{{.Env.QUILL_NOTARY_ISSUER}}"
+        key_id: "{{.Env.QUILL_NOTARY_KEY_ID}}"
+        key: "{{.Env.QUILL_NOTARY_KEY}}"
+        wait: true
+        # Apple rejects JWTs with ttl > 20m, quill sets token lifetime to
+        # this timeout + 2m.
+        timeout: 18m
+
+changelog:
+  disable: true
+
+announce:
+  skip: true

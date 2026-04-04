@@ -1,8 +1,3 @@
-# The version that will be used in docker tags (e.g. to push a
-# go-httpbin:latest image use `make imagepush VERSION=latest)`
-VERSION    ?= $(shell git rev-parse --short HEAD)
-DOCKER_TAG ?= mccutchen/go-httpbin:$(VERSION)
-
 # Built binaries will be placed here
 DIST_PATH  	  ?= dist
 
@@ -12,10 +7,11 @@ COVERAGE_ARGS ?= -covermode=atomic -coverprofile=$(COVERAGE_PATH)
 TEST_ARGS     ?= -race
 
 # 3rd party tools
-FMT         := go run mvdan.cc/gofumpt@v0.7.0
-LINT        := go run github.com/mgechev/revive@v1.7.0
-REFLEX      := go run github.com/cespare/reflex@v0.3.1
-STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2025.1.1
+GOFUMPT     := go run mvdan.cc/gofumpt@v0.9.2
+GORELEASER  := go run github.com/goreleaser/goreleaser/v2@v2.15.2
+REFLEX      := go run github.com/cespare/reflex@v0.3.2
+REVIVE      := go run github.com/mgechev/revive@v1.15.0
+STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2026.1
 
 # Host and port to use when running locally via `make run` or `make watch`
 HOST ?= 127.0.0.1
@@ -44,7 +40,7 @@ clean:
 
 
 # =============================================================================
-# test & lint
+# test
 # =============================================================================
 test:
 	go test $(TEST_ARGS) ./...
@@ -66,12 +62,20 @@ testautobahn:
 	AUTOBAHN_TESTS=1 AUTOBAHN_OPEN_REPORT=1 go test -v -run ^TestWebSocketServer$$ $(TEST_ARGS) ./...
 .PHONY: autobahntests
 
+
+# ===========================================================================
+# linting/formatting
+# ===========================================================================
 lint:
-	test -z "$$($(FMT) -d -e .)" || (echo "Error: $(FMT) failed"; $(FMT) -d -e . ; exit 1)
+	$(GOFUMPT) -d .
 	go vet ./...
-	$(LINT) -set_exit_status ./...
+	$(REVIVE) -set_exit_status ./...
 	$(STATICCHECK) ./...
 .PHONY: lint
+
+fmt:
+	$(GOFUMPT) -w .
+.PHONY: fmt
 
 
 # =============================================================================
@@ -86,16 +90,31 @@ watch:
 .PHONY: watch
 
 
-# =============================================================================
-# docker images
-# =============================================================================
-image:
-	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_TAG) .
-.PHONY: image
+# ===========================================================================
+# Release
+# ===========================================================================
+#
+# Note: Releases are built automatically via the release.yaml GitHub Actions
+# workflow when a new release is create via the GitHub UI.
+#
+# The release target requires valid values for these env vars:
+#
+#   QUILL_SIGN_P12
+#   QUILL_SIGN_PASSWORD
+#   QUILL_NOTARY_ISSUER
+#   QUILL_NOTARY_KEY_ID
+#   QUILL_NOTARY_KEY
+#
+# See quill's usage docs[1] and goreleaser's macOS notarization docs[2] for
+# more info about these values and how to generate them.
+#
+# [1]: https://github.com/anchore/quill/blob/main/README.md#usage
+# [2]: https://goreleaser.com/customization/notarize/
+# ===========================================================================
+release: clean
+	$(GORELEASER) release --clean --verbose
+.PHONY: release
 
-imagepush:
-	docker buildx create --name httpbin
-	docker buildx use httpbin
-	docker buildx build --push --platform linux/amd64,linux/arm64 -t $(DOCKER_TAG) .
-	docker buildx rm httpbin
-.PHONY: imagepush
+release-dry-run: clean
+	$(GORELEASER) release --clean --verbose --snapshot
+.PHONY: release-dry-run

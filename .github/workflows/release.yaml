@@ -1,75 +1,94 @@
-# This action pushes new amd64 and arm64 docker images to the Docker and GitHub
-# registries on every new release of the project.
+# The release workflow is triggered by the creation of a GitHub release and
+# builds cross-platform binaries and multi-arch docker images.
 #
-# Cobbled together from these sources:
-# - https://github.com/docker/build-push-action/#usage
-# - https://docs.github.com/en/actions/publishing-packages/publishing-docker-images
-
+# For each build artifact, build provenance metadata is generated, signed,
+# attested, etc.
 name: release
 
 "on":
   release:
     types: [published]
-
-  # we do not build and push images for every commit, only for tagged releases.
-  # uncomment this to enablle building for pull requests, to debug this
-  # workflow.
-  #
+  # Uncomment to test the workflow on pull requests
   # pull_request:
   #   branches: [main]
 
+permissions:
+  contents: read
+
+# Serialize release workflows without canceling, on the off chance we need to
+# trigger a quick follow-up release while one is still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  docker:
+  release:
+    name: release
     runs-on: ubuntu-latest
-
     permissions:
-      contents: read
-      packages: write
-
+      contents: write      # publish GitHub release and upload release artifacts
+      packages: write      # push OCI images to ghcr.io
+      id-token: write      # request OIDC token for Sigstore signing
+      attestations: write  # publish attestations to GitHub attestation store
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
-      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
-
-      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: 'stable'
+          # caching explicitly disabled in release workflows
+          # https://docs.zizmor.sh/audits/#cache-poisoning
+          cache: false
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
+        with:
+          version: '~> v2'
+          install-only: true
+
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
-        id: meta
+      - name: "Run make release"
         env:
-          # https://docs.docker.com/build/ci/github-actions/annotations/#configure-annotation-level
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
-        with:
-          images: |
-            mccutchen/go-httpbin
-            ghcr.io/${{ github.repository }}
-          tags: |
-            # For releases, use the standard tags and special "latest" tag
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QUILL_NOTARY_ISSUER: ${{ secrets.QUILL_NOTARY_ISSUER }}
+          QUILL_NOTARY_KEY: ${{ secrets.QUILL_NOTARY_KEY }}
+          QUILL_NOTARY_KEY_ID: ${{ secrets.QUILL_NOTARY_KEY_ID }}
+          QUILL_SIGN_P12: ${{ secrets.QUILL_SIGN_P12 }}
+          QUILL_SIGN_PASSWORD: ${{ secrets.QUILL_SIGN_PASSWORD }}
+          # On pull requests, we run `make release-dry-run` and on actual
+          # releases we run `make release`
+          RELEASE_TARGET: ${{ github.event_name == 'pull_request' && 'release-dry-run' || 'release' }}
+        run:
+          # Note that we override the CMD_GORELEASER var to use the binary
+          # installed by the goreleaser/goreleaser-action step above instead
+          # of using the Makefile's default `go run ...` approach because it
+          # takes a long time to build goreleaser itself.
+          make "${RELEASE_TARGET}" GORELEASER="goreleaser"
 
-            # For pull requests, use the commit SHA
-            #
-            # Note that this is disabled by default, but can be enabled for
-            # debugging purposes by uncommenting the pull_request trigger at
-            # top of the workflow.
-            type=sha,format=short,enable=${{ github.event_name == 'pull_request' }}
-
-      - uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          platforms: linux/amd64,linux/arm64
-          push: true
-          sbom: true
-          provenance: mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
+          name: goreleaser-artifacts
+          path: dist/artifacts.json
+
+      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-checksums: ./dist/checksums.txt
+
+      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-checksums: ./dist/digests.txt
+          push-to-registry: true

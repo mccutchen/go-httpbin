@@ -86,7 +86,7 @@ func (ln *netPipeListener) Addr() net.Addr {
 // DialContext creates both client and server conns via [net.Pipe] and
 // returns the client conn. The server conn is enqueued for the listener to
 // pick up in its [Accept] method.
-func (ln *netPipeListener) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+func (ln *netPipeListener) DialContext(ctx context.Context, _, _ string) (net.Conn, error) {
 	clientConn, serverConn := net.Pipe()
 	select {
 	case ln.connCh <- serverConn:
