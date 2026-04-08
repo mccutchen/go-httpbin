@@ -61,8 +61,8 @@ release:
 
 dockers_v2:
   - images:
-      - index.docker.io/mccutchen/go-app-template
-      - ghcr.io/mccutchen/go-app-template
+      - index.docker.io/mccutchen/go-httpbin
+      - ghcr.io/mccutchen/go-httpbin
     tags:
       - "{{.Version}}"
       - '{{ if not .Prerelease }}{{.Major}}.{{.Minor}}{{ end }}'

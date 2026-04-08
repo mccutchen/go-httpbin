@@ -9,8 +9,8 @@ name: release
   release:
     types: [published]
   # Uncomment to test the workflow on pull requests
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 permissions:
   contents: read
