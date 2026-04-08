@@ -3286,18 +3286,18 @@ func TestJSONL(t *testing.T) {
 		url           string
 		expectedLines int
 	}{
-		{"/jsonl", 10},                                          // default count
-		{"/jsonl?count=1", 1},                                   // minimum
-		{"/jsonl?count=5", 5},                                   // custom count
-		{"/jsonl?count=0", 1},                                   // clamped to min
-		{"/jsonl?count=-5", 1},                                  // clamped to min
-		{"/jsonl?count=3&duration=1s", 3},                       // with duration
-		{"/jsonl?count=1&duration=1s", 1},                       // single line with duration
-		{"/jsonl?count=3&delay=0s", 3},                          // with zero delay
-		{"/jsonl?count=2&duration=1s&delay=0s", 2},              // with both
-		{"/jsonl?count=3&duration=1s&jitter=0", 3},              // jitter=0 (no effect)
-		{"/jsonl?count=3&duration=1s&jitter=0.5", 3},            // jitter=0.5
-		{"/jsonl?count=3&duration=1s&jitter=1", 3},              // jitter=1 (max)
+		{"/jsonl", 10},                               // default count
+		{"/jsonl?count=1", 1},                        // minimum
+		{"/jsonl?count=5", 5},                        // custom count
+		{"/jsonl?count=0", 1},                        // clamped to min
+		{"/jsonl?count=-5", 1},                       // clamped to min
+		{"/jsonl?count=3&duration=1s", 3},            // with duration
+		{"/jsonl?count=1&duration=1s", 1},            // single line with duration
+		{"/jsonl?count=3&delay=0s", 3},               // with zero delay
+		{"/jsonl?count=2&duration=1s&delay=0s", 2},   // with both
+		{"/jsonl?count=3&duration=1s&jitter=0", 3},   // jitter=0 (no effect)
+		{"/jsonl?count=3&duration=1s&jitter=0.5", 3}, // jitter=0.5
+		{"/jsonl?count=3&duration=1s&jitter=1", 3},   // jitter=1 (max)
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -3887,7 +3887,6 @@ func TestUpload(t *testing.T) {
 				assert.DeepEqual(t, result.BytesReceived, int64(len(test.requestBody)), "BytesReceived should match requestedBody size")
 			})
 		}
-
 	}
 }
 
@@ -3931,7 +3930,7 @@ func TestWebSocketEcho(t *testing.T) {
 		})
 	})
 
-	var maxBodySize = 1024
+	maxBodySize := 1024
 	paramTests := []struct {
 		query      string
 		wantStatus int
