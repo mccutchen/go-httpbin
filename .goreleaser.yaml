@@ -6,8 +6,7 @@ git:
   tag_sort: "-creatordate"
 
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - main: ./...
     goos:
       - darwin
       - linux
@@ -15,11 +14,13 @@ builds:
     goarch:
       - amd64
       - arm64
-    mod_timestamp: "{{ .CommitTimestamp }}"
+    env:
+      - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.buildDate={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 # replace per-arch macos binaries with a single universal binary
 universal_binaries:
