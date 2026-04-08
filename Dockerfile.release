@@ -1,0 +1,13 @@
+# This Dockerfile is used by goreleaser to build multi-arch OCI images. It is
+# not meant to be built manually via e.g. `docker build`.
+#
+# The binaries are first cross-compiled on the host machine by goreleaser and
+# then copied into the image directly. See the [Docker build context][1]
+# section of goreleaser dockers_v2 pipeline docs for more info on how this
+# works.
+#
+# [1]: https://goreleaser.com/customization/package/dockers_v2/#the-docker-build-context
+FROM gcr.io/distroless/static:nonroot
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/go-httpbin /usr/bin/
+ENTRYPOINT ["/usr/bin/go-httpbin"]
