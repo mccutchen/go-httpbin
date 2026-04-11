@@ -6,7 +6,7 @@ git:
   tag_sort: "-creatordate"
 
 builds:
-  - main: ./...
+  - main: ./cmd/go-httpbin
     goos:
       - darwin
       - linux
