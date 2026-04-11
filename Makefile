@@ -23,7 +23,10 @@ PORT ?= 8080
 # =============================================================================
 build:
 	mkdir -p $(DIST_PATH)
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
+	CGO_ENABLED=0 \
+	GIT_COMMIT=$$(git describe --always --dirty 2>/dev/null || echo "unknown") \
+	BUILD_DATE=$$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+		go build -ldflags="-s -w -X main.commit=${GIT_COMMIT} -X main.buildDate=${BUILD_DATE}" -o $(DIST_PATH)/go-httpbin ./cmd/go-httpbin
 .PHONY: build
 
 buildexamples: build

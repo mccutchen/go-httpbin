@@ -3,25 +3,22 @@ package main
 
 import (
 	"os"
-	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/cmd"
 )
 
-// Build metadata, populated by the release process (see .goreleaser.yaml).
+// Populated at build time
 var (
 	version   = "dev"
-	commit    = "HEAD"
-	buildDate = time.Now().String()
+	commit    = "unknown"
+	buildDate = "unknown"
 )
 
 func main() {
-	// TODO: incorporate into a `--version` flag.
-	{
-		_ = version
-		_ = commit
-		_ = buildDate
-	}
+	os.Exit(cmd.Main(cmd.BuildInfo{
+		Version: version,
+		Commit:  commit,
+		Date:    buildDate,
+	}))
 
-	os.Exit(cmd.Main())
 }

@@ -1310,6 +1310,11 @@ func (h *HTTPBin) Hostname(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
+// Version - returns version info.
+func (h *HTTPBin) Version(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(http.StatusOK, w, h.version)
+}
+
 // SSE writes a stream of events over a duration after an optional
 // initial delay.
 func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
