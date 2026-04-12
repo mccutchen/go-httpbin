@@ -55,6 +55,13 @@ func Main(build BuildInfo) int {
 // mainImpl is the real implementation of Main(), extracted for better
 // testability.
 func mainImpl(args []string, build BuildInfo, getEnvVal func(string) string, getEnviron func() []string, getHostname func() (string, error), out io.Writer) int {
+	// Support `docker run <img> go-httpbin -foo -bar` by stripping the binary
+	// name when it appears as the first argument for backwards compatibility
+	// after the OCI image entrypoint changed from sh to go-httpbin itself.
+	if len(args) > 0 && args[0] == "go-httpbin" {
+		args = args[1:]
+	}
+
 	cfg, err := loadConfig(args, getEnvVal, getEnviron, getHostname)
 	if err != nil {
 		if cfgErr, ok := err.(ConfigError); ok {

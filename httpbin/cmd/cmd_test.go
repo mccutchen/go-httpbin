@@ -629,6 +629,11 @@ func TestMainImpl(t *testing.T) {
 			wantCode: 0,
 			wantOut:  usage,
 		},
+		"binary name as first arg is stripped for docker compat": {
+			args:     []string{"go-httpbin", "-h"},
+			wantCode: 0,
+			wantOut:  usage,
+		},
 		"version": {
 			build:    BuildInfo{Version: "1.2.3", Commit: "abc123", Date: "1988-11-12T10:00:00Z"},
 			args:     []string{"-version"},
