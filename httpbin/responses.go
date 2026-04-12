@@ -18,6 +18,14 @@ type envResponse struct {
 	Env map[string]string `json:"env"`
 }
 
+type versionResponse struct {
+	Service   string `json:"service"`
+	Version   string `json:"version,omitempty"`
+	Commit    string `json:"commit,omitempty"`
+	BuildDate string `json:"build_date,omitempty"`
+	GoVersion string `json:"go_version,omitempty"`
+}
+
 type headersResponse struct {
 	Headers http.Header `json:"headers"`
 }

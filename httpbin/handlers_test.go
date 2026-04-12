@@ -3562,6 +3562,38 @@ func TestHostname(t *testing.T) {
 	})
 }
 
+func TestVersion(t *testing.T) {
+	t.Run("service only (default)", func(t *testing.T) {
+		t.Parallel()
+		app := setupTestApp(t, WithVersion("go-httpbin", "", "", "", ""))
+		req := newTestRequest(t, "GET", app.URL("/version"), nil)
+		resp := mustDoRequest(t, app, req)
+		result := mustParseResponse[versionResponse](t, resp)
+		assert.DeepEqual(t, result, versionResponse{
+			Service:   "go-httpbin",
+			Version:   "",
+			Commit:    "",
+			BuildDate: "",
+			GoVersion: "",
+		}, "incorrect version response")
+	})
+
+	t.Run("full version info", func(t *testing.T) {
+		t.Parallel()
+		app := setupTestApp(t, WithVersion("go-httpbin", "1.2.3", "abc123", "1988-11-12", "go1.22.0"))
+		req := newTestRequest(t, "GET", app.URL("/version"), nil)
+		resp := mustDoRequest(t, app, req)
+		result := mustParseResponse[versionResponse](t, resp)
+		assert.DeepEqual(t, result, versionResponse{
+			Service:   "go-httpbin",
+			Version:   "1.2.3",
+			Commit:    "abc123",
+			BuildDate: "1988-11-12",
+			GoVersion: "go1.22.0",
+		}, "incorrect version response")
+	})
+}
+
 func TestSSE(t *testing.T) {
 	t.Parallel()
 	app := setupTestApp(t)

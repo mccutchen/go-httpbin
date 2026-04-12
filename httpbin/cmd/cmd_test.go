@@ -51,8 +51,12 @@ const usage = `Usage of go-httpbin:
     	Value to use for the http.Server's ReadTimeout option (default 5s)
   -unsafe-allow-dangerous-responses
     	Allow endpoints to return unescaped HTML when clients control response Content-Type (enables XSS attacks)
+  -use-full-version
+    	Expose full version details via /version (default: service name only)
   -use-real-hostname
     	Expose value of os.Hostname() in the /hostname endpoint instead of dummy value
+  -version
+    	Print version and exit
 `
 
 func TestLoadConfig(t *testing.T) {
@@ -550,6 +554,35 @@ func TestLoadConfig(t *testing.T) {
 			env:     map[string]string{"UNSAFE_ALLOW_DANGEROUS_RESPONSES": "false"},
 			wantCfg: defaultCfg,
 		},
+
+		// use-full-version
+		"ok -use-full-version": {
+			args: []string{"-use-full-version"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UseFullVersion: true,
+			}),
+		},
+		"ok USE_FULL_VERSION=1": {
+			env: map[string]string{"USE_FULL_VERSION": "1"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UseFullVersion: true,
+			}),
+		},
+		"ok USE_FULL_VERSION=true": {
+			env: map[string]string{"USE_FULL_VERSION": "true"},
+			wantCfg: mergedConfig(defaultCfg, &config{
+				UseFullVersion: true,
+			}),
+		},
+		// case sensitive
+		"ok USE_FULL_VERSION=TRUE": {
+			env:     map[string]string{"USE_FULL_VERSION": "TRUE"},
+			wantCfg: defaultCfg,
+		},
+		"ok USE_FULL_VERSION=false": {
+			env:     map[string]string{"USE_FULL_VERSION": "false"},
+			wantCfg: defaultCfg,
+		},
 	}
 
 	for name, tc := range testCases {
@@ -583,6 +616,7 @@ func TestMainImpl(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
+		build       BuildInfo
 		args        []string
 		env         map[string]string
 		getHostname func() (string, error)
@@ -594,6 +628,15 @@ func TestMainImpl(t *testing.T) {
 			args:     []string{"-h"},
 			wantCode: 0,
 			wantOut:  usage,
+		},
+		"version": {
+			build:    BuildInfo{Version: "1.2.3", Commit: "abc123", Date: "1988-11-12T10:00:00Z"},
+			args:     []string{"-version"},
+			wantCode: 0,
+			wantOutFn: func(t *testing.T, out string) {
+				assert.Contains(t, out, "go-httpbin version 1.2.3\n", "version output missing first line")
+				assert.Contains(t, out, " abc123 1988-11-12T10:00:00Z\n", "version output missing second line")
+			},
 		},
 		"cli error": {
 			args:     []string{"-max-body-size", "foo"},
@@ -654,7 +697,7 @@ func TestMainImpl(t *testing.T) {
 			}
 
 			buf := &bytes.Buffer{}
-			gotCode := mainImpl(tc.args, func(key string) string { return tc.env[key] }, func() []string { return environSlice(tc.env) }, tc.getHostname, buf)
+			gotCode := mainImpl(tc.args, tc.build, func(key string) string { return tc.env[key] }, func() []string { return environSlice(tc.env) }, tc.getHostname, buf)
 			out := buf.String()
 
 			if gotCode != tc.wantCode {

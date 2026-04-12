@@ -115,7 +115,9 @@ variables (or a combination of the two):
 | `-srv-max-header-bytes` | `SRV_MAX_HEADER_BYTES` | Value to use for the http.Server's MaxHeaderBytes option | 16384 |
 | `-srv-read-header-timeout` | `SRV_READ_HEADER_TIMEOUT` | Value to use for the http.Server's ReadHeaderTimeout option | 1s |
 | `-srv-read-timeout` | `SRV_READ_TIMEOUT` | Value to use for the http.Server's ReadTimeout option | 5s |
+| `-use-full-version` | `USE_FULL_VERSION` | Expose full version details (release, commit, build date, Go runtime) via the /version endpoint (default: service name only) | false |
 | `-use-real-hostname` | `USE_REAL_HOSTNAME` | Expose real hostname as reported by os.Hostname() in the /hostname endpoint | false |
+| `-version` | | Print version and exit | |
 
 > [!WARNING]
 > These configuration options are dangerous and/or deprecated and should be

@@ -86,6 +86,9 @@ type HTTPBin struct {
 	// The hostname to expose via /hostname.
 	hostname string
 
+	// Version info to expose via /version.
+	version versionResponse
+
 	// The app's http handler
 	handler http.Handler
 
@@ -119,6 +122,7 @@ func New(opts ...OptionFunc) *HTTPBin {
 		MaxDuration:   DefaultMaxDuration,
 		DefaultParams: DefaultDefaultParams,
 		hostname:      DefaultHostname,
+		version:       versionResponse{Service: "go-httpbin"},
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -221,6 +225,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("PATCH /upload", h.RequestWithBodyDiscard)
 	mux.HandleFunc("/user-agent", h.UserAgent)
 	mux.HandleFunc("/uuid", h.UUID)
+	mux.HandleFunc("/version", h.Version)
 	mux.HandleFunc("/xml", h.XML)
 
 	// existing httpbin endpoints that we do not support

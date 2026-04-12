@@ -34,3 +34,4 @@ comment:
 
 ignore:
 - internal/testing
+- cmd/go-httpbin/main.go # no logic to test, just calls cmd.Main, which is tested
