@@ -122,6 +122,7 @@ func New(opts ...OptionFunc) *HTTPBin {
 		MaxDuration:   DefaultMaxDuration,
 		DefaultParams: DefaultDefaultParams,
 		hostname:      DefaultHostname,
+		version:       versionResponse{Service: "go-httpbin"},
 	}
 	for _, opt := range opts {
 		opt(h)

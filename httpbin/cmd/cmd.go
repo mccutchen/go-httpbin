@@ -39,7 +39,7 @@ const (
 	defaultSrvMaxHeaderBytes    = 16 * 1024 // 16kb
 )
 
-// BuildInfo holds build metadata injected at compile time.
+// BuildInfo holds build metadata.
 type BuildInfo struct {
 	Version string
 	Commit  string
@@ -96,8 +96,6 @@ func mainImpl(args []string, build BuildInfo, getEnvVal func(string) string, get
 	}
 	if cfg.UseFullVersion {
 		opts = append(opts, httpbin.WithVersion("go-httpbin", build.Version, build.Commit, build.Date, runtime.Version()))
-	} else {
-		opts = append(opts, httpbin.WithVersion("go-httpbin", "", "", "", ""))
 	}
 	if cfg.Prefix != "" {
 		opts = append(opts, httpbin.WithPrefix(cfg.Prefix))

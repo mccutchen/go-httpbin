@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
 )
 
 func TestNew(t *testing.T) {
@@ -20,6 +22,8 @@ func TestNew(t *testing.T) {
 	if h.Observer != nil {
 		t.Fatalf("expected default Observer == nil, got %#v", h.Observer)
 	}
+	assert.DeepEqual(t, h.version, versionResponse{Service: "go-httpbin"}, "incorrect default versionResponse")
+
 }
 
 func TestNewOptions(t *testing.T) {
@@ -32,6 +36,7 @@ func TestNewOptions(t *testing.T) {
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration),
 		WithObserver(observer),
+		WithVersion("go-httpbin", "1.2.3", "abcd1234", "2025-01-01", "go2.0"),
 	)
 
 	if h.MaxBodySize != maxBodySize {
@@ -43,6 +48,13 @@ func TestNewOptions(t *testing.T) {
 	if h.Observer == nil {
 		t.Fatalf("expected non-nil Observer")
 	}
+	assert.DeepEqual(t, h.version, versionResponse{
+		Service:   "go-httpbin",
+		Version:   "1.2.3",
+		Commit:    "abcd1234",
+		BuildDate: "2025-01-01",
+		GoVersion: "go2.0",
+	}, "incorrect versionResponse")
 }
 
 func TestNewObserver(t *testing.T) {
