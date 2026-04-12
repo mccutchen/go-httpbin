@@ -630,12 +630,12 @@ func TestMainImpl(t *testing.T) {
 			wantOut:  usage,
 		},
 		"version": {
-			build:    BuildInfo{Version: "1.2.3", Commit: "abc123", Date: "2024-01-15T10:00:00Z"},
+			build:    BuildInfo{Version: "1.2.3", Commit: "abc123", Date: "1988-11-12T10:00:00Z"},
 			args:     []string{"-version"},
 			wantCode: 0,
 			wantOutFn: func(t *testing.T, out string) {
 				assert.Contains(t, out, "go-httpbin version 1.2.3\n", "version output missing first line")
-				assert.Contains(t, out, " abc123 2024-01-15T10:00:00Z\n", "version output missing second line")
+				assert.Contains(t, out, " abc123 1988-11-12T10:00:00Z\n", "version output missing second line")
 			},
 		},
 		"cli error": {

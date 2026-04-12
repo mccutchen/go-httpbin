@@ -36,7 +36,7 @@ func TestNewOptions(t *testing.T) {
 		WithMaxBodySize(maxBodySize),
 		WithMaxDuration(maxDuration),
 		WithObserver(observer),
-		WithVersion("go-httpbin", "1.2.3", "abcd1234", "2025-01-01", "go2.0"),
+		WithVersion("go-httpbin", "1.2.3", "abcd1234", "1988-11-12T10:00:00Z", "go2.0.0"),
 	)
 
 	if h.MaxBodySize != maxBodySize {
@@ -52,8 +52,8 @@ func TestNewOptions(t *testing.T) {
 		Service:   "go-httpbin",
 		Version:   "1.2.3",
 		Commit:    "abcd1234",
-		BuildDate: "2025-01-01",
-		GoVersion: "go2.0",
+		BuildDate: "1988-11-12T10:00:00Z",
+		GoVersion: "go2.0.0",
 	}, "incorrect versionResponse")
 }
 

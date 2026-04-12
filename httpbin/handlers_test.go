@@ -3578,14 +3578,14 @@ func TestVersion(t *testing.T) {
 
 	t.Run("full version info", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t, WithVersion("go-httpbin", "1.2.3", "abc123", "2024-01-15", "go1.22.0"))
+		app := setupTestApp(t, WithVersion("go-httpbin", "1.2.3", "abc123", "1988-11-12", "go1.22.0"))
 		req := newTestRequest(t, "GET", app.URL("/version"), nil)
 		resp := mustDoRequest(t, app, req)
 		result := mustParseResponse[versionResponse](t, resp)
 		assert.Equal(t, result.Service, "go-httpbin", "service mismatch")
 		assert.Equal(t, result.Version, "1.2.3", "version mismatch")
 		assert.Equal(t, result.Commit, "abc123", "commit mismatch")
-		assert.Equal(t, result.BuildDate, "2024-01-15", "build_date mismatch")
+		assert.Equal(t, result.BuildDate, "1988-11-12", "build_date mismatch")
 		assert.Equal(t, result.GoVersion, "go1.22.0", "go_version mismatch")
 	})
 }
