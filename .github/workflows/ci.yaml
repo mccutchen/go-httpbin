@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main] # pull requests AGAINST main
 
+permissions:
+  contents: read
+
 # cancel CI runs when a new commit is pushed to any branch except main
 concurrency:
   group: "test-${{ github.ref }}"
