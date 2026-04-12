@@ -3569,11 +3569,13 @@ func TestVersion(t *testing.T) {
 		req := newTestRequest(t, "GET", app.URL("/version"), nil)
 		resp := mustDoRequest(t, app, req)
 		result := mustParseResponse[versionResponse](t, resp)
-		assert.Equal(t, result.Service, "go-httpbin", "service mismatch")
-		assert.Equal(t, result.Version, "", "version should be empty")
-		assert.Equal(t, result.Commit, "", "commit should be empty")
-		assert.Equal(t, result.BuildDate, "", "build_date should be empty")
-		assert.Equal(t, result.GoVersion, "", "go_version should be empty")
+		assert.DeepEqual(t, result, versionResponse{
+			Service:   "go-httpbin",
+			Version:   "",
+			Commit:    "",
+			BuildDate: "",
+			GoVersion: "",
+		}, "incorrect version response")
 	})
 
 	t.Run("full version info", func(t *testing.T) {
@@ -3582,11 +3584,13 @@ func TestVersion(t *testing.T) {
 		req := newTestRequest(t, "GET", app.URL("/version"), nil)
 		resp := mustDoRequest(t, app, req)
 		result := mustParseResponse[versionResponse](t, resp)
-		assert.Equal(t, result.Service, "go-httpbin", "service mismatch")
-		assert.Equal(t, result.Version, "1.2.3", "version mismatch")
-		assert.Equal(t, result.Commit, "abc123", "commit mismatch")
-		assert.Equal(t, result.BuildDate, "1988-11-12", "build_date mismatch")
-		assert.Equal(t, result.GoVersion, "go1.22.0", "go_version mismatch")
+		assert.DeepEqual(t, result, versionResponse{
+			Service:   "go-httpbin",
+			Version:   "1.2.3",
+			Commit:    "abc123",
+			BuildDate: "1988-11-12",
+			GoVersion: "go1.22.0",
+		}, "incorrect version response")
 	})
 }
 
