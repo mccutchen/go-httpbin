@@ -510,31 +510,23 @@ func (h *HTTPBin) Cookies(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetCookies sets cookies as specified in query params and redirects to
-// Cookies endpoint
+// Cookies endpoint. Cookie attributes may be overridden via attr[Name] query
+// params (e.g. attr[Secure]=true, attr[Path]=/foo).
 func (h *HTTPBin) SetCookies(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	for k := range params {
-		http.SetCookie(w, &http.Cookie{
-			Name:     k,
-			Value:    params.Get(k),
-			HttpOnly: true,
-		})
+	for _, cookie := range parseCookies(r) {
+		http.SetCookie(w, &cookie)
 	}
 	h.doRedirect(w, "/cookies", http.StatusFound)
 }
 
 // DeleteCookies deletes cookies specified in query params and redirects to
-// Cookies endpoint
+// Cookies endpoint. Cookie attributes may be overridden via attr[Name] query
+// params (e.g. attr[Secure]=true, attr[Path]=/foo).
 func (h *HTTPBin) DeleteCookies(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	for k := range params {
-		http.SetCookie(w, &http.Cookie{
-			Name:     k,
-			Value:    params.Get(k),
-			HttpOnly: true,
-			MaxAge:   -1,
-			Expires:  time.Now().Add(-1 * 24 * 365 * time.Hour),
-		})
+	for _, cookie := range parseCookies(r) {
+		cookie.MaxAge = -1
+		cookie.Expires = time.Now().Add(-1 * 24 * 365 * time.Hour)
+		http.SetCookie(w, &cookie)
 	}
 	h.doRedirect(w, "/cookies", http.StatusFound)
 }
