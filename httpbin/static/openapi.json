@@ -264,6 +264,22 @@
           "400": { "$ref": "#/components/responses/BadRequest" },
           "413": { "$ref": "#/components/responses/PayloadTooLarge" }
         }
+      },
+      "trace": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingTrace",
+        "tags": ["Anything"],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          }
+        }
       }
     },
 
@@ -410,6 +426,31 @@
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "trace": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathTrace",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          }
         }
       }
     },
@@ -708,7 +749,7 @@
             "description": "Missing or invalid credentials (deliberately obscures the 401)",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
               }
             }
           }
@@ -881,7 +922,7 @@
             "description": "A single HTTP status code, or a comma-separated list of codes with optional weights (e.g. `200`, `200,404,500`, `200:0.7,500:0.3`).",
             "schema": {
               "type": "string",
-              "example": "418"
+              "example": "200"
             }
           }
         ],
@@ -1018,7 +1059,7 @@
     "/redirect/{n}": {
       "get": {
         "summary": "Redirect N times",
-        "description": "Issues a redirect chain of length `n`. By default uses relative redirects (via `/relative-redirect`); pass `absolute=true` to use absolute URLs (via `/absolute-redirect`).",
+        "description": "Issues a redirect chain of length `n`. By default uses relative redirects (via `/relative-redirect`); pass `absolute=true` to use absolute URLs (via `/absolute-redirect`). HTTP clients that follow redirects will ultimately receive a 200 from `/get`.",
         "operationId": "redirect",
         "tags": ["Redirects"],
         "parameters": [
@@ -1037,6 +1078,14 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Final destination after following the redirect chain",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
           "302": {
             "description": "Redirect",
             "headers": {
@@ -1051,7 +1100,7 @@
     "/relative-redirect/{n}": {
       "get": {
         "summary": "Relative redirect N times",
-        "description": "Performs `n` consecutive relative (path-only) 302 redirects. The final redirect points to `/get`.",
+        "description": "Performs `n` consecutive relative (path-only) 302 redirects. The final redirect points to `/get`. HTTP clients that follow redirects will ultimately receive a 200.",
         "operationId": "relativeRedirect",
         "tags": ["Redirects"],
         "parameters": [
@@ -1064,6 +1113,14 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Final destination after following the redirect chain",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
           "302": {
             "description": "Relative redirect",
             "headers": {
@@ -1078,7 +1135,7 @@
     "/absolute-redirect/{n}": {
       "get": {
         "summary": "Absolute redirect N times",
-        "description": "Performs `n` consecutive absolute (full URL) 302 redirects. The final redirect points to `/get`.",
+        "description": "Performs `n` consecutive absolute (full URL) 302 redirects. The final redirect points to `/get`. HTTP clients that follow redirects will ultimately receive a 200.",
         "operationId": "absoluteRedirect",
         "tags": ["Redirects"],
         "parameters": [
@@ -1091,6 +1148,14 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Final destination after following the redirect chain",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
           "302": {
             "description": "Absolute redirect",
             "headers": {
@@ -1124,7 +1189,10 @@
           }
         ],
         "responses": {
-          "302": {
+          "200": {
+            "description": "Final destination after following the redirect (returned by the target server)"
+          },
+          "3XX": {
             "description": "Redirect (or the status code you specified)",
             "headers": {
               "Location": { "schema": { "type": "string" } }
@@ -1477,7 +1545,7 @@
               "ETag": { "schema": { "type": "string" } }
             },
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
               }
             }
@@ -1567,6 +1635,16 @@
           { "name": "delay", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "OK" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      },
+      "trace": {
+        "summary": "Delay response",
+        "description": "Same as GET /delay/{delay}.",
+        "operationId": "traceDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          { "name": "delay", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "$ref": "#/components/responses/BadRequest" } }
       }
     },
 
@@ -1610,8 +1688,8 @@
               "Server-Timing": { "schema": { "type": "string" } }
             },
             "content": {
-              "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+              "text/plain": {
+                "schema": { "type": "string" }
               }
             }
           },
@@ -1723,9 +1801,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Decoded data",
+            "description": "Decoded data. Content-Type is `application/octet-stream` by default, or whatever was passed in the `content-type` query parameter.",
             "content": {
-              "application/octet-stream": {
+              "*/*": {
                 "schema": { "type": "string", "format": "binary" }
               }
             }
@@ -1765,9 +1843,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Encoded or decoded data",
+            "description": "Encoded or decoded data. Content-Type is `application/octet-stream` by default, or whatever was passed in the `content-type` query parameter.",
             "content": {
-              "application/octet-stream": {
+              "*/*": {
                 "schema": { "type": "string", "format": "binary" }
               }
             }
@@ -1796,7 +1874,7 @@
           "200": {
             "description": "Newline-delimited JSON stream",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
                   "type": "array",
                   "items": {
@@ -1856,7 +1934,7 @@
           "200": {
             "description": "Newline-delimited JSON stream",
             "content": {
-              "application/json": {
+              "application/x-ndjson": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -1914,8 +1992,12 @@
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "type": "string",
-                  "description": "SSE-formatted stream. Each event has type `ping` and a JSON data payload.\n\nExample event:\n```\nevent: ping\ndata: {\"id\": 0, \"timestamp\": 1700000000.123}\n\n```"
+                  "type": "object",
+                  "description": "A single SSE event. Each event has type `ping` and a JSON-encoded data payload.",
+                  "properties": {
+                    "event": { "type": "string", "example": "ping" },
+                    "data": { "type": "string", "description": "JSON-encoded payload: {\"id\": <integer>, \"timestamp\": <unix ms>}", "example": "{\"id\":0,\"timestamp\":1700000000123}" }
+                  }
                 }
               }
             }
@@ -1981,8 +2063,8 @@
               "Content-Length": { "schema": { "type": "integer" } }
             },
             "content": {
-              "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+              "text/plain": {
+                "schema": { "type": "string" }
               }
             }
           },
@@ -1993,8 +2075,8 @@
               "Content-Length": { "schema": { "type": "integer" } }
             },
             "content": {
-              "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+              "text/plain": {
+                "schema": { "type": "string" }
               }
             }
           },
@@ -2175,6 +2257,14 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Final destination after following the redirect to /links/{n}/0",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
           "302": {
             "description": "Redirect to /links/{n}/0",
             "headers": {
@@ -2396,12 +2486,15 @@
     "schemas": {
       "Headers": {
         "type": "object",
-        "additionalProperties": { "type": "string" },
-        "description": "Map of HTTP header names to their values.",
+        "additionalProperties": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "description": "Map of HTTP header names to their values (each value is a list of strings).",
         "example": {
-          "Host": "localhost",
-          "User-Agent": "curl/8.4.0",
-          "Accept": "*/*"
+          "Host": ["localhost"],
+          "User-Agent": ["curl/8.4.0"],
+          "Accept": ["*/*"]
         }
       },
       "NoBodyResponse": {

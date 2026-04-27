@@ -93,7 +93,7 @@ run: build
 .PHONY: run
 
 watch:
-	$(REFLEX) -s -r '\.(go|html|tmpl)$$' make run
+	$(REFLEX) -s -r '\.(go|html|tmpl|json|yaml)$$' make run
 .PHONY: watch
 
 
