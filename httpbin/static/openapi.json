@@ -972,7 +972,8 @@
           }
         ],
         "responses": {
-          "200": { "description": "OK (or the code(s) you specified)" }
+          "200": { "description": "OK (or the code(s) you specified)" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       },
       "put": {
@@ -989,7 +990,8 @@
           }
         ],
         "responses": {
-          "200": { "description": "OK (or the code(s) you specified)" }
+          "200": { "description": "OK (or the code(s) you specified)" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       },
       "patch": {
@@ -1006,7 +1008,8 @@
           }
         ],
         "responses": {
-          "200": { "description": "OK (or the code(s) you specified)" }
+          "200": { "description": "OK (or the code(s) you specified)" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       },
       "delete": {
@@ -1023,7 +1026,8 @@
           }
         ],
         "responses": {
-          "200": { "description": "OK (or the code(s) you specified)" }
+          "200": { "description": "OK (or the code(s) you specified)" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -1223,9 +1227,13 @@
           }
         ],
         "responses": {
-          "302": { "description": "Redirect" },
+          "200": {
+            "description": "Final destination after following the redirect (returned by the target server)"
+          },
+          "302": { "description": "Redirect (or the status code you specified)" },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "description": "Target domain not allowed" }
+          "403": { "description": "Target domain not allowed" },
+          "default": { "description": "Any other response from the redirect target" }
         }
       }
     },
@@ -1831,8 +1839,8 @@
             "name": "value",
             "in": "path",
             "required": true,
-            "description": "The data to encode or decode.",
-            "schema": { "type": "string" }
+            "description": "The data to encode or decode. For `decode`, must be a valid URL-safe base64 string.",
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9+/\\-_=]+$" }
           },
           {
             "name": "content-type",
@@ -2647,10 +2655,7 @@
             }
           },
           "multipart/form-data": {
-            "schema": {
-              "type": "object",
-              "additionalProperties": {}
-            }
+            "schema": {}
           },
           "text/plain": {
             "schema": { "type": "string" }
