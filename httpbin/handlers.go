@@ -1048,6 +1048,8 @@ func (h *HTTPBin) ImageAccept(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case accept == "":
 		fallthrough // default to png
+	case strings.Contains(accept, "*/*"):
+		fallthrough // default to png
 	case strings.Contains(accept, "image/*"):
 		fallthrough // default to png
 	case strings.Contains(accept, "image/png"):

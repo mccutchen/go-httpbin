@@ -3210,6 +3210,16 @@
           },
           "406": {
             "description": "None of the requested media types are supported"
+          },
+          "415": {
+            "description": "Unsupported Media Type \u2014 Accept header does not match any supported image format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }

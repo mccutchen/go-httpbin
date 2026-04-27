@@ -33,3 +33,11 @@ include-path = "/hidden-basic-auth/{user}/{password}"
 [operations.checks]
 missing_required_header = {enabled = false}
 
+# /drip, /delay, and /sse are streaming/delay endpoints designed to be slow
+# by construction. Disable the response-time check for these.
+[[operations]]
+include-path-regex = "^/(drip|delay|sse)"
+
+[operations.checks]
+max_response_time = {enabled = false}
+
