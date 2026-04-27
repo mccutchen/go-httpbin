@@ -1,0 +1,2679 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "go-httpbin",
+    "description": "A faithful Go port of httpbin.org — a simple HTTP request and response service useful for testing HTTP clients, debugging HTTP requests, and simulating various server behaviors.",
+    "version": "2.0.0",
+    "contact": {
+      "url": "https://github.com/mccutchen/go-httpbin"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/mccutchen/go-httpbin/blob/main/LICENSE"
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "HTML index page",
+        "description": "Returns an HTML index page listing all available endpoints.",
+        "operationId": "index",
+        "tags": ["Meta"],
+        "responses": {
+          "200": {
+            "description": "HTML index page",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/get": {
+      "get": {
+        "summary": "GET request inspector",
+        "description": "Returns the details of the incoming GET request, including query parameters, headers, origin IP, and the full URL.",
+        "operationId": "getGet",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" }
+        }
+      }
+    },
+
+    "/post": {
+      "post": {
+        "summary": "POST request inspector",
+        "description": "Returns the details of the incoming POST request, including any body data (raw, JSON, form-encoded, or multipart).",
+        "operationId": "postPost",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/put": {
+      "put": {
+        "summary": "PUT request inspector",
+        "description": "Returns the details of the incoming PUT request, including any body data.",
+        "operationId": "putPut",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/patch": {
+      "patch": {
+        "summary": "PATCH request inspector",
+        "description": "Returns the details of the incoming PATCH request, including any body data.",
+        "operationId": "patchPatch",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/delete": {
+      "delete": {
+        "summary": "DELETE request inspector",
+        "description": "Returns the details of the incoming DELETE request, including any body data.",
+        "operationId": "deleteDelete",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/anything": {
+      "get": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingGet",
+        "tags": ["Anything"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "post": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingPost",
+        "tags": ["Anything"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "put": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingPut",
+        "tags": ["Anything"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "patch": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingPatch",
+        "tags": ["Anything"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "delete": {
+        "summary": "Request inspector (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method.",
+        "operationId": "anythingDelete",
+        "tags": ["Anything"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/anything/{anything}": {
+      "get": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathGet",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          },
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "post": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathPost",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          },
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "put": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathPut",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          },
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "patch": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathPatch",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          },
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      },
+      "delete": {
+        "summary": "Request inspector with arbitrary path (any method)",
+        "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
+        "operationId": "anythingPathDelete",
+        "tags": ["Anything"],
+        "parameters": [
+          {
+            "name": "anything",
+            "in": "path",
+            "required": true,
+            "description": "Arbitrary path — ignored by the server.",
+            "schema": { "type": "string" }
+          },
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": { "$ref": "#/components/responses/PayloadTooLarge" }
+        }
+      }
+    },
+
+    "/headers": {
+      "get": {
+        "summary": "Request headers",
+        "description": "Returns the headers sent in the incoming request.",
+        "operationId": "getHeaders",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "Request headers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "headers": { "$ref": "#/components/schemas/Headers" }
+                  },
+                  "required": ["headers"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/ip": {
+      "get": {
+        "summary": "Client IP address",
+        "description": "Returns the IP address of the client making the request. Respects `X-Forwarded-For` and similar proxy headers.",
+        "operationId": "getIp",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "Client IP address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "origin": {
+                      "type": "string",
+                      "description": "The client's IP address.",
+                      "example": "192.168.1.1"
+                    }
+                  },
+                  "required": ["origin"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/user-agent": {
+      "get": {
+        "summary": "Client User-Agent",
+        "description": "Returns the `User-Agent` header sent by the client.",
+        "operationId": "getUserAgent",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "User-Agent string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user-agent": {
+                      "type": "string",
+                      "description": "The User-Agent string from the request.",
+                      "example": "curl/8.4.0"
+                    }
+                  },
+                  "required": ["user-agent"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/hostname": {
+      "get": {
+        "summary": "Server hostname",
+        "description": "Returns the hostname of the server running go-httpbin.",
+        "operationId": "getHostname",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "Server hostname",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hostname": {
+                      "type": "string",
+                      "description": "The server's hostname.",
+                      "example": "go-httpbin-abc123"
+                    }
+                  },
+                  "required": ["hostname"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/version": {
+      "get": {
+        "summary": "Service version information",
+        "description": "Returns version and build information about the running go-httpbin instance.",
+        "operationId": "getVersion",
+        "tags": ["Meta"],
+        "responses": {
+          "200": {
+            "description": "Version details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "service": {
+                      "type": "string",
+                      "example": "go-httpbin"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "v2.14.0"
+                    },
+                    "commit": {
+                      "type": "string",
+                      "example": "abc1234"
+                    },
+                    "build_date": {
+                      "type": "string",
+                      "example": "2024-01-01"
+                    },
+                    "go_version": {
+                      "type": "string",
+                      "example": "go1.22.0"
+                    }
+                  },
+                  "required": ["service"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/env": {
+      "get": {
+        "summary": "Environment variables",
+        "description": "Returns environment variables with the `HTTPBIN_` prefix that have been allowlisted by the server operator. If no variables have been allowlisted, returns an empty object.",
+        "operationId": "getEnv",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "Allowlisted environment variables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "env": {
+                      "type": "object",
+                      "additionalProperties": { "type": "string" },
+                      "description": "Map of allowlisted environment variable names to values.",
+                      "example": { "MY_VAR": "my_value" }
+                    }
+                  },
+                  "required": ["env"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/dump/request": {
+      "get": {
+        "summary": "Raw HTTP request dump",
+        "description": "Returns the incoming HTTP request in its raw HTTP/1.x wire format.",
+        "operationId": "dumpRequest",
+        "tags": ["Request Inspection"],
+        "responses": {
+          "200": {
+            "description": "Raw HTTP request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "GET /dump/request HTTP/1.1\r\nHost: localhost\r\nUser-Agent: curl/8.4.0\r\n\r\n"
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/basic-auth/{user}/{password}": {
+      "get": {
+        "summary": "HTTP Basic Authentication",
+        "description": "Validates HTTP Basic Authentication credentials. Returns 401 with a `WWW-Authenticate` challenge header if credentials are missing or incorrect.",
+        "operationId": "basicAuth",
+        "tags": ["Auth"],
+        "security": [{ "basicAuth": [] }],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "Expected username.",
+            "schema": { "type": "string", "example": "alice" }
+          },
+          {
+            "name": "password",
+            "in": "path",
+            "required": true,
+            "description": "Expected password.",
+            "schema": { "type": "string", "example": "secret" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": { "type": "string", "example": "Basic realm=\"Fake Realm\"" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/hidden-basic-auth/{user}/{password}": {
+      "get": {
+        "summary": "Hidden HTTP Basic Authentication",
+        "description": "Like `/basic-auth`, but returns 404 instead of 401 when credentials are missing or incorrect, hiding the existence of the resource.",
+        "operationId": "hiddenBasicAuth",
+        "tags": ["Auth"],
+        "security": [{ "basicAuth": [] }],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "Expected username.",
+            "schema": { "type": "string", "example": "alice" }
+          },
+          {
+            "name": "password",
+            "in": "path",
+            "required": true,
+            "description": "Expected password.",
+            "schema": { "type": "string", "example": "secret" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or invalid credentials (deliberately obscures the 401)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/bearer": {
+      "get": {
+        "summary": "Bearer token authentication",
+        "description": "Validates a Bearer token in the `Authorization` header. Returns 401 with a `WWW-Authenticate` challenge if the header is missing or malformed.",
+        "operationId": "bearerAuth",
+        "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Token accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "The token that was provided.",
+                      "example": "my-secret-token"
+                    }
+                  },
+                  "required": ["authenticated", "token"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": { "type": "string", "example": "Bearer" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/digest-auth/{qop}/{user}/{password}": {
+      "get": {
+        "summary": "HTTP Digest Authentication",
+        "description": "Validates HTTP Digest Authentication credentials using the given QoP and algorithm. Returns 401 with a `WWW-Authenticate` challenge on the first request (or when credentials are wrong).",
+        "operationId": "digestAuth",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "qop",
+            "in": "path",
+            "required": true,
+            "description": "Quality of Protection. Only `auth` is currently supported.",
+            "schema": { "type": "string", "enum": ["auth"] }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "Expected username.",
+            "schema": { "type": "string", "example": "alice" }
+          },
+          {
+            "name": "password",
+            "in": "path",
+            "required": true,
+            "description": "Expected password.",
+            "schema": { "type": "string", "example": "secret" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/digest-auth/{qop}/{user}/{password}/{algorithm}": {
+      "get": {
+        "summary": "HTTP Digest Authentication with algorithm",
+        "description": "Like `/digest-auth/{qop}/{user}/{password}` but with an explicit hash algorithm.",
+        "operationId": "digestAuthAlgorithm",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "qop",
+            "in": "path",
+            "required": true,
+            "description": "Quality of Protection. Only `auth` is currently supported.",
+            "schema": { "type": "string", "enum": ["auth"] }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "Expected username.",
+            "schema": { "type": "string", "example": "alice" }
+          },
+          {
+            "name": "password",
+            "in": "path",
+            "required": true,
+            "description": "Expected password.",
+            "schema": { "type": "string", "example": "secret" }
+          },
+          {
+            "name": "algorithm",
+            "in": "path",
+            "required": true,
+            "description": "Hash algorithm to use.",
+            "schema": { "type": "string", "enum": ["MD5", "SHA-256"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/status/{codes}": {
+      "get": {
+        "summary": "Return given HTTP status code(s)",
+        "description": "Returns a response with the specified HTTP status code. Accepts a single code or a comma-separated list of codes with optional weights for random selection (e.g. `200,301,500` or `200:0.8,500:0.2`). Certain status codes produce additional headers or bodies per the HTTP spec (e.g. 301 adds `Location`, 401 adds `WWW-Authenticate`).",
+        "operationId": "getStatus",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "path",
+            "required": true,
+            "description": "A single HTTP status code, or a comma-separated list of codes with optional weights (e.g. `200`, `200,404,500`, `200:0.7,500:0.3`).",
+            "schema": {
+              "type": "string",
+              "example": "418"
+            }
+          }
+        ],
+        "responses": {
+          "100": { "description": "Informational" },
+          "200": { "description": "OK" },
+          "201": { "description": "Created" },
+          "204": { "description": "No Content" },
+          "206": { "description": "Partial Content" },
+          "301": { "description": "Moved Permanently", "headers": { "Location": { "schema": { "type": "string" } } } },
+          "302": { "description": "Found", "headers": { "Location": { "schema": { "type": "string" } } } },
+          "303": { "description": "See Other", "headers": { "Location": { "schema": { "type": "string" } } } },
+          "304": { "description": "Not Modified" },
+          "400": { "description": "Bad Request — invalid code value" },
+          "401": { "description": "Unauthorized", "headers": { "WWW-Authenticate": { "schema": { "type": "string" } } } },
+          "402": { "description": "Payment Required" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not Found" },
+          "405": { "description": "Method Not Allowed" },
+          "406": { "description": "Not Acceptable" },
+          "407": { "description": "Proxy Authentication Required", "headers": { "Proxy-Authenticate": { "schema": { "type": "string" } } } },
+          "408": { "description": "Request Timeout" },
+          "409": { "description": "Conflict" },
+          "410": { "description": "Gone" },
+          "413": { "description": "Payload Too Large" },
+          "418": { "description": "I'm a Teapot" },
+          "429": { "description": "Too Many Requests" },
+          "500": { "description": "Internal Server Error" },
+          "501": { "description": "Not Implemented" },
+          "502": { "description": "Bad Gateway" },
+          "503": { "description": "Service Unavailable" },
+          "504": { "description": "Gateway Timeout" }
+        }
+      },
+      "post": {
+        "summary": "Return given HTTP status code(s)",
+        "description": "Returns a response with the specified HTTP status code. See GET /status/{codes} for full description.",
+        "operationId": "postStatus",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "path",
+            "required": true,
+            "description": "A single HTTP status code, or a comma-separated weighted list.",
+            "schema": { "type": "string", "example": "200" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK (or the code(s) you specified)" }
+        }
+      },
+      "put": {
+        "summary": "Return given HTTP status code(s)",
+        "description": "Returns a response with the specified HTTP status code.",
+        "operationId": "putStatus",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK (or the code(s) you specified)" }
+        }
+      },
+      "patch": {
+        "summary": "Return given HTTP status code(s)",
+        "description": "Returns a response with the specified HTTP status code.",
+        "operationId": "patchStatus",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK (or the code(s) you specified)" }
+        }
+      },
+      "delete": {
+        "summary": "Return given HTTP status code(s)",
+        "description": "Returns a response with the specified HTTP status code.",
+        "operationId": "deleteStatus",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK (or the code(s) you specified)" }
+        }
+      }
+    },
+
+    "/unstable": {
+      "get": {
+        "summary": "Randomly returns 200 or 500",
+        "description": "Returns a 500 Internal Server Error with a configurable probability, or 200 OK otherwise. Useful for testing retry logic and error handling.",
+        "operationId": "getUnstable",
+        "tags": ["Status Codes"],
+        "parameters": [
+          {
+            "name": "failure_rate",
+            "in": "query",
+            "description": "Probability of returning 500. Must be between 0 and 1. Defaults to 0.5.",
+            "schema": { "type": "number", "format": "float", "minimum": 0, "maximum": 1, "default": 0.5 }
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "description": "Random seed for reproducible results.",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Success (not this time)" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "description": "Simulated server error" }
+        }
+      }
+    },
+
+    "/redirect/{n}": {
+      "get": {
+        "summary": "Redirect N times",
+        "description": "Issues a redirect chain of length `n`. By default uses relative redirects (via `/relative-redirect`); pass `absolute=true` to use absolute URLs (via `/absolute-redirect`).",
+        "operationId": "redirect",
+        "tags": ["Redirects"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of redirects to perform. Must be >= 1.",
+            "schema": { "type": "integer", "minimum": 1, "example": 3 }
+          },
+          {
+            "name": "absolute",
+            "in": "query",
+            "description": "If `true`, use absolute redirect URLs. Defaults to relative.",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect",
+            "headers": {
+              "Location": { "schema": { "type": "string" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/relative-redirect/{n}": {
+      "get": {
+        "summary": "Relative redirect N times",
+        "description": "Performs `n` consecutive relative (path-only) 302 redirects. The final redirect points to `/get`.",
+        "operationId": "relativeRedirect",
+        "tags": ["Redirects"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of redirects to perform. Must be >= 1.",
+            "schema": { "type": "integer", "minimum": 1, "example": 3 }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Relative redirect",
+            "headers": {
+              "Location": { "schema": { "type": "string", "example": "/relative-redirect/2" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/absolute-redirect/{n}": {
+      "get": {
+        "summary": "Absolute redirect N times",
+        "description": "Performs `n` consecutive absolute (full URL) 302 redirects. The final redirect points to `/get`.",
+        "operationId": "absoluteRedirect",
+        "tags": ["Redirects"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of redirects to perform. Must be >= 1.",
+            "schema": { "type": "integer", "minimum": 1, "example": 3 }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Absolute redirect",
+            "headers": {
+              "Location": { "schema": { "type": "string", "example": "http://localhost/absolute-redirect/2" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/redirect-to": {
+      "get": {
+        "summary": "Redirect to a URL",
+        "description": "Issues a redirect to the URL specified in the `url` query parameter, with an optional custom status code. If the server has a configured allowlist of redirect domains, the target domain must match.",
+        "operationId": "redirectTo",
+        "tags": ["Redirects"],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "description": "The URL to redirect to.",
+            "schema": { "type": "string", "format": "uri", "example": "https://example.com" }
+          },
+          {
+            "name": "status_code",
+            "in": "query",
+            "description": "HTTP status code to use for the redirect. Must be in the 3xx range. Defaults to 302.",
+            "schema": { "type": "integer", "minimum": 300, "maximum": 399, "default": 302 }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect (or the status code you specified)",
+            "headers": {
+              "Location": { "schema": { "type": "string" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": {
+            "description": "Target domain is not on the server's allowlist"
+          }
+        }
+      },
+      "post": {
+        "summary": "Redirect to a URL",
+        "description": "Issues a redirect to the URL specified in the `url` query parameter.",
+        "operationId": "redirectToPost",
+        "tags": ["Redirects"],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uri" }
+          },
+          {
+            "name": "status_code",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 300, "maximum": 399, "default": 302 }
+          }
+        ],
+        "responses": {
+          "302": { "description": "Redirect" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "description": "Target domain not allowed" }
+        }
+      }
+    },
+
+    "/cookies": {
+      "get": {
+        "summary": "Return request cookies",
+        "description": "Returns all cookies sent in the request.",
+        "operationId": "getCookies",
+        "tags": ["Cookies"],
+        "responses": {
+          "200": {
+            "description": "Request cookies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cookies": {
+                      "type": "object",
+                      "additionalProperties": { "type": "string" },
+                      "description": "Map of cookie names to values.",
+                      "example": { "session": "abc123", "theme": "dark" }
+                    }
+                  },
+                  "required": ["cookies"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/cookies/set": {
+      "get": {
+        "summary": "Set cookies",
+        "description": "Sets one or more cookies from query parameters, then redirects to `/cookies`. Each query parameter becomes a cookie with that name and value.",
+        "operationId": "setCookies",
+        "tags": ["Cookies"],
+        "parameters": [
+          {
+            "name": "cookie_name",
+            "in": "query",
+            "description": "Each query parameter name/value pair becomes a cookie. (The parameter name shown here is illustrative — use any name.)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to /cookies after setting cookies",
+            "headers": {
+              "Location": { "schema": { "type": "string", "example": "/cookies" } },
+              "Set-Cookie": { "schema": { "type": "string", "example": "my_cookie=my_value; HttpOnly" } }
+            }
+          }
+        }
+      }
+    },
+
+    "/cookies/delete": {
+      "get": {
+        "summary": "Delete cookies",
+        "description": "Deletes the cookies named by the query parameters, then redirects to `/cookies`.",
+        "operationId": "deleteCookies",
+        "tags": ["Cookies"],
+        "parameters": [
+          {
+            "name": "cookie_name",
+            "in": "query",
+            "description": "Each query parameter name identifies a cookie to delete. The value is ignored.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to /cookies after deleting cookies",
+            "headers": {
+              "Location": { "schema": { "type": "string", "example": "/cookies" } },
+              "Set-Cookie": { "schema": { "type": "string", "description": "Cookie with expired Max-Age to effect deletion." } }
+            }
+          }
+        }
+      }
+    },
+
+    "/gzip": {
+      "get": {
+        "summary": "Gzip-compressed response",
+        "description": "Returns a gzip-compressed JSON response containing request details. The `Content-Encoding: gzip` header is set.",
+        "operationId": "getGzip",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "Gzip-compressed request details",
+            "headers": {
+              "Content-Encoding": { "schema": { "type": "string", "example": "gzip" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/NoBodyResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "gzipped": { "type": "boolean", "example": true }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/deflate": {
+      "get": {
+        "summary": "Deflate-compressed response",
+        "description": "Returns a deflate-compressed JSON response containing request details. The `Content-Encoding: deflate` header is set.",
+        "operationId": "getDeflate",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "Deflate-compressed request details",
+            "headers": {
+              "Content-Encoding": { "schema": { "type": "string", "example": "deflate" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/NoBodyResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "deflated": { "type": "boolean", "example": true }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/brotli": {
+      "get": {
+        "summary": "Brotli-compressed response (not implemented)",
+        "description": "Brotli compression is not implemented in go-httpbin. Always returns 501 Not Implemented.",
+        "operationId": "getBrotli",
+        "tags": ["Response Formats"],
+        "responses": {
+          "501": { "$ref": "#/components/responses/NotImplemented" }
+        }
+      }
+    },
+
+    "/response-headers": {
+      "get": {
+        "summary": "Set response headers",
+        "description": "Returns a response whose headers are set from the query parameters. Each query parameter name becomes a response header name and its value becomes the header value. The headers are also reflected in the JSON response body. Setting `Content-Type` via a query parameter changes the response content type.",
+        "operationId": "getResponseHeaders",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "header_name",
+            "in": "query",
+            "description": "Each query parameter name/value pair becomes a response header. (The parameter name shown here is illustrative — use any valid header name.)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response with the requested headers set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "array", "items": { "type": "string" } }
+                    ]
+                  },
+                  "description": "The headers set on the response, reflected as a JSON object.",
+                  "example": { "X-My-Header": "my-value", "Content-Type": "application/json" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Set response headers",
+        "description": "Same as GET /response-headers.",
+        "operationId": "postResponseHeaders",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "header_name",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Response with the requested headers set" }
+        }
+      }
+    },
+
+    "/cache": {
+      "get": {
+        "summary": "Conditional cache validation",
+        "description": "Returns 304 Not Modified if the request includes `If-Modified-Since` or `If-None-Match` headers. Otherwise returns a 200 with request details and sets `Last-Modified` and `ETag` response headers.",
+        "operationId": "getCache",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "If-Modified-Since",
+            "in": "header",
+            "description": "Returns 304 if provided.",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "Returns 304 if provided.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response with cache headers",
+            "headers": {
+              "Last-Modified": { "schema": { "type": "string" } },
+              "ETag": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
+          "304": { "description": "Not Modified" }
+        }
+      }
+    },
+
+    "/cache/{value}": {
+      "get": {
+        "summary": "Set Cache-Control max-age",
+        "description": "Returns a response with a `Cache-Control: public, max-age={value}` header.",
+        "operationId": "getCacheControl",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "Number of seconds for `max-age`.",
+            "schema": { "type": "integer", "minimum": 0, "example": 60 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response with Cache-Control header",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string", "example": "public, max-age=60" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/etag/{etag}": {
+      "get": {
+        "summary": "ETag-based cache validation",
+        "description": "Returns a response with the given `ETag` header value. If the request includes `If-None-Match` matching the ETag, returns 304. If the request includes `If-Match` that does not match, returns 412.",
+        "operationId": "getEtag",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "etag",
+            "in": "path",
+            "required": true,
+            "description": "The ETag value to set on the response.",
+            "schema": { "type": "string", "example": "abc123" }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "Returns 304 if this matches the ETag.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Returns 412 if this does not match the ETag.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response with ETag header",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
+          "304": { "description": "Not Modified (If-None-Match matched)" },
+          "412": { "description": "Precondition Failed (If-Match did not match)" }
+        }
+      }
+    },
+
+    "/delay/{delay}": {
+      "get": {
+        "summary": "Delay response",
+        "description": "Waits the specified duration before responding with request details. Accepts seconds as a float or any Go duration string (e.g. `500ms`, `1.5s`). The delay is capped at the server's configured maximum duration (default 10 seconds). If the client disconnects early, the server returns 499.",
+        "operationId": "getDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "delay",
+            "in": "path",
+            "required": true,
+            "description": "Delay duration as seconds (float) or a Go duration string (e.g. `1s`, `500ms`).",
+            "schema": { "type": "string", "example": "1s" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details after the delay",
+            "headers": {
+              "Server-Timing": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NoBodyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "499": { "description": "Client closed request before the delay completed" }
+        }
+      },
+      "post": {
+        "summary": "Delay response",
+        "description": "Same as GET /delay/{delay}.",
+        "operationId": "postDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "delay",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Request details after the delay" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "499": { "description": "Client closed request" }
+        }
+      },
+      "put": {
+        "summary": "Delay response",
+        "description": "Same as GET /delay/{delay}.",
+        "operationId": "putDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          { "name": "delay", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      },
+      "patch": {
+        "summary": "Delay response",
+        "description": "Same as GET /delay/{delay}.",
+        "operationId": "patchDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          { "name": "delay", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      },
+      "delete": {
+        "summary": "Delay response",
+        "description": "Same as GET /delay/{delay}.",
+        "operationId": "deleteDelay",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          { "name": "delay", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      }
+    },
+
+    "/drip": {
+      "get": {
+        "summary": "Stream bytes over time",
+        "description": "Gradually streams a response body of the specified size over the specified duration. Useful for testing streaming clients, timeouts, and slow connection handling. Sets a fixed `Content-Length` (not chunked). A `Server-Timing` header reflects actual durations.",
+        "operationId": "getDrip",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "duration",
+            "in": "query",
+            "description": "Total time to stream the response. Accepts a float (seconds) or Go duration string. Defaults to `2s`.",
+            "schema": { "type": "string", "default": "2s", "example": "5s" }
+          },
+          {
+            "name": "delay",
+            "in": "query",
+            "description": "Delay before streaming begins. Defaults to `2s`.",
+            "schema": { "type": "string", "default": "2s", "example": "1s" }
+          },
+          {
+            "name": "numbytes",
+            "in": "query",
+            "description": "Number of bytes to stream. Must be between 1 and the server's max body size. Defaults to 10.",
+            "schema": { "type": "integer", "minimum": 1, "default": 10, "example": 100 }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "HTTP status code to return. Defaults to 200.",
+            "schema": { "type": "integer", "default": 200, "example": 200 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Streamed response (or the status code you specified)",
+            "headers": {
+              "Content-Length": { "schema": { "type": "integer" } },
+              "Server-Timing": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "499": { "description": "Client closed request" }
+        }
+      }
+    },
+
+    "/bytes/{n}": {
+      "get": {
+        "summary": "Random bytes",
+        "description": "Returns `n` random bytes as binary data. The optional `seed` parameter makes the output reproducible.",
+        "operationId": "getBytes",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of bytes to return. Must be between 0 and the server's max body size.",
+            "schema": { "type": "integer", "minimum": 0, "example": 256 }
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "description": "Random seed for reproducible output.",
+            "schema": { "type": "integer", "example": 42 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Random binary data",
+            "headers": {
+              "Content-Length": { "schema": { "type": "integer" } }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/stream-bytes/{n}": {
+      "get": {
+        "summary": "Streaming random bytes",
+        "description": "Streams `n` random bytes in chunks using chunked transfer encoding. The optional `chunk_size` parameter controls how many bytes are sent per chunk (default 10240). The optional `seed` parameter makes the output reproducible.",
+        "operationId": "getStreamBytes",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Total bytes to stream. Must be between 0 and the server's max body size.",
+            "schema": { "type": "integer", "minimum": 0, "example": 1024 }
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "description": "Random seed for reproducible output.",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "chunk_size",
+            "in": "query",
+            "description": "Number of bytes per chunk. Defaults to 10240.",
+            "schema": { "type": "integer", "minimum": 1, "default": 10240 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chunked stream of random binary data",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/base64/{value}": {
+      "get": {
+        "summary": "Decode base64",
+        "description": "Decodes the URL-safe base64-encoded `value` and returns the raw bytes. An optional `content-type` query parameter sets the response `Content-Type`.",
+        "operationId": "base64Decode",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "URL-safe base64-encoded data to decode.",
+            "schema": { "type": "string", "example": "SGVsbG8gV29ybGQ=" }
+          },
+          {
+            "name": "content-type",
+            "in": "query",
+            "description": "Content-Type to set on the response.",
+            "schema": { "type": "string", "example": "text/plain" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Decoded data",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/base64/{operation}/{value}": {
+      "get": {
+        "summary": "Encode or decode base64",
+        "description": "Encodes or decodes the given `value` using URL-safe base64, depending on `operation`.",
+        "operationId": "base64Operation",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "operation",
+            "in": "path",
+            "required": true,
+            "description": "The operation to perform.",
+            "schema": { "type": "string", "enum": ["encode", "decode"] }
+          },
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "The data to encode or decode.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "content-type",
+            "in": "query",
+            "description": "Content-Type to set on the response.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encoded or decoded data",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/stream/{n}": {
+      "get": {
+        "summary": "Stream JSON lines",
+        "description": "Streams `n` newline-delimited JSON objects, each containing request details with an incrementing `id` field. `n` must be between 1 and 100.",
+        "operationId": "getStream",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of JSON lines to stream. Must be 1–100.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "example": 5 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newline-delimited JSON stream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/components/schemas/NoBodyResponse" },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer", "description": "Zero-based line index.", "example": 0 }
+                        },
+                        "required": ["id"]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/jsonl": {
+      "get": {
+        "summary": "Stream JSON lines with timing control",
+        "description": "Streams newline-delimited JSON objects with configurable count, total duration, initial delay, and per-line jitter. Each line contains an incrementing `id` and the timestamp it was sent.",
+        "operationId": "getJsonl",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "description": "Number of lines to stream. Defaults to 10.",
+            "schema": { "type": "integer", "minimum": 1, "default": 10 }
+          },
+          {
+            "name": "duration",
+            "in": "query",
+            "description": "Total duration over which to stream all lines. Must be >= 1s if provided.",
+            "schema": { "type": "string", "example": "5s" }
+          },
+          {
+            "name": "delay",
+            "in": "query",
+            "description": "Initial delay before the first line is sent.",
+            "schema": { "type": "string", "example": "500ms" }
+          },
+          {
+            "name": "jitter",
+            "in": "query",
+            "description": "Fraction of the per-line interval to randomize. Between 0 (no jitter) and 1 (full jitter). Defaults to 0.",
+            "schema": { "type": "number", "format": "float", "minimum": 0, "maximum": 1, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newline-delimited JSON stream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer", "description": "Zero-based line index." },
+                    "timestamp": { "type": "number", "description": "Unix timestamp (seconds) when this line was sent." }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/sse": {
+      "get": {
+        "summary": "Server-Sent Events stream",
+        "description": "Streams Server-Sent Events (SSE) with configurable count, total duration, initial delay, and jitter. Each event is of type `ping` and includes a JSON data payload with an `id` and `timestamp`.",
+        "operationId": "getSse",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "description": "Number of events to send. Defaults to 10.",
+            "schema": { "type": "integer", "minimum": 1, "default": 10 }
+          },
+          {
+            "name": "duration",
+            "in": "query",
+            "description": "Total duration over which to send all events. Must be >= 1s if provided.",
+            "schema": { "type": "string", "example": "5s" }
+          },
+          {
+            "name": "delay",
+            "in": "query",
+            "description": "Initial delay before the first event is sent.",
+            "schema": { "type": "string", "example": "500ms" }
+          },
+          {
+            "name": "jitter",
+            "in": "query",
+            "description": "Fraction of the per-event interval to randomize. Between 0 and 1.",
+            "schema": { "type": "number", "format": "float", "minimum": 0, "maximum": 1, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "headers": {
+              "Content-Type": { "schema": { "type": "string", "example": "text/event-stream; charset=utf-8" } },
+              "Cache-Control": { "schema": { "type": "string", "example": "no-cache" } }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "SSE-formatted stream. Each event has type `ping` and a JSON data payload.\n\nExample event:\n```\nevent: ping\ndata: {\"id\": 0, \"timestamp\": 1700000000.123}\n\n```"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/trailers": {
+      "get": {
+        "summary": "Response with HTTP trailers",
+        "description": "Returns a chunked response whose HTTP trailers are set from the query parameters. Trailers are headers delivered after the response body. Certain trailer names are forbidden (e.g. `Authorization`, `Content-*`, `Host`).",
+        "operationId": "getTrailers",
+        "tags": ["Response Inspection"],
+        "parameters": [
+          {
+            "name": "trailer_name",
+            "in": "query",
+            "description": "Each query parameter name/value pair becomes an HTTP trailer. (The parameter name shown here is illustrative — use any allowed trailer name.)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response with trailers",
+            "headers": {
+              "Trailer": { "schema": { "type": "string", "description": "Lists the trailer field names." } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/range/{numbytes}": {
+      "get": {
+        "summary": "Range request support",
+        "description": "Returns `numbytes` of content with full HTTP Range request support. Accepts `Range` headers for partial content and responds with 206 Partial Content or 416 Range Not Satisfiable. Sets `ETag` and `Accept-Ranges: bytes` headers.",
+        "operationId": "getRange",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "numbytes",
+            "in": "path",
+            "required": true,
+            "description": "Total content length in bytes.",
+            "schema": { "type": "integer", "minimum": 0, "example": 1024 }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "description": "Standard HTTP Range header for requesting partial content (e.g. `bytes=0-1023`).",
+            "schema": { "type": "string", "example": "bytes=0-99" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full content",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } },
+              "Accept-Ranges": { "schema": { "type": "string", "example": "bytes" } },
+              "Content-Length": { "schema": { "type": "integer" } }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial content",
+            "headers": {
+              "Content-Range": { "schema": { "type": "string", "example": "bytes 0-99/1024" } },
+              "Content-Length": { "schema": { "type": "integer" } }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "416": {
+            "description": "Range Not Satisfiable",
+            "headers": {
+              "Content-Range": { "schema": { "type": "string", "example": "bytes */1024" } }
+            }
+          }
+        }
+      }
+    },
+
+    "/html": {
+      "get": {
+        "summary": "Sample HTML document",
+        "description": "Returns a sample HTML page (an excerpt from Moby Dick).",
+        "operationId": "getHtml",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "Sample HTML document",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/json": {
+      "get": {
+        "summary": "Sample JSON document",
+        "description": "Returns a sample JSON document.",
+        "operationId": "getJson",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "Sample JSON document",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/xml": {
+      "get": {
+        "summary": "Sample XML document",
+        "description": "Returns a sample XML document.",
+        "operationId": "getXml",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "Sample XML document",
+            "content": {
+              "application/xml": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/image": {
+      "get": {
+        "summary": "Image with content negotiation",
+        "description": "Returns an image whose format is determined by the `Accept` header. Supported types are `image/png`, `image/jpeg`, `image/webp`, and `image/svg+xml`. Defaults to PNG if the `Accept` header is missing or wildcarded.",
+        "operationId": "getImageNegotiated",
+        "tags": ["Response Formats"],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "description": "Desired image media type.",
+            "schema": {
+              "type": "string",
+              "enum": ["image/png", "image/jpeg", "image/webp", "image/svg+xml", "*/*"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image in the negotiated format",
+            "content": {
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } },
+              "image/svg+xml": { "schema": { "type": "string" } }
+            }
+          },
+          "406": {
+            "description": "None of the requested media types are supported"
+          }
+        }
+      }
+    },
+
+    "/image/{kind}": {
+      "get": {
+        "summary": "Image of specified type",
+        "description": "Returns an image of the specified format.",
+        "operationId": "getImage",
+        "tags": ["Response Formats"],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Image format to return.",
+            "schema": { "type": "string", "enum": ["png", "jpeg", "webp", "svg"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image",
+            "content": {
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } },
+              "image/svg+xml": { "schema": { "type": "string" } }
+            }
+          },
+          "404": { "description": "Unknown image kind" }
+        }
+      }
+    },
+
+    "/uuid": {
+      "get": {
+        "summary": "Generate a UUID v4",
+        "description": "Returns a randomly generated UUID v4.",
+        "operationId": "getUuid",
+        "tags": ["Dynamic Data"],
+        "responses": {
+          "200": {
+            "description": "A UUID v4",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uuid": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                    }
+                  },
+                  "required": ["uuid"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/links/{n}": {
+      "get": {
+        "summary": "HTML page with links",
+        "description": "Redirects to `/links/{n}/0`, which renders an HTML page with `n` links to other pages in the link chain.",
+        "operationId": "getLinks",
+        "tags": ["Response Formats"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Number of links to generate. Must be 0–256.",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 256, "example": 10 }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to /links/{n}/0",
+            "headers": {
+              "Location": { "schema": { "type": "string", "example": "/links/10/0" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/links/{n}/{offset}": {
+      "get": {
+        "summary": "HTML link chain page",
+        "description": "Returns an HTML page with `n` links pointing to other pages in the link chain. The `offset` parameter indicates the current page index.",
+        "operationId": "getLinksOffset",
+        "tags": ["Response Formats"],
+        "parameters": [
+          {
+            "name": "n",
+            "in": "path",
+            "required": true,
+            "description": "Total number of links.",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 256, "example": 10 }
+          },
+          {
+            "name": "offset",
+            "in": "path",
+            "required": true,
+            "description": "Current page index (0-based).",
+            "schema": { "type": "integer", "minimum": 0, "example": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML page with links",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/forms/post": {
+      "get": {
+        "summary": "HTML form",
+        "description": "Returns an HTML page with a form that submits a POST request to `/post`.",
+        "operationId": "getForms",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "HTML form",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/encoding/utf8": {
+      "get": {
+        "summary": "UTF-8 encoding test",
+        "description": "Returns an HTML page containing a variety of UTF-8 characters for encoding testing.",
+        "operationId": "getEncodingUtf8",
+        "tags": ["Response Formats"],
+        "responses": {
+          "200": {
+            "description": "UTF-8 encoded HTML",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/upload": {
+      "post": {
+        "summary": "Accept and discard an upload",
+        "description": "Accepts a request body (any content type) and discards it, returning the number of bytes received along with the usual request details.",
+        "operationId": "uploadPost",
+        "tags": ["HTTP Methods"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QueryParams" }
+        ],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": {
+            "description": "Upload accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/NoBodyResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "bytes_received": {
+                          "type": "integer",
+                          "description": "Number of bytes received in the request body.",
+                          "example": 1024
+                        }
+                      },
+                      "required": ["bytes_received"]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Accept and discard an upload",
+        "description": "Same as POST /upload.",
+        "operationId": "uploadPut",
+        "tags": ["HTTP Methods"],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": { "description": "Upload accepted" }
+        }
+      },
+      "patch": {
+        "summary": "Accept and discard an upload",
+        "description": "Same as POST /upload.",
+        "operationId": "uploadPatch",
+        "tags": ["HTTP Methods"],
+        "requestBody": { "$ref": "#/components/requestBodies/AnyBody" },
+        "responses": {
+          "200": { "description": "Upload accepted" }
+        }
+      }
+    },
+
+    "/robots.txt": {
+      "get": {
+        "summary": "robots.txt",
+        "description": "Returns a standard `robots.txt` file that disallows `/deny`.",
+        "operationId": "getRobotsTxt",
+        "tags": ["Meta"],
+        "responses": {
+          "200": {
+            "description": "robots.txt",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "User-agent: *\nDisallow: /deny\n"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/deny": {
+      "get": {
+        "summary": "Endpoint disallowed by robots.txt",
+        "description": "Returns a plain-text response. Listed in `/robots.txt` as disallowed so well-behaved bots do not crawl it.",
+        "operationId": "getDeny",
+        "tags": ["Meta"],
+        "responses": {
+          "200": {
+            "description": "Plain text response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "YOU SHOULDN'T BE HERE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/websocket/echo": {
+      "get": {
+        "summary": "WebSocket echo server",
+        "description": "Upgrades the connection to WebSocket protocol and echoes every received message back to the client. Useful for testing WebSocket clients. The connection is closed by the server after the client closes it.",
+        "operationId": "websocketEcho",
+        "tags": ["WebSockets"],
+        "parameters": [
+          {
+            "name": "max_fragment_size",
+            "in": "query",
+            "description": "Maximum WebSocket frame fragment size in bytes. Must be between 1 and the server's max body size.",
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "name": "max_message_size",
+            "in": "query",
+            "description": "Maximum WebSocket message size in bytes. Must be between 1 and the server's max body size.",
+            "schema": { "type": "integer", "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket upgrade successful"
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+
+  "components": {
+    "schemas": {
+      "Headers": {
+        "type": "object",
+        "additionalProperties": { "type": "string" },
+        "description": "Map of HTTP header names to their values.",
+        "example": {
+          "Host": "localhost",
+          "User-Agent": "curl/8.4.0",
+          "Accept": "*/*"
+        }
+      },
+      "NoBodyResponse": {
+        "type": "object",
+        "description": "Standard response for requests without a body (e.g. GET).",
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "description": "URL query parameters.",
+            "example": { "foo": "bar", "multi": ["a", "b"] }
+          },
+          "headers": {
+            "$ref": "#/components/schemas/Headers"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method of the request.",
+            "example": "GET"
+          },
+          "origin": {
+            "type": "string",
+            "description": "Client IP address.",
+            "example": "192.168.1.1"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Full URL of the request.",
+            "example": "http://localhost/get?foo=bar"
+          }
+        },
+        "required": ["args", "headers", "origin", "url"]
+      },
+      "BodyResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/NoBodyResponse" },
+          {
+            "type": "object",
+            "description": "Standard response for requests that may include a body (e.g. POST, PUT).",
+            "properties": {
+              "data": {
+                "type": "string",
+                "description": "Raw request body as a string (for non-form, non-JSON content types).",
+                "example": "raw body text"
+              },
+              "json": {
+                "description": "Parsed JSON body, if the request `Content-Type` was `application/json` and the body was valid JSON. `null` otherwise.",
+                "nullable": true,
+                "example": { "key": "value" }
+              },
+              "form": {
+                "type": "object",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "array", "items": { "type": "string" } }
+                  ]
+                },
+                "description": "Form fields from a `application/x-www-form-urlencoded` or `multipart/form-data` body.",
+                "example": { "username": "alice", "tags": ["a", "b"] }
+              },
+              "files": {
+                "type": "object",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "array", "items": { "type": "string" } }
+                  ]
+                },
+                "description": "File contents from a `multipart/form-data` body, keyed by field name.",
+                "example": { "upload": "file contents..." }
+              }
+            }
+          }
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "description": "Response body for authentication endpoints.",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "description": "`true` if valid credentials were present in the request.",
+            "example": true
+          },
+          "authorized": {
+            "type": "boolean",
+            "description": "`true` if the credentials match the expected values.",
+            "example": true
+          },
+          "user": {
+            "type": "string",
+            "description": "The authenticated username, if credentials were valid.",
+            "example": "alice"
+          }
+        },
+        "required": ["authenticated"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Standard error response body.",
+        "properties": {
+          "status_code": {
+            "type": "integer",
+            "description": "HTTP status code.",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "description": "Short error description.",
+            "example": "Bad Request"
+          },
+          "detail": {
+            "type": "string",
+            "description": "Detailed error message.",
+            "example": "invalid value for parameter 'n': must be a positive integer"
+          }
+        }
+      }
+    },
+
+    "parameters": {
+      "QueryParams": {
+        "name": "query_params",
+        "in": "query",
+        "description": "Any query parameters — they are echoed back in the `args` field of the response.",
+        "schema": { "type": "string" },
+        "style": "form",
+        "explode": true
+      }
+    },
+
+    "requestBodies": {
+      "AnyBody": {
+        "description": "Any request body. go-httpbin accepts `application/json`, `application/x-www-form-urlencoded`, `multipart/form-data`, and arbitrary binary/text bodies.",
+        "content": {
+          "application/json": {
+            "schema": {}
+          },
+          "application/x-www-form-urlencoded": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          },
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          },
+          "text/plain": {
+            "schema": { "type": "string" }
+          },
+          "application/octet-stream": {
+            "schema": { "type": "string", "format": "binary" }
+          }
+        }
+      }
+    },
+
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request — the request contained invalid parameters.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "Method Not Allowed — the HTTP method is not supported by this endpoint.",
+        "headers": {
+          "Allow": {
+            "schema": { "type": "string", "example": "GET, HEAD" }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "Payload Too Large — the request body exceeds the server's configured maximum.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotImplemented": {
+        "description": "Not Implemented — this endpoint is not implemented in go-httpbin.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal Server Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "HTTP Basic Authentication. The credentials are validated against the username and password in the URL path."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token. Any non-empty token is accepted; the token value is echoed back in the response."
+      }
+    }
+  },
+
+  "tags": [
+    {
+      "name": "HTTP Methods",
+      "description": "Endpoints that echo back the incoming request for specific HTTP methods."
+    },
+    {
+      "name": "Anything",
+      "description": "Endpoints that echo back the incoming request for any HTTP method and arbitrary paths."
+    },
+    {
+      "name": "Auth",
+      "description": "Endpoints for testing HTTP authentication schemes: Basic, Hidden Basic, Bearer, and Digest."
+    },
+    {
+      "name": "Cookies",
+      "description": "Endpoints for inspecting, setting, and deleting cookies."
+    },
+    {
+      "name": "Status Codes",
+      "description": "Endpoints that return specific HTTP status codes, optionally chosen randomly from a weighted list."
+    },
+    {
+      "name": "Request Inspection",
+      "description": "Endpoints that return information about the incoming request or the server."
+    },
+    {
+      "name": "Response Inspection",
+      "description": "Endpoints that control caching, ETags, and response headers."
+    },
+    {
+      "name": "Response Formats",
+      "description": "Endpoints that return various content types: HTML, JSON, XML, images, links, and forms."
+    },
+    {
+      "name": "Redirects",
+      "description": "Endpoints that perform HTTP redirects."
+    },
+    {
+      "name": "Dynamic Data",
+      "description": "Endpoints that generate dynamic data: random bytes, UUIDs, delays, streaming, and range requests."
+    },
+    {
+      "name": "WebSockets",
+      "description": "WebSocket endpoints."
+    },
+    {
+      "name": "Meta",
+      "description": "Endpoints providing metadata about the service: version, index page, robots.txt, and deny."
+    }
+  ]
+}
