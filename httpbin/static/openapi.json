@@ -1524,8 +1524,7 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1,
-              "example": 3
+              "minimum": 1
             }
           },
           {
@@ -1571,8 +1570,7 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1,
-              "example": 3
+              "minimum": 1
             }
           }
         ],
@@ -1610,8 +1608,7 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1,
-              "example": 3
+              "minimum": 1
             }
           }
         ],
@@ -1649,8 +1646,7 @@
             "description": "The URL to redirect to.",
             "schema": {
               "type": "string",
-              "format": "uri",
-              "example": "http://localhost/get"
+              "format": "uri"
             }
           },
           {
@@ -1703,8 +1699,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uri",
-              "example": "http://localhost/get"
+              "format": "uri"
             }
           },
           {
@@ -3328,8 +3323,7 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 256,
-              "example": 10
+              "maximum": 256
             }
           }
         ],
@@ -3368,8 +3362,7 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 256,
-              "example": 10
+              "maximum": 256
             }
           },
           {
@@ -3379,8 +3372,7 @@
             "description": "Current page index (0-based).",
             "schema": {
               "type": "integer",
-              "minimum": 0,
-              "example": 0
+              "minimum": 0
             }
           }
         ],
