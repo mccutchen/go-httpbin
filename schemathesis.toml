@@ -5,7 +5,8 @@
 # expecting a 405 is not meaningful here, so we disable that probe entirely.
 unexpected-methods = []
 
-[checks]
+[filter]
 # /brotli intentionally returns 501 Not Implemented — it is a known,
-# documented stub for an unimplemented feature, not a real server error.
-not_a_server_error = { excluded-status-codes = [501] }
+# documented stub for an unimplemented feature. Exclude it from testing
+# entirely so the not_a_server_error check doesn't flag it.
+exclude = [{path = "/brotli"}]
