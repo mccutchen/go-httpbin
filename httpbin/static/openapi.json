@@ -837,10 +837,11 @@
                       "additionalProperties": {
                         "type": "string"
                       },
-                      "description": "Map of allowlisted environment variable names to values.",
+                      "description": "Map of allowlisted HTTPBIN_ environment variable names to values, or null if none are configured.",
                       "example": {
                         "MY_VAR": "my_value"
-                      }
+                      },
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -1538,16 +1539,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect chain",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NoBodyResponse"
-                }
-              }
-            }
-          },
           "302": {
             "description": "Redirect",
             "headers": {
@@ -1586,16 +1577,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect chain",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NoBodyResponse"
-                }
-              }
-            }
-          },
           "302": {
             "description": "Relative redirect",
             "headers": {
@@ -1635,16 +1616,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect chain",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NoBodyResponse"
-                }
-              }
-            }
-          },
           "302": {
             "description": "Absolute redirect",
             "headers": {
@@ -1679,7 +1650,7 @@
             "schema": {
               "type": "string",
               "format": "uri",
-              "example": "https://example.com"
+              "example": "http://localhost/get"
             }
           },
           {
@@ -1700,9 +1671,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect (returned by the target server)"
-          },
           "3XX": {
             "description": "Redirect (or the status code you specified)",
             "headers": {
@@ -1735,7 +1703,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uri"
+              "format": "uri",
+              "example": "http://localhost/get"
             }
           },
           {
@@ -1755,9 +1724,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect (returned by the target server)"
-          },
           "3XX": {
             "description": "Redirect (or whichever 3xx status code you specified)"
           },
@@ -2533,7 +2499,6 @@
             "in": "query",
             "description": "Random seed for reproducible output.",
             "schema": {
-              "type": "integer",
               "example": 42
             }
           }
@@ -2558,7 +2523,14 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request (e.g. invalid seed parameter)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3362,16 +3334,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Final destination after following the redirect to /links/{n}/0",
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
           "302": {
             "description": "Redirect to /links/{n}/0",
             "headers": {
@@ -3713,7 +3675,6 @@
           },
           "url": {
             "type": "string",
-            "format": "uri",
             "description": "Full URL of the request.",
             "example": "http://localhost/get?foo=bar"
           }
@@ -3838,6 +3799,21 @@
             "example": "invalid value for parameter 'n': must be a positive integer"
           }
         }
+      },
+      "CookiesResponse": {
+        "type": "object",
+        "properties": {
+          "cookies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Cookie names and values."
+          }
+        },
+        "required": [
+          "cookies"
+        ]
       }
     },
     "parameters": {

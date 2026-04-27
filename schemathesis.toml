@@ -1,3 +1,7 @@
+# Do not follow redirects — test only the 3xx response itself, not the
+# redirect destination.
+max-redirects = 0
+
 [phases.coverage]
 # go-httpbin intentionally accepts any HTTP method on endpoints that are not
 # restricted to a specific method subset (e.g. /anything, /delay, /status,
@@ -5,8 +9,27 @@
 # expecting a 405 is not meaningful here, so we disable that probe entirely.
 unexpected-methods = []
 
-[filter]
+[checks]
+# go-httpbin intentionally accepts extra/unknown query parameters (like most
+# HTTP servers). The coverage phase generates requests with unknown parameters
+# to test strict APIs, but this is not meaningful for go-httpbin which is
+# designed to be permissive. Disable the check globally.
+negative_data_rejection = {enabled = false}
+
 # /brotli intentionally returns 501 Not Implemented — it is a known,
-# documented stub for an unimplemented feature. Exclude it from testing
-# entirely so the not_a_server_error check doesn't flag it.
-exclude = [{path = "/brotli"}]
+# documented stub for an unimplemented feature, not a real server error.
+[[operations]]
+include-path = "/brotli"
+
+[operations.checks]
+not_a_server_error = {enabled = false}
+
+# /hidden-basic-auth intentionally returns 404 (not 401) when auth is missing
+# or incorrect — that's the "hidden" aspect of the endpoint, which doesn't
+# reveal that authentication is required.
+[[operations]]
+include-path = "/hidden-basic-auth/{user}/{password}"
+
+[operations.checks]
+missing_required_header = {enabled = false}
+

@@ -331,11 +331,7 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// rng/seed
-	rng, err := parseSeed(r.URL.Query().Get("seed"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
-		return
-	}
+	rng := parseSeed(r.URL.Query().Get("seed"))
 
 	// failure_rate
 	failureRate := 0.5
@@ -925,11 +921,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	}
 
 	// rng/seed
-	rng, err := parseSeed(r.URL.Query().Get("seed"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
-		return
-	}
+	rng := parseSeed(r.URL.Query().Get("seed"))
 
 	if numBytes < 0 {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %d must be greater than 0", numBytes))
@@ -939,6 +931,7 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	// Special case 0 bytes and exit early, since streaming & chunk size do not
 	// matter here.
 	if numBytes == 0 {
+		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Header().Set("Content-Length", "0")
 		w.WriteHeader(http.StatusOK)
 		return
