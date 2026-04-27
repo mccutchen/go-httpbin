@@ -1,0 +1,6 @@
+[phases.coverage]
+# go-httpbin intentionally accepts any HTTP method on endpoints that are not
+# restricted to a specific method subset (e.g. /anything, /delay, /status,
+# etc.). Testing non-standard methods like QUERY against these endpoints and
+# expecting a 405 is not meaningful here, so we disable that probe entirely.
+unexpected-methods = []
