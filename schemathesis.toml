@@ -4,3 +4,8 @@
 # etc.). Testing non-standard methods like QUERY against these endpoints and
 # expecting a 405 is not meaningful here, so we disable that probe entirely.
 unexpected-methods = []
+
+[checks]
+# /brotli intentionally returns 501 Not Implemented — it is a known,
+# documented stub for an unimplemented feature, not a real server error.
+not_a_server_error = { excluded-status-codes = [501] }

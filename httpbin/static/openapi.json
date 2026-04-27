@@ -1192,7 +1192,7 @@
             "name": "status_code",
             "in": "query",
             "description": "HTTP status code to use for the redirect. Must be in the 3xx range. Defaults to 302.",
-            "schema": { "type": "integer", "minimum": 300, "maximum": 399, "default": 302 }
+            "schema": { "type": "integer", "enum": [301, 302, 303, 307, 308], "default": 302 }
           }
         ],
         "responses": {
@@ -1226,7 +1226,7 @@
           {
             "name": "status_code",
             "in": "query",
-            "schema": { "type": "integer", "minimum": 300, "maximum": 399, "default": 302 }
+            "schema": { "type": "integer", "enum": [301, 302, 303, 307, 308], "default": 302 }
           }
         ],
         "responses": {
@@ -1463,7 +1463,7 @@
             "name": "If-Modified-Since",
             "in": "header",
             "description": "Returns 304 if provided.",
-            "schema": { "type": "string", "format": "date-time" }
+            "schema": { "type": "string" }
           },
           {
             "name": "If-None-Match",
@@ -1502,7 +1502,7 @@
             "in": "path",
             "required": true,
             "description": "Number of seconds for `max-age`.",
-            "schema": { "type": "integer", "minimum": 0, "example": 60 }
+            "schema": { "type": "integer", "example": 60 }
           }
         ],
         "responses": {
@@ -1728,7 +1728,7 @@
             "name": "seed",
             "in": "query",
             "description": "Random seed for reproducible output.",
-            "schema": { "type": "integer", "example": 42 }
+            "schema": { "example": 42 }
           }
         ],
         "responses": {
