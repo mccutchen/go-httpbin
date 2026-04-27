@@ -1184,6 +1184,16 @@ func (h *HTTPBin) JSON(w http.ResponseWriter, _ *http.Request) {
 	w.Write(mustStaticAsset("sample.json"))
 }
 
+// OpenAPIJSON serves the OpenAPI spec as JSON.
+func (h *HTTPBin) OpenAPIJSON(w http.ResponseWriter, _ *http.Request) {
+	writeResponse(w, http.StatusOK, jsonContentType, mustStaticAsset("openapi.json"))
+}
+
+// OpenAPIYAML serves the OpenAPI spec as YAML.
+func (h *HTTPBin) OpenAPIYAML(w http.ResponseWriter, _ *http.Request) {
+	writeResponse(w, http.StatusOK, "application/yaml", mustStaticAsset("openapi.yaml"))
+}
+
 // JSONL - returns a stream of JSON Lines data, one JSON object per line.
 // Accepts optional query parameters:
 //   - count: number of lines to emit (default 10, clamped to [1, maxJSONLCount])

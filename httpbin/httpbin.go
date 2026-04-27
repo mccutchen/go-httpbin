@@ -205,6 +205,8 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/image/{kind}", h.Image)
 	mux.HandleFunc("/ip", h.IP)
 	mux.HandleFunc("/json", h.JSON)
+	mux.HandleFunc("GET /openapi.json", h.OpenAPIJSON)
+	mux.HandleFunc("GET /openapi.yaml", h.OpenAPIYAML)
 	mux.HandleFunc("/jsonl", h.JSONL)
 	mux.HandleFunc("/links/{numLinks}", h.Links)
 	mux.HandleFunc("/links/{numLinks}/{offset}", h.Links)
