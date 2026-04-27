@@ -39,5 +39,4 @@ missing_required_header = {enabled = false}
 include-path-regex = "^/(drip|delay|sse)"
 
 [operations.checks]
-max_response_time = {enabled = false}
-
+max_response_time = 10

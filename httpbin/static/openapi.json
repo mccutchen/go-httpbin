@@ -2222,7 +2222,8 @@
             "description": "Delay duration as seconds (float) or a Go duration string (e.g. `1s`, `500ms`).",
             "schema": {
               "type": "string",
-              "example": "1s"
+              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$",
+              "example": "250ms"
             }
           }
         ],
@@ -3005,7 +3006,7 @@
             "description": "Total content length in bytes.",
             "schema": {
               "type": "integer",
-              "minimum": 0,
+              "minimum": 1,
               "example": 1024
             }
           },
