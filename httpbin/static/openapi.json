@@ -986,7 +986,8 @@
             "name": "codes",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
+            "schema": { "type": "string", "pattern": "^[1-5][0-9]{2}" }
           }
         ],
         "responses": {
@@ -1004,7 +1005,8 @@
             "name": "codes",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
+            "schema": { "type": "string", "pattern": "^[1-5][0-9]{2}" }
           }
         ],
         "responses": {
@@ -1022,7 +1024,8 @@
             "name": "codes",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
+            "schema": { "type": "string", "pattern": "^[1-5][0-9]{2}" }
           }
         ],
         "responses": {
@@ -1230,7 +1233,7 @@
           "200": {
             "description": "Final destination after following the redirect (returned by the target server)"
           },
-          "302": { "description": "Redirect (or the status code you specified)" },
+          "3XX": { "description": "Redirect (or whichever 3xx status code you specified)" },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "403": { "description": "Target domain not allowed" },
           "default": { "description": "Any other response from the redirect target" }
@@ -1821,26 +1824,19 @@
       }
     },
 
-    "/base64/{operation}/{value}": {
+    "/base64/encode/{value}": {
       "get": {
-        "summary": "Encode or decode base64",
-        "description": "Encodes or decodes the given `value` using URL-safe base64, depending on `operation`.",
-        "operationId": "base64Operation",
+        "summary": "Base64-encode data",
+        "description": "Encodes the given `value` using URL-safe base64 and returns the result.",
+        "operationId": "base64Encode",
         "tags": ["Dynamic Data"],
         "parameters": [
-          {
-            "name": "operation",
-            "in": "path",
-            "required": true,
-            "description": "The operation to perform.",
-            "schema": { "type": "string", "enum": ["encode", "decode"] }
-          },
           {
             "name": "value",
             "in": "path",
             "required": true,
-            "description": "The data to encode or decode. For `decode`, must be a valid URL-safe base64 string.",
-            "schema": { "type": "string", "pattern": "^[A-Za-z0-9+/\\-_=]+$" }
+            "description": "Arbitrary data to encode.",
+            "schema": { "type": "string", "example": "Hello World" }
           },
           {
             "name": "content-type",
@@ -1851,7 +1847,41 @@
         ],
         "responses": {
           "200": {
-            "description": "Encoded or decoded data. Content-Type is `application/octet-stream` by default, or whatever was passed in the `content-type` query parameter.",
+            "description": "Base64-encoded data.",
+            "content": {
+              "*/*": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/base64/decode/{value}": {
+      "get": {
+        "summary": "Base64-decode data",
+        "description": "Decodes the URL-safe base64-encoded `value` and returns the raw bytes.",
+        "operationId": "base64DecodeExplicit",
+        "tags": ["Dynamic Data"],
+        "parameters": [
+          {
+            "name": "value",
+            "in": "path",
+            "required": true,
+            "description": "URL-safe base64-encoded data to decode.",
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9+/\\-_=]+$", "example": "SGVsbG8gV29ybGQ=" }
+          },
+          {
+            "name": "content-type",
+            "in": "query",
+            "description": "Content-Type to set on the response.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Decoded data. Content-Type is `application/octet-stream` by default, or whatever was passed in the `content-type` query parameter.",
             "content": {
               "*/*": {
                 "schema": { "type": "string", "format": "binary" }
@@ -2653,9 +2683,6 @@
               "type": "object",
               "additionalProperties": { "type": "string" }
             }
-          },
-          "multipart/form-data": {
-            "schema": {}
           },
           "text/plain": {
             "schema": { "type": "string" }
