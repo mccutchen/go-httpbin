@@ -2403,7 +2403,7 @@
             "schema": {
               "type": "string",
               "default": "2s",
-              "example": "5s"
+              "example": "500ms"
             }
           },
           {
@@ -2413,7 +2413,7 @@
             "schema": {
               "type": "string",
               "default": "2s",
-              "example": "1s"
+              "example": "250ms"
             }
           },
           {
@@ -2809,7 +2809,7 @@
             "description": "Total duration over which to stream all lines. Must be >= 1s if provided.",
             "schema": {
               "type": "string",
-              "example": "5s"
+              "example": "500ms"
             }
           },
           {
@@ -2818,7 +2818,7 @@
             "description": "Initial delay before the first line is sent.",
             "schema": {
               "type": "string",
-              "example": "500ms"
+              "example": "250ms"
             }
           },
           {
@@ -2886,7 +2886,7 @@
             "description": "Total duration over which to send all events. Must be >= 1s if provided.",
             "schema": {
               "type": "string",
-              "example": "5s"
+              "example": "500ms"
             }
           },
           {
@@ -2895,7 +2895,7 @@
             "description": "Initial delay before the first event is sent.",
             "schema": {
               "type": "string",
-              "example": "500ms"
+              "example": "250ms"
             }
           },
           {
