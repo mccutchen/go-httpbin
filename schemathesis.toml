@@ -8,6 +8,8 @@ max-redirects = 0
 # etc.). Testing non-standard methods like QUERY against these endpoints and
 # expecting a 405 is not meaningful here, so we disable that probe entirely.
 unexpected-methods = []
+# Duplicate query parameters are not meaningful to test for go-httpbin.
+generate-duplicate-query-parameters = false
 
 [checks]
 # go-httpbin intentionally accepts extra/unknown query parameters (like most
@@ -40,3 +42,52 @@ include-path-regex = "^/(drip|delay|sse)"
 
 [operations.checks]
 max_response_time = 10
+
+# /unstable randomly returns 500 by design (it's the whole point of the
+# endpoint). Disable the server-error check for it.
+[[operations]]
+include-path = "/unstable"
+
+[operations.checks]
+not_a_server_error = {enabled = false}
+
+# /basic-auth, /bearer, and /hidden-basic-auth all accept credentials supplied
+# by the caller in the URL path. Schemathesis generates auth headers whose
+# tokens happen to match those path parameters, triggering the `ignored_auth`
+# check as a false positive.
+[[operations]]
+include-path-regex = "^/(basic-auth|bearer|hidden-basic-auth)"
+
+[operations.checks]
+ignored_auth = {enabled = false}
+
+# /cache returns 304 and /etag returns 412 for valid conditional requests.
+# These are correct HTTP conditional-response codes, not rejections, but the
+# positive_data_acceptance check treats non-2xx/4xx codes as rejections.
+[[operations]]
+include-path-regex = "^/(cache$|etag)"
+
+[operations.checks]
+positive_data_acceptance = {enabled = false}
+
+# /base64/decode and /base64/{value} validate that the input is valid base64.
+# Strings that match the character-set pattern may still be rejected due to
+# invalid padding or length. Disable the positive_data_acceptance check since
+# returning 400 for invalid-but-syntactically-plausible input is correct.
+[[operations]]
+include-path-regex = "^/base64/(decode/|\\{)"
+
+[operations.checks]
+positive_data_acceptance = {enabled = false}
+
+# /drip accepts a `code` query parameter that sets the HTTP response status code
+# (100-599). The server intentionally returns whatever code is requested, which
+# may be 1xx, 3xx, or 5xx. The positive_data_acceptance and not_a_server_error
+# checks cannot be suppressed via spec-level wildcard responses, so we disable
+# them here.
+[[operations]]
+include-path = "/drip"
+
+[operations.checks]
+not_a_server_error = {enabled = false}
+positive_data_acceptance = {enabled = false}

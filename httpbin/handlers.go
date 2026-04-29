@@ -1148,7 +1148,7 @@ func (h *HTTPBin) Base64(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ct := r.URL.Query().Get("content-type")
-	if ct == "" {
+	if ct == "" || !strings.Contains(ct, "/") {
 		ct = textContentType
 	}
 	// prevent XSS and other client side vulns if the content type is dangerous

@@ -1226,7 +1226,8 @@
             "description": "A single HTTP status code, or a comma-separated list of codes with optional weights (e.g. `200`, `200,404,500`, `200:0.7,500:0.3`).",
             "schema": {
               "type": "string",
-              "example": "200"
+              "example": "200",
+              "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
         ],
@@ -1367,7 +1368,8 @@
             "description": "A single HTTP status code, or a comma-separated weighted list.",
             "schema": {
               "type": "string",
-              "example": "200"
+              "example": "200",
+              "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
         ],
@@ -1395,7 +1397,7 @@
             "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
             "schema": {
               "type": "string",
-              "pattern": "^[1-5][0-9]{2}"
+              "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
         ],
@@ -1423,7 +1425,7 @@
             "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
             "schema": {
               "type": "string",
-              "pattern": "^[1-5][0-9]{2}"
+              "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
         ],
@@ -1451,7 +1453,7 @@
             "description": "A single HTTP status code in range [100, 599], or a comma-separated weighted list.",
             "schema": {
               "type": "string",
-              "pattern": "^[1-5][0-9]{2}"
+              "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
         ],
@@ -1524,7 +1526,8 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 20
             }
           },
           {
@@ -1570,7 +1573,8 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 20
             }
           }
         ],
@@ -1608,7 +1612,8 @@
             "description": "Number of redirects to perform. Must be >= 1.",
             "schema": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 20
             }
           }
         ],
@@ -2222,7 +2227,7 @@
             "description": "Delay duration as seconds (float) or a Go duration string (e.g. `1s`, `500ms`).",
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$",
+              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
               "example": "250ms"
             }
           }
@@ -2434,7 +2439,9 @@
             "schema": {
               "type": "integer",
               "default": 200,
-              "example": 200
+              "example": 200,
+              "minimum": 100,
+              "maximum": 599
             }
           }
         ],
@@ -2466,6 +2473,21 @@
           },
           "499": {
             "description": "Client closed request"
+          },
+          "default": {
+            "description": "Response with the status code specified by the `code` parameter."
+          },
+          "1XX": {
+            "description": "Informational response with the status code specified by `code`."
+          },
+          "3XX": {
+            "description": "Redirect response with the status code specified by `code`."
+          },
+          "4XX": {
+            "description": "Client error response with the status code specified by `code`."
+          },
+          "5XX": {
+            "description": "Server error response with the status code specified by `code`."
           }
         }
       }
@@ -2487,7 +2509,8 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "example": 256
+              "example": 256,
+              "maximum": 1048576
             }
           },
           {
@@ -2548,7 +2571,8 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "example": 1024
+              "example": 1024,
+              "maximum": 1048576
             }
           },
           {
@@ -2604,7 +2628,8 @@
             "description": "URL-safe base64-encoded data to decode.",
             "schema": {
               "type": "string",
-              "example": "SGVsbG8gV29ybGQ="
+              "example": "SGVsbG8gV29ybGQ=",
+              "minLength": 4
             }
           },
           {
@@ -2659,7 +2684,8 @@
             "in": "query",
             "description": "Content-Type to set on the response.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9!#$&\\-^_.]*\\/[a-zA-Z0-9][a-zA-Z0-9!#$&\\-^_.]*$"
             }
           }
         ],
@@ -2695,7 +2721,8 @@
             "schema": {
               "type": "string",
               "pattern": "^[A-Za-z0-9+/\\-_=]+$",
-              "example": "SGVsbG8gV29ybGQ="
+              "example": "SGVsbG8gV29ybGQ=",
+              "minLength": 4
             }
           },
           {
@@ -2800,7 +2827,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "default": 10
+              "default": 10,
+              "maximum": 10000
             }
           },
           {
@@ -2877,7 +2905,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "default": 10
+              "default": 10,
+              "maximum": 10000
             }
           },
           {
@@ -3007,7 +3036,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "example": 1024
+              "example": 1024,
+              "maximum": 1048576
             }
           },
           {
@@ -3597,7 +3627,7 @@
             "description": "Maximum WebSocket message size in bytes. Must be between 1 and the server's max body size.",
             "schema": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 524288
             }
           }
         ],
