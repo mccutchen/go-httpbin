@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "go-httpbin",
-    "description": "A faithful Go port of httpbin.org \u2014 a simple HTTP request and response service useful for testing HTTP clients, debugging HTTP requests, and simulating various server behaviors.",
+    "description": "A golang port of the venerable httpbin.org HTTP request & response testing service.",
     "version": "2.0.0",
     "contact": {
       "url": "https://github.com/mccutchen/go-httpbin"
@@ -18,9 +18,7 @@
         "summary": "HTML index page",
         "description": "Returns an HTML index page listing all available endpoints.",
         "operationId": "index",
-        "tags": [
-          "Meta"
-        ],
+        "tags": ["Meta"],
         "responses": {
           "200": {
             "description": "HTML index page",
@@ -40,9 +38,7 @@
         "summary": "GET request inspector",
         "description": "Returns the details of the incoming GET request, including query parameters, headers, origin IP, and the full URL.",
         "operationId": "getGet",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -70,9 +66,7 @@
         "summary": "POST request inspector",
         "description": "Returns the details of the incoming POST request, including any body data (raw, JSON, form-encoded, or multipart).",
         "operationId": "postPost",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -106,9 +100,7 @@
         "summary": "PUT request inspector",
         "description": "Returns the details of the incoming PUT request, including any body data.",
         "operationId": "putPut",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -142,9 +134,7 @@
         "summary": "PATCH request inspector",
         "description": "Returns the details of the incoming PATCH request, including any body data.",
         "operationId": "patchPatch",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -178,9 +168,7 @@
         "summary": "DELETE request inspector",
         "description": "Returns the details of the incoming DELETE request, including any body data.",
         "operationId": "deleteDelete",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -214,9 +202,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingGet",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -245,9 +231,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingPost",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -279,9 +263,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingPut",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -313,9 +295,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingPatch",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -347,9 +327,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingDelete",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -381,9 +359,7 @@
         "summary": "Request inspector (any method)",
         "description": "Returns the details of the incoming request for any HTTP method.",
         "operationId": "anythingTrace",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "responses": {
           "200": {
             "description": "Request details",
@@ -403,9 +379,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathGet",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -444,9 +418,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathPost",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -488,9 +460,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathPut",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -532,9 +502,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathPatch",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -576,9 +544,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathDelete",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -620,9 +586,7 @@
         "summary": "Request inspector with arbitrary path (any method)",
         "description": "Returns the details of the incoming request for any HTTP method. The path suffix is ignored.",
         "operationId": "anythingPathTrace",
-        "tags": [
-          "Anything"
-        ],
+        "tags": ["Anything"],
         "parameters": [
           {
             "name": "anything",
@@ -653,9 +617,7 @@
         "summary": "Request headers",
         "description": "Returns the headers sent in the incoming request.",
         "operationId": "getHeaders",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "Request headers",
@@ -668,9 +630,7 @@
                       "$ref": "#/components/schemas/Headers"
                     }
                   },
-                  "required": [
-                    "headers"
-                  ]
+                  "required": ["headers"]
                 }
               }
             }
@@ -683,9 +643,7 @@
         "summary": "Client IP address",
         "description": "Returns the IP address of the client making the request. Respects `X-Forwarded-For` and similar proxy headers.",
         "operationId": "getIp",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "Client IP address",
@@ -700,9 +658,7 @@
                       "example": "192.168.1.1"
                     }
                   },
-                  "required": [
-                    "origin"
-                  ]
+                  "required": ["origin"]
                 }
               }
             }
@@ -715,9 +671,7 @@
         "summary": "Client User-Agent",
         "description": "Returns the `User-Agent` header sent by the client.",
         "operationId": "getUserAgent",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "User-Agent string",
@@ -732,9 +686,7 @@
                       "example": "curl/8.4.0"
                     }
                   },
-                  "required": [
-                    "user-agent"
-                  ]
+                  "required": ["user-agent"]
                 }
               }
             }
@@ -747,9 +699,7 @@
         "summary": "Server hostname",
         "description": "Returns the hostname of the server running go-httpbin.",
         "operationId": "getHostname",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "Server hostname",
@@ -764,9 +714,7 @@
                       "example": "go-httpbin-abc123"
                     }
                   },
-                  "required": [
-                    "hostname"
-                  ]
+                  "required": ["hostname"]
                 }
               }
             }
@@ -779,9 +727,7 @@
         "summary": "Service version information",
         "description": "Returns version and build information about the running go-httpbin instance.",
         "operationId": "getVersion",
-        "tags": [
-          "Meta"
-        ],
+        "tags": ["Meta"],
         "responses": {
           "200": {
             "description": "Version details",
@@ -811,9 +757,7 @@
                       "example": "go1.22.0"
                     }
                   },
-                  "required": [
-                    "service"
-                  ]
+                  "required": ["service"]
                 }
               }
             }
@@ -826,9 +770,7 @@
         "summary": "Environment variables",
         "description": "Returns environment variables with the `HTTPBIN_` prefix that have been allowlisted by the server operator. If no variables have been allowlisted, returns an empty object.",
         "operationId": "getEnv",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "Allowlisted environment variables",
@@ -849,9 +791,7 @@
                       "nullable": true
                     }
                   },
-                  "required": [
-                    "env"
-                  ]
+                  "required": ["env"]
                 }
               }
             }
@@ -864,9 +804,7 @@
         "summary": "Raw HTTP request dump",
         "description": "Returns the incoming HTTP request in its raw HTTP/1.x wire format.",
         "operationId": "dumpRequest",
-        "tags": [
-          "Request Inspection"
-        ],
+        "tags": ["Request Inspection"],
         "responses": {
           "200": {
             "description": "Raw HTTP request",
@@ -890,9 +828,7 @@
         "summary": "HTTP Basic Authentication",
         "description": "Validates HTTP Basic Authentication credentials. Returns 401 with a `WWW-Authenticate` challenge header if credentials are missing or incorrect.",
         "operationId": "basicAuth",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "security": [
           {
             "basicAuth": []
@@ -957,9 +893,7 @@
         "summary": "Hidden HTTP Basic Authentication",
         "description": "Like `/basic-auth`, but returns 404 instead of 401 when credentials are missing or incorrect, hiding the existence of the resource.",
         "operationId": "hiddenBasicAuth",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "security": [
           {
             "basicAuth": []
@@ -1016,9 +950,7 @@
         "summary": "Bearer token authentication",
         "description": "Validates a Bearer token in the `Authorization` header. Returns 401 with a `WWW-Authenticate` challenge if the header is missing or malformed.",
         "operationId": "bearerAuth",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "security": [
           {
             "bearerAuth": []
@@ -1042,10 +974,7 @@
                       "example": "my-secret-token"
                     }
                   },
-                  "required": [
-                    "authenticated",
-                    "token"
-                  ]
+                  "required": ["authenticated", "token"]
                 }
               }
             }
@@ -1069,9 +998,7 @@
         "summary": "HTTP Digest Authentication",
         "description": "Validates HTTP Digest Authentication credentials using the given QoP and algorithm. Returns 401 with a `WWW-Authenticate` challenge on the first request (or when credentials are wrong).",
         "operationId": "digestAuth",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "parameters": [
           {
             "name": "qop",
@@ -1080,9 +1007,7 @@
             "description": "Quality of Protection. Only `auth` is currently supported.",
             "schema": {
               "type": "string",
-              "enum": [
-                "auth"
-              ],
+              "enum": ["auth"],
               "example": "auth"
             }
           },
@@ -1139,9 +1064,7 @@
         "summary": "HTTP Digest Authentication with algorithm",
         "description": "Like `/digest-auth/{qop}/{user}/{password}` but with an explicit hash algorithm.",
         "operationId": "digestAuthAlgorithm",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "parameters": [
           {
             "name": "qop",
@@ -1150,9 +1073,7 @@
             "description": "Quality of Protection. Only `auth` is currently supported.",
             "schema": {
               "type": "string",
-              "enum": [
-                "auth"
-              ],
+              "enum": ["auth"],
               "example": "auth"
             }
           },
@@ -1183,10 +1104,7 @@
             "description": "Hash algorithm to use.",
             "schema": {
               "type": "string",
-              "enum": [
-                "MD5",
-                "SHA-256"
-              ],
+              "enum": ["MD5", "SHA-256"],
               "example": "MD5"
             }
           }
@@ -1223,9 +1141,7 @@
         "summary": "Return given HTTP status code(s)",
         "description": "Returns a response with the specified HTTP status code. Accepts a single code or a comma-separated list of codes with optional weights for random selection (e.g. `200,301,500` or `200:0.8,500:0.2`). Certain status codes produce additional headers or bodies per the HTTP spec (e.g. 301 adds `Location`, 401 adds `WWW-Authenticate`).",
         "operationId": "getStatus",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "codes",
@@ -1365,9 +1281,7 @@
         "summary": "Return given HTTP status code(s)",
         "description": "Returns a response with the specified HTTP status code. See GET /status/{codes} for full description.",
         "operationId": "postStatus",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "codes",
@@ -1394,9 +1308,7 @@
         "summary": "Return given HTTP status code(s)",
         "description": "Returns a response with the specified HTTP status code.",
         "operationId": "putStatus",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "codes",
@@ -1423,9 +1335,7 @@
         "summary": "Return given HTTP status code(s)",
         "description": "Returns a response with the specified HTTP status code.",
         "operationId": "patchStatus",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "codes",
@@ -1452,9 +1362,7 @@
         "summary": "Return given HTTP status code(s)",
         "description": "Returns a response with the specified HTTP status code.",
         "operationId": "deleteStatus",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "codes",
@@ -1483,9 +1391,7 @@
         "summary": "Randomly returns 200 or 500",
         "description": "Returns a 500 Internal Server Error with a configurable probability, or 200 OK otherwise. Useful for testing retry logic and error handling.",
         "operationId": "getUnstable",
-        "tags": [
-          "Status Codes"
-        ],
+        "tags": ["Status Codes"],
         "parameters": [
           {
             "name": "failure_rate",
@@ -1528,9 +1434,7 @@
         "summary": "Redirect N times",
         "description": "Issues a redirect chain of length `n`. By default uses relative redirects (via `/relative-redirect`); pass `absolute=true` to use absolute URLs (via `/absolute-redirect`). HTTP clients that follow redirects will ultimately receive a 200 from `/get`.",
         "operationId": "redirect",
-        "tags": [
-          "Redirects"
-        ],
+        "tags": ["Redirects"],
         "parameters": [
           {
             "name": "n",
@@ -1567,6 +1471,9 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -1576,9 +1483,7 @@
         "summary": "Relative redirect N times",
         "description": "Performs `n` consecutive relative (path-only) 302 redirects. The final redirect points to `/get`. HTTP clients that follow redirects will ultimately receive a 200.",
         "operationId": "relativeRedirect",
-        "tags": [
-          "Redirects"
-        ],
+        "tags": ["Redirects"],
         "parameters": [
           {
             "name": "n",
@@ -1607,6 +1512,9 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -1616,9 +1524,7 @@
         "summary": "Absolute redirect N times",
         "description": "Performs `n` consecutive absolute (full URL) 302 redirects. The final redirect points to `/get`. HTTP clients that follow redirects will ultimately receive a 200.",
         "operationId": "absoluteRedirect",
-        "tags": [
-          "Redirects"
-        ],
+        "tags": ["Redirects"],
         "parameters": [
           {
             "name": "n",
@@ -1647,6 +1553,9 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -1656,9 +1565,7 @@
         "summary": "Redirect to a URL",
         "description": "Issues a redirect to the URL specified in the `url` query parameter, with an optional custom status code. If the server has a configured allowlist of redirect domains, the target domain must match.",
         "operationId": "redirectTo",
-        "tags": [
-          "Redirects"
-        ],
+        "tags": ["Redirects"],
         "parameters": [
           {
             "name": "url",
@@ -1668,7 +1575,7 @@
             "schema": {
               "type": "string",
               "format": "uri",
-              "example": "http://example.com"
+              "example": "http://localhost:8080/get"
             }
           },
           {
@@ -1677,13 +1584,7 @@
             "description": "HTTP status code to use for the redirect. Must be in the 3xx range. Defaults to 302.",
             "schema": {
               "type": "integer",
-              "enum": [
-                301,
-                302,
-                303,
-                307,
-                308
-              ],
+              "enum": [301, 302, 303, 307, 308],
               "default": 302
             }
           }
@@ -1704,6 +1605,9 @@
           },
           "403": {
             "description": "Target domain is not on the server's allowlist"
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       },
@@ -1711,9 +1615,7 @@
         "summary": "Redirect to a URL",
         "description": "Issues a redirect to the URL specified in the `url` query parameter.",
         "operationId": "redirectToPost",
-        "tags": [
-          "Redirects"
-        ],
+        "tags": ["Redirects"],
         "parameters": [
           {
             "name": "url",
@@ -1722,7 +1624,7 @@
             "schema": {
               "type": "string",
               "format": "uri",
-              "example": "http://example.com"
+              "example": "http://localhost:8080/get"
             }
           },
           {
@@ -1730,13 +1632,7 @@
             "in": "query",
             "schema": {
               "type": "integer",
-              "enum": [
-                301,
-                302,
-                303,
-                307,
-                308
-              ],
+              "enum": [301, 302, 303, 307, 308],
               "default": 302
             }
           }
@@ -1762,9 +1658,7 @@
         "summary": "Return request cookies",
         "description": "Returns all cookies sent in the request.",
         "operationId": "getCookies",
-        "tags": [
-          "Cookies"
-        ],
+        "tags": ["Cookies"],
         "responses": {
           "200": {
             "description": "Request cookies",
@@ -1785,9 +1679,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "cookies"
-                  ]
+                  "required": ["cookies"]
                 }
               }
             }
@@ -1800,9 +1692,7 @@
         "summary": "Set cookies",
         "description": "Sets one or more cookies from query parameters, then redirects to `/cookies`. Each query parameter becomes a cookie with that name and value.",
         "operationId": "setCookies",
-        "tags": [
-          "Cookies"
-        ],
+        "tags": ["Cookies"],
         "parameters": [
           {
             "name": "cookie_name",
@@ -1841,6 +1731,9 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -1850,9 +1743,7 @@
         "summary": "Delete cookies",
         "description": "Deletes the cookies named by the query parameters, then redirects to `/cookies`.",
         "operationId": "deleteCookies",
-        "tags": [
-          "Cookies"
-        ],
+        "tags": ["Cookies"],
         "parameters": [
           {
             "name": "cookie_name",
@@ -1891,6 +1782,9 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -1900,9 +1794,7 @@
         "summary": "Gzip-compressed response",
         "description": "Returns a gzip-compressed JSON response containing request details. The `Content-Encoding: gzip` header is set.",
         "operationId": "getGzip",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "Gzip-compressed request details",
@@ -1943,9 +1835,7 @@
         "summary": "Deflate-compressed response",
         "description": "Returns a deflate-compressed JSON response containing request details. The `Content-Encoding: deflate` header is set.",
         "operationId": "getDeflate",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "Deflate-compressed request details",
@@ -1986,9 +1876,7 @@
         "summary": "Brotli-compressed response (not implemented)",
         "description": "Brotli compression is not implemented in go-httpbin. Always returns 501 Not Implemented.",
         "operationId": "getBrotli",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "501": {
             "$ref": "#/components/responses/NotImplemented"
@@ -2001,9 +1889,7 @@
         "summary": "Set response headers",
         "description": "Returns a response whose headers are set from the query parameters. Each query parameter name becomes a response header name and its value becomes the header value. The headers are also reflected in the JSON response body. Setting `Content-Type` via a query parameter changes the response content type.",
         "operationId": "getResponseHeaders",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "header_name",
@@ -2050,9 +1936,7 @@
         "summary": "Set response headers",
         "description": "Same as GET /response-headers.",
         "operationId": "postResponseHeaders",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "header_name",
@@ -2075,9 +1959,7 @@
         "summary": "Conditional cache validation",
         "description": "Returns 304 Not Modified if the request includes `If-Modified-Since` or `If-None-Match` headers. Otherwise returns a 200 with request details and sets `Last-Modified` and `ETag` response headers.",
         "operationId": "getCache",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "If-Modified-Since",
@@ -2130,9 +2012,7 @@
         "summary": "Set Cache-Control max-age",
         "description": "Returns a response with a `Cache-Control: public, max-age={value}` header.",
         "operationId": "getCacheControl",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "value",
@@ -2175,9 +2055,7 @@
         "summary": "ETag-based cache validation",
         "description": "Returns a response with the given `ETag` header value. If the request includes `If-None-Match` matching the ETag, returns 304. If the request includes `If-Match` that does not match, returns 412.",
         "operationId": "getEtag",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "etag",
@@ -2238,9 +2116,7 @@
         "summary": "Delay response",
         "description": "Waits the specified duration before responding with request details. Accepts seconds as a float or any Go duration string (e.g. `500ms`, `1.5s`). The delay is capped at the server's configured maximum duration (default 10 seconds). If the client disconnects early, the server returns 499.",
         "operationId": "getDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2249,7 +2125,7 @@
             "description": "Delay duration as seconds (float) or a Go duration string (e.g. `1s`, `500ms`).",
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
+              "pattern": "^(\\d+)|((\\d+(ns|us|ms|s|m|h))+$",
               "example": "250ms"
             }
           }
@@ -2274,9 +2150,6 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
-          },
-          "499": {
-            "description": "Client closed request before the delay completed"
           }
         }
       },
@@ -2284,9 +2157,7 @@
         "summary": "Delay response",
         "description": "Same as GET /delay/{delay}.",
         "operationId": "postDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2315,9 +2186,7 @@
         "summary": "Delay response",
         "description": "Same as GET /delay/{delay}.",
         "operationId": "putDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2343,9 +2212,7 @@
         "summary": "Delay response",
         "description": "Same as GET /delay/{delay}.",
         "operationId": "patchDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2371,9 +2238,7 @@
         "summary": "Delay response",
         "description": "Same as GET /delay/{delay}.",
         "operationId": "deleteDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2399,9 +2264,7 @@
         "summary": "Delay response",
         "description": "Same as GET /delay/{delay}.",
         "operationId": "traceDelay",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "delay",
@@ -2427,9 +2290,7 @@
         "summary": "Stream bytes over time",
         "description": "Gradually streams a response body of the specified size over the specified duration. Useful for testing streaming clients, timeouts, and slow connection handling. Sets a fixed `Content-Length` (not chunked). A `Server-Timing` header reflects actual durations.",
         "operationId": "getDrip",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "duration",
@@ -2501,9 +2362,6 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "499": {
-            "description": "Client closed request"
-          },
           "default": {
             "description": "Response with the status code specified by the `code` parameter."
           },
@@ -2527,9 +2385,7 @@
         "summary": "Random bytes",
         "description": "Returns `n` random bytes as binary data. The optional `seed` parameter makes the output reproducible.",
         "operationId": "getBytes",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "n",
@@ -2589,9 +2445,7 @@
         "summary": "Streaming random bytes",
         "description": "Streams `n` random bytes in chunks using chunked transfer encoding. The optional `chunk_size` parameter controls how many bytes are sent per chunk (default 10240). The optional `seed` parameter makes the output reproducible.",
         "operationId": "getStreamBytes",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "n",
@@ -2647,9 +2501,7 @@
         "summary": "Decode base64",
         "description": "Decodes the URL-safe base64-encoded `value` and returns the raw bytes. An optional `content-type` query parameter sets the response `Content-Type`.",
         "operationId": "base64Decode",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "value",
@@ -2695,9 +2547,7 @@
         "summary": "Base64-encode data",
         "description": "Encodes the given `value` using URL-safe base64 and returns the result.",
         "operationId": "base64Encode",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "value",
@@ -2739,9 +2589,7 @@
         "summary": "Base64-decode data",
         "description": "Decodes the URL-safe base64-encoded `value` and returns the raw bytes.",
         "operationId": "base64DecodeExplicit",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "value",
@@ -2787,9 +2635,7 @@
         "summary": "Stream JSON lines",
         "description": "Streams `n` newline-delimited JSON objects, each containing request details with an incrementing `id` field. `n` must be between 1 and 100.",
         "operationId": "getStream",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "n",
@@ -2825,9 +2671,7 @@
                             "example": 0
                           }
                         },
-                        "required": [
-                          "id"
-                        ]
+                        "required": ["id"]
                       }
                     ]
                   }
@@ -2846,9 +2690,7 @@
         "summary": "Stream JSON lines with timing control",
         "description": "Streams newline-delimited JSON objects with configurable count, total duration, initial delay, and per-line jitter. Each line contains an incrementing `id` and the timestamp it was sent.",
         "operationId": "getJsonl",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "count",
@@ -2924,9 +2766,7 @@
         "summary": "Server-Sent Events stream",
         "description": "Streams Server-Sent Events (SSE) with configurable count, total duration, initial delay, and jitter. Each event is of type `ping` and includes a JSON data payload with an `id` and `timestamp`.",
         "operationId": "getSse",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "count",
@@ -3018,9 +2858,7 @@
         "summary": "Response with HTTP trailers",
         "description": "Returns a chunked response whose HTTP trailers are set from the query parameters. Trailers are headers delivered after the response body. Certain trailer names are forbidden (e.g. `Authorization`, `Content-*`, `Host`).",
         "operationId": "getTrailers",
-        "tags": [
-          "Response Inspection"
-        ],
+        "tags": ["Response Inspection"],
         "parameters": [
           {
             "name": "trailer_name",
@@ -3055,9 +2893,7 @@
         "summary": "Range request support",
         "description": "Returns `numbytes` of content with full HTTP Range request support. Accepts `Range` headers for partial content and responds with 206 Partial Content or 416 Range Not Satisfiable. Sets `ETag` and `Accept-Ranges: bytes` headers.",
         "operationId": "getRange",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "parameters": [
           {
             "name": "numbytes",
@@ -3155,9 +2991,7 @@
         "summary": "Sample HTML document",
         "description": "Returns a sample HTML page (an excerpt from Moby Dick).",
         "operationId": "getHtml",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "Sample HTML document",
@@ -3177,9 +3011,7 @@
         "summary": "Sample JSON document",
         "description": "Returns a sample JSON document.",
         "operationId": "getJson",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "Sample JSON document",
@@ -3199,9 +3031,7 @@
         "summary": "Sample XML document",
         "description": "Returns a sample XML document.",
         "operationId": "getXml",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "Sample XML document",
@@ -3221,9 +3051,7 @@
         "summary": "Image with content negotiation",
         "description": "Returns an image whose format is determined by the `Accept` header. Supported types are `image/png`, `image/jpeg`, `image/webp`, and `image/svg+xml`. Defaults to PNG if the `Accept` header is missing or wildcarded.",
         "operationId": "getImageNegotiated",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "parameters": [
           {
             "name": "Accept",
@@ -3291,9 +3119,7 @@
         "summary": "Image of specified type",
         "description": "Returns an image of the specified format.",
         "operationId": "getImage",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "parameters": [
           {
             "name": "kind",
@@ -3302,12 +3128,7 @@
             "description": "Image format to return.",
             "schema": {
               "type": "string",
-              "enum": [
-                "png",
-                "jpeg",
-                "webp",
-                "svg"
-              ],
+              "enum": ["png", "jpeg", "webp", "svg"],
               "example": "png"
             }
           }
@@ -3352,9 +3173,7 @@
         "summary": "Generate a UUID v4",
         "description": "Returns a randomly generated UUID v4.",
         "operationId": "getUuid",
-        "tags": [
-          "Dynamic Data"
-        ],
+        "tags": ["Dynamic Data"],
         "responses": {
           "200": {
             "description": "A UUID v4",
@@ -3369,9 +3188,7 @@
                       "example": "550e8400-e29b-41d4-a716-446655440000"
                     }
                   },
-                  "required": [
-                    "uuid"
-                  ]
+                  "required": ["uuid"]
                 }
               }
             }
@@ -3384,15 +3201,13 @@
         "summary": "HTML page with links",
         "description": "Redirects to `/links/{n}/0`, which renders an HTML page with `n` links to other pages in the link chain.",
         "operationId": "getLinks",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "parameters": [
           {
             "name": "n",
             "in": "path",
             "required": true,
-            "description": "Number of links to generate. Must be 0\u2013256.",
+            "description": "Number of links to generate. Must be 0-256.",
             "schema": {
               "type": "integer",
               "minimum": 0,
@@ -3415,6 +3230,9 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "default": {
+            "description": "Response from redirect destination"
           }
         }
       }
@@ -3424,9 +3242,7 @@
         "summary": "HTML link chain page",
         "description": "Returns an HTML page with `n` links pointing to other pages in the link chain. The `offset` parameter indicates the current page index.",
         "operationId": "getLinksOffset",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "parameters": [
           {
             "name": "n",
@@ -3474,9 +3290,7 @@
         "summary": "HTML form",
         "description": "Returns an HTML page with a form that submits a POST request to `/post`.",
         "operationId": "getForms",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "HTML form",
@@ -3496,9 +3310,7 @@
         "summary": "UTF-8 encoding test",
         "description": "Returns an HTML page containing a variety of UTF-8 characters for encoding testing.",
         "operationId": "getEncodingUtf8",
-        "tags": [
-          "Response Formats"
-        ],
+        "tags": ["Response Formats"],
         "responses": {
           "200": {
             "description": "UTF-8 encoded HTML",
@@ -3518,9 +3330,7 @@
         "summary": "Accept and discard an upload",
         "description": "Accepts a request body (any content type) and discards it, returning the number of bytes received along with the usual request details.",
         "operationId": "uploadPost",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "parameters": [
           {
             "$ref": "#/components/parameters/QueryParams"
@@ -3548,9 +3358,7 @@
                           "example": 1024
                         }
                       },
-                      "required": [
-                        "bytes_received"
-                      ]
+                      "required": ["bytes_received"]
                     }
                   ]
                 }
@@ -3563,9 +3371,7 @@
         "summary": "Accept and discard an upload",
         "description": "Same as POST /upload.",
         "operationId": "uploadPut",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "requestBody": {
           "$ref": "#/components/requestBodies/AnyBody"
         },
@@ -3579,9 +3385,7 @@
         "summary": "Accept and discard an upload",
         "description": "Same as POST /upload.",
         "operationId": "uploadPatch",
-        "tags": [
-          "HTTP Methods"
-        ],
+        "tags": ["HTTP Methods"],
         "requestBody": {
           "$ref": "#/components/requestBodies/AnyBody"
         },
@@ -3597,9 +3401,7 @@
         "summary": "robots.txt",
         "description": "Returns a standard `robots.txt` file that disallows `/deny`.",
         "operationId": "getRobotsTxt",
-        "tags": [
-          "Meta"
-        ],
+        "tags": ["Meta"],
         "responses": {
           "200": {
             "description": "robots.txt",
@@ -3620,9 +3422,7 @@
         "summary": "Endpoint disallowed by robots.txt",
         "description": "Returns a plain-text response. Listed in `/robots.txt` as disallowed so well-behaved bots do not crawl it.",
         "operationId": "getDeny",
-        "tags": [
-          "Meta"
-        ],
+        "tags": ["Meta"],
         "responses": {
           "200": {
             "description": "Plain text response",
@@ -3643,9 +3443,7 @@
         "summary": "WebSocket echo server",
         "description": "Upgrades the connection to WebSocket protocol and echoes every received message back to the client. Useful for testing WebSocket clients. The connection is closed by the server after the client closes it.",
         "operationId": "websocketEcho",
-        "tags": [
-          "WebSockets"
-        ],
+        "tags": ["WebSockets"],
         "parameters": [
           {
             "name": "max_fragment_size",
@@ -3691,15 +3489,9 @@
         },
         "description": "Map of HTTP header names to their values (each value is a list of strings).",
         "example": {
-          "Host": [
-            "localhost"
-          ],
-          "User-Agent": [
-            "curl/8.4.0"
-          ],
-          "Accept": [
-            "*/*"
-          ]
+          "Host": ["localhost"],
+          "User-Agent": ["curl/8.4.0"],
+          "Accept": ["*/*"]
         }
       },
       "NoBodyResponse": {
@@ -3724,10 +3516,7 @@
             "description": "URL query parameters.",
             "example": {
               "foo": "bar",
-              "multi": [
-                "a",
-                "b"
-              ]
+              "multi": ["a", "b"]
             }
           },
           "headers": {
@@ -3749,12 +3538,7 @@
             "example": "http://localhost/get?foo=bar"
           }
         },
-        "required": [
-          "args",
-          "headers",
-          "origin",
-          "url"
-        ]
+        "required": ["args", "headers", "origin", "url"]
       },
       "BodyResponse": {
         "allOf": [
@@ -3795,10 +3579,7 @@
                 "description": "Form fields from a `application/x-www-form-urlencoded` or `multipart/form-data` body.",
                 "example": {
                   "username": "alice",
-                  "tags": [
-                    "a",
-                    "b"
-                  ]
+                  "tags": ["a", "b"]
                 }
               },
               "files": {
@@ -3845,9 +3626,7 @@
             "example": "alice"
           }
         },
-        "required": [
-          "authenticated"
-        ]
+        "required": ["authenticated"]
       },
       "ErrorResponse": {
         "type": "object",
@@ -3881,9 +3660,7 @@
             "description": "Cookie names and values."
           }
         },
-        "required": [
-          "cookies"
-        ]
+        "required": ["cookies"]
       }
     },
     "parameters": {
@@ -3929,7 +3706,7 @@
     },
     "responses": {
       "BadRequest": {
-        "description": "Bad Request \u2014 the request contained invalid parameters.",
+        "description": "The request contained invalid parameters.",
         "content": {
           "application/json": {
             "schema": {
@@ -3939,7 +3716,7 @@
         }
       },
       "MethodNotAllowed": {
-        "description": "Method Not Allowed \u2014 the HTTP method is not supported by this endpoint.",
+        "description": "The HTTP method is not supported by this endpoint.",
         "headers": {
           "Allow": {
             "schema": {
@@ -3950,7 +3727,7 @@
         }
       },
       "PayloadTooLarge": {
-        "description": "Payload Too Large \u2014 the request body exceeds the server's configured maximum.",
+        "description": "The request body exceeds the server's configured maximum.",
         "content": {
           "application/json": {
             "schema": {
@@ -3960,7 +3737,7 @@
         }
       },
       "NotImplemented": {
-        "description": "Not Implemented \u2014 this endpoint is not implemented in go-httpbin.",
+        "description": "This endpoint is not implemented in go-httpbin.",
         "content": {
           "application/json": {
             "schema": {

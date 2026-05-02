@@ -1,6 +1,9 @@
 # Do not follow redirects — test only the 3xx response itself, not the
-# redirect destination.
-max-redirects = 0
+# redirect destination. Schemathesis uses httpx under the hood, whose default
+# is follow_redirects=False (returns 3xx response directly). Setting
+# max-redirects to any value switches to follow_redirects=True mode, which
+# throws an exception on any redirect when set to 0. So we omit the setting
+# entirely to get the correct "return 3xx without following" behavior.
 
 [phases.coverage]
 # go-httpbin intentionally accepts any HTTP method on endpoints that are not
