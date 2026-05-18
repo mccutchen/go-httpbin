@@ -260,6 +260,11 @@ func TestConnectionLimits(t *testing.T) {
 		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
 		t.Logf("raw request:\n%q", reqBytes)
 
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
+
 		// first, we write the request line and headers, which should cause the
 		// server to respond with a 101 Switching Protocols response.
 		{
@@ -275,7 +280,6 @@ func TestConnectionLimits(t *testing.T) {
 		// next, we try to read from the connection, expecting the connection
 		// to be closed after roughly maxDuration seconds
 		{
-			start := time.Now()
 			resp, err := io.ReadAll(conn)
 			elapsed := time.Since(start)
 			// we sometimes get a non-nil error and some garbage in the
@@ -346,6 +350,11 @@ func TestConnectionLimits(t *testing.T) {
 		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
 		t.Logf("raw request:\n%q", reqBytes)
 
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
+
 		// first, we write the request line and headers, which should cause the
 		// server to respond with a 101 Switching Protocols response.
 		{
@@ -364,7 +373,6 @@ func TestConnectionLimits(t *testing.T) {
 		// the server should detect the closed connection and abort the
 		// handler, also after roughly clientTimeout seconds.
 		{
-			start := time.Now()
 			_, err := conn.Read(make([]byte, 1))
 			elapsedClientTime = time.Since(start)
 

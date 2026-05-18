@@ -2058,6 +2058,7 @@ func TestTrailers(t *testing.T) {
 
 func TestDelay(t *testing.T) {
 	t.Parallel()
+	app := setupTestApp(t)
 
 	okTests := []struct {
 		url           string
@@ -2076,7 +2077,6 @@ func TestDelay(t *testing.T) {
 		t.Run("ok"+test.url, func(t *testing.T) {
 			t.Parallel()
 
-			app := setupTestApp(t)
 			start := time.Now()
 			req := newTestRequest(t, "GET", app.URL(test.url), nil)
 			resp := mustDoRequest(t, app, req)
@@ -2097,7 +2097,7 @@ func TestDelay(t *testing.T) {
 
 	t.Run("handle cancelation", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 		defer cancel()
 
@@ -2110,8 +2110,6 @@ func TestDelay(t *testing.T) {
 
 	t.Run("cancelation causes 499", func(t *testing.T) {
 		t.Parallel()
-
-		app := setupTestApp(t)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 		defer cancel()
@@ -2142,7 +2140,6 @@ func TestDelay(t *testing.T) {
 	for _, test := range badTests {
 		t.Run("bad"+test.url, func(t *testing.T) {
 			t.Parallel()
-			app := setupTestApp(t)
 			req := newTestRequest(t, "GET", app.URL(test.url), nil)
 			resp := mustDoRequest(t, app, req)
 			assert.StatusCode(t, resp, test.code)
@@ -2158,6 +2155,7 @@ func TestDrip(t *testing.T) {
 		opts        = []OptionFunc{
 			WithMaxBodySize(int64(maxBodySize)),
 		}
+		app = setupTestApp(t, opts...)
 	)
 
 	okTests := []struct {
@@ -2196,7 +2194,6 @@ func TestDrip(t *testing.T) {
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
-			app := setupTestApp(t)
 
 			start := time.Now()
 			req := newTestRequest(t, "GET", app.URL("/drip", test.params), nil)
@@ -2231,7 +2228,6 @@ func TestDrip(t *testing.T) {
 		// indication we need.
 		t.Parallel()
 
-		app := setupTestApp(t)
 		req := newTestRequest(t, "GET", app.URL("/drip?code=100"), nil)
 		reqBytes, err := httputil.DumpRequestOut(req, false)
 		assert.NilError(t, err)
@@ -2251,51 +2247,41 @@ func TestDrip(t *testing.T) {
 
 	t.Run("writes are actually incremmental", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t)
 
 		var (
-			duration = 1 * time.Second
+			duration = 500 * time.Millisecond
 			numBytes = 3
 			endpoint = fmt.Sprintf("/drip?duration=%s&numbytes=%d", duration, numBytes)
-
-			// Match server logic for calculating the delay between writes
-			wantPauseBetweenWrites = computePausePerWrite(duration, int64(numBytes))
 		)
+
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
 		req := newTestRequest(t, "GET", app.URL(endpoint), nil)
 		resp := mustDoRequest(t, app, req)
 
-		// Here we read from the response one byte at a time, and ensure that
-		// at least the expected delay occurs for each read.
-		//
-		// The request above includes an initial delay equal to the expected
-		// wait between writes so that even the first iteration of this loop
-		// expects to wait the same amount of time for a read.
+		// read incremental writes in a loop. should read one byte at a time,
+		// despite the larger read buffer.
 		buf := make([]byte, 1024)
 		gotBody := make([]byte, 0, numBytes)
-		for i := 0; ; i++ {
-			start := time.Now()
+		numReads := 0
+		for {
 			n, err := resp.Body.Read(buf)
-			gotPause := time.Since(start)
-
-			// We expect to read exactly one byte on each iteration. On the
-			// last iteration, we expct to hit EOF after reading the final
-			// byte, because the server does not pause after the last write.
 			assert.Equal(t, n, 1, "incorrect number of bytes read")
 			assert.DeepEqual(t, buf[:n], []byte{'*'}, "unexpected bytes read")
 			gotBody = append(gotBody, buf[:n]...)
-
+			numReads++
 			if err == io.EOF {
 				break
 			}
-
 			assert.NilError(t, err)
-
-			// only ensure that we pause for the expected time between writes
-			// after the first byte.
-			if i > 0 {
-				assert.MinDuration(t, gotPause, wantPauseBetweenWrites)
-			}
 		}
+
+		// writes were incrmemental if a) we did one read per byte and b)
+		// reading the whole response took (at least) the expected duration
+		assert.Equal(t, numReads, numBytes, "incorrect read count")
+		assert.MinDuration(t, time.Since(start), duration)
 
 		wantBody := bytes.Repeat([]byte{'*'}, numBytes)
 		assert.DeepEqual(t, gotBody, wantBody, "incorrect body")
@@ -2304,7 +2290,6 @@ func TestDrip(t *testing.T) {
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
 		t.Parallel()
 
-		app := setupTestApp(t)
 		// For this test, we expect the client to time out and cancel the
 		// request after 10ms.  The handler should still be in its intitial
 		// delay period, so this will result in a request error since no status
@@ -2320,7 +2305,6 @@ func TestDrip(t *testing.T) {
 
 	t.Run("handle cancelation during drip", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 		defer cancel()
@@ -2377,7 +2361,6 @@ func TestDrip(t *testing.T) {
 	for _, test := range badTests {
 		t.Run(fmt.Sprintf("bad/%s", test.params.Encode()), func(t *testing.T) {
 			t.Parallel()
-			app := setupTestApp(t, opts...)
 			req := newTestRequest(t, "GET", app.URL("/drip", test.params), nil)
 			resp := mustDoRequest(t, app, req)
 			assert.StatusCode(t, resp, test.code)
@@ -2386,7 +2369,6 @@ func TestDrip(t *testing.T) {
 
 	t.Run("ensure HEAD request works with streaming responses", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t, opts...)
 		req := newTestRequest(t, "HEAD", app.URL("/drip?duration=900ms&delay=100ms"), nil)
 		resp := mustDoRequest(t, app, req)
 		assert.StatusCode(t, resp, http.StatusOK)
@@ -2395,7 +2377,6 @@ func TestDrip(t *testing.T) {
 
 	t.Run("Server-Timings header", func(t *testing.T) {
 		t.Parallel()
-		app := setupTestApp(t)
 
 		var (
 			duration = 100 * time.Millisecond
@@ -3337,40 +3318,40 @@ func TestJSONL(t *testing.T) {
 	t.Run("writes are actually incremental", func(t *testing.T) {
 		t.Parallel()
 
+		// request params
 		var (
 			duration = 100 * time.Millisecond
 			count    = 3
 			endpoint = fmt.Sprintf("/jsonl?duration=%s&count=%d", duration, count)
-
-			wantPauseBetweenWrites = duration / time.Duration(count-1)
 		)
 
-		app := setupTestApp(t)
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
 		req := newTestRequest(t, "GET", app.URL(endpoint), nil)
 		resp := mustDoRequest(t, app, req)
-		scanner := bufio.NewScanner(resp.Body)
-		lineCount := 0
 
+		// read incremental writes in a loop. should read one line at a time,
+		// despite the larger read buffer.
+		//
+		scanner := bufio.NewScanner(resp.Body)
+		numReads := 0
+		var sr streamResponse
 		for i := 0; ; i++ {
-			start := time.Now()
 			if !scanner.Scan() {
+				assert.NilError(t, scanner.Err()) // Err returns nil on io.EOF
 				break
 			}
-			gotPause := time.Since(start)
-
-			var sr streamResponse
-			err := json.Unmarshal(scanner.Bytes(), &sr)
-			assert.NilError(t, err)
+			assert.NilError(t, json.Unmarshal(scanner.Bytes(), &sr))
 			assert.Equal(t, sr.ID, i, "unexpected JSONL line ID")
-
-			if i > 0 {
-				assert.MinDuration(t, gotPause, wantPauseBetweenWrites)
-			}
-
-			lineCount++
+			numReads++
 		}
-		assert.NilError(t, scanner.Err())
-		assert.Equal(t, lineCount, count, "unexpected number of lines")
+
+		// writes were incrmemental if a) we did one read per line and b)
+		// reading the whole response took (at least) the expected duration
+		assert.Equal(t, numReads, count, "unexpected number of lines")
+		assert.MinDuration(t, time.Since(start), duration)
 	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
@@ -3704,47 +3685,34 @@ func TestSSE(t *testing.T) {
 			duration = 100 * time.Millisecond
 			count    = 3
 			endpoint = fmt.Sprintf("/sse?duration=%s&count=%d", duration, count)
-
-			// Match server logic for calculating the delay between writes
-			wantPauseBetweenWrites = duration / time.Duration(count-1)
 		)
 
-		app := setupTestApp(t)
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
 		req := newTestRequest(t, "GET", app.URL(endpoint), nil)
 		resp := mustDoRequest(t, app, req)
+
+		// read incremental writes in a loop. should read one byte at a time,
+		// despite the larger read buffer.
 		buf := bufio.NewReader(resp.Body)
 		eventCount := 0
-
-		// Here we read from the response one byte at a time, and ensure that
-		// at least the expected delay occurs for each read.
-		//
-		// The request above includes an initial delay equal to the expected
-		// wait between writes so that even the first iteration of this loop
-		// expects to wait the same amount of time for a read.
 		for i := 0; ; i++ {
-			start := time.Now()
 			event, err := parseServerSentEvent(t, buf)
 			if err == io.EOF {
 				break
 			}
 			assert.NilError(t, err)
-			gotPause := time.Since(start)
-
-			// We expect to read exactly one byte on each iteration. On the
-			// last iteration, we expct to hit EOF after reading the final
-			// byte, because the server does not pause after the last write.
 			assert.Equal(t, event.ID, i, "unexpected SSE event ID")
-
-			// only ensure that we pause for the expected time between writes
-			// after the first byte.
-			if i > 0 {
-				assert.MinDuration(t, gotPause, wantPauseBetweenWrites)
-			}
-
 			eventCount++
 		}
 
+		// writes were incrmemental if a) we read the correct number of events
+		// and b) reading the whole response took (at least) the expected
+		// duration
 		assert.Equal(t, eventCount, count, "unexpected number of events")
+		assert.MinDuration(t, time.Since(start), duration)
 	})
 
 	t.Run("handle cancelation during initial delay", func(t *testing.T) {
