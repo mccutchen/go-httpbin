@@ -766,18 +766,11 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// otherwise, write response body byte-by-byte, pausing between writes.
-	//
-	// note: ticker only started after the first write to guarantee that
-	// clients will see the expected delay between writes.
-	flusher := w.(http.Flusher)
-	var ticker *time.Ticker
-	defer func() {
-		if ticker != nil {
-			ticker.Stop()
-		}
-	}()
+	// otherwise, write response body byte-by-byte
+	ticker := time.NewTicker(pause)
+	defer ticker.Stop()
 
+	flusher := w.(http.Flusher)
 	for i := int64(0); i < numBytes; i++ {
 		w.Write(b)
 		flusher.Flush()
@@ -785,11 +778,6 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		// don't pause after last byte
 		if i == numBytes-1 {
 			return
-		}
-
-		// start ticker after first write, see note above
-		if ticker == nil {
-			ticker = time.NewTicker(pause)
 		}
 
 		select {
