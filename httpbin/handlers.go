@@ -170,8 +170,14 @@ func (h *HTTPBin) Deflate(w http.ResponseWriter, r *http.Request) {
 
 // IP echoes the IP address of the incoming request
 func (h *HTTPBin) IP(w http.ResponseWriter, r *http.Request) {
+	origin := getClientIP(r)
+	if r.URL.Query().Get("format") == "text" {
+		writeResponse(w, http.StatusOK, textContentType, []byte(origin))
+		return
+	}
+
 	writeJSON(http.StatusOK, w, &ipResponse{
-		Origin: getClientIP(r),
+		Origin: origin,
 	})
 }
 

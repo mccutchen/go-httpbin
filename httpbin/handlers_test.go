@@ -432,6 +432,24 @@ func TestIP(t *testing.T) {
 		})
 	}
 
+	t.Run("text format", func(t *testing.T) {
+		t.Parallel()
+
+		// this test does not use a real server, because we need to control
+		// the RemoteAddr field on the request object to make the test
+		// deterministic.
+		app := createApp()
+		w := httptest.NewRecorder()
+
+		req, _ := http.NewRequest("GET", "/ip?format=text", nil)
+		req.RemoteAddr = "192.168.0.100"
+
+		app.ServeHTTP(w, req)
+		assert.Equal(t, w.Code, http.StatusOK, "wrong status code")
+		assert.Equal(t, w.Header().Get("Content-Type"), textContentType, "wrong content type")
+		assert.Equal(t, w.Body.String(), "192.168.0.100", "incorrect body")
+	})
+
 	t.Run("via real connection", func(t *testing.T) {
 		// (*Request).RemoteAddr includes the local port for real incoming TCP
 		// connections but not for direct ServeHTTP calls as the used in the
