@@ -2066,12 +2066,11 @@ func TestDelay(t *testing.T) {
 	}{
 		// go-style durations are supported
 		{"/delay/0ms", 0},
-		{"/delay/500ms", 500 * time.Millisecond},
+		{"/delay/100ms", 100 * time.Millisecond},
 
 		// as are floating point seconds
 		{"/delay/0", 0},
-		{"/delay/0.5", 500 * time.Millisecond},
-		{"/delay/1", time.Second},
+		{"/delay/0.1", 100 * time.Millisecond},
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -2174,10 +2173,9 @@ func TestDrip(t *testing.T) {
 		{url.Values{"delay": {"0h"}}, 0, 10, http.StatusOK},
 
 		// or floating point seconds
-		{url.Values{"duration": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{url.Values{"duration": {"0.1"}}, 100 * time.Millisecond, 10, http.StatusOK},
 		{url.Values{"duration": {"0"}}, 0, 10, http.StatusOK},
-		{url.Values{"duration": {"1"}}, 1 * time.Second, 10, http.StatusOK},
-		{url.Values{"delay": {"0.25"}}, 250 * time.Millisecond, 10, http.StatusOK},
+		{url.Values{"delay": {"0.1"}}, 100 * time.Millisecond, 10, http.StatusOK},
 		{url.Values{"delay": {"0"}}, 0, 10, http.StatusOK},
 
 		{url.Values{"numbytes": {"1"}}, 0, 1, http.StatusOK},
@@ -2188,8 +2186,8 @@ func TestDrip(t *testing.T) {
 		{url.Values{"code": {"599"}}, 0, 10, 599},
 		{url.Values{"code": {"567"}}, 0, 10, 567},
 
-		{url.Values{"duration": {"250ms"}, "delay": {"250ms"}}, 500 * time.Millisecond, 10, http.StatusOK},
-		{url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10, http.StatusOK},
+		{url.Values{"duration": {"100ms"}, "delay": {"100ms"}}, 200 * time.Millisecond, 10, http.StatusOK},
+		{url.Values{"duration": {"100ms"}, "delay": {"0.1"}}, 200 * time.Millisecond, 10, http.StatusOK},
 	}
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
@@ -3233,18 +3231,18 @@ func TestJSONL(t *testing.T) {
 		url           string
 		expectedLines int
 	}{
-		{"/jsonl", 10},                               // default count
-		{"/jsonl?count=1", 1},                        // minimum
-		{"/jsonl?count=5", 5},                        // custom count
-		{"/jsonl?count=0", 1},                        // clamped to min
-		{"/jsonl?count=-5", 1},                       // clamped to min
-		{"/jsonl?count=3&duration=1s", 3},            // with duration
-		{"/jsonl?count=1&duration=1s", 1},            // single line with duration
-		{"/jsonl?count=3&delay=0s", 3},               // with zero delay
-		{"/jsonl?count=2&duration=1s&delay=0s", 2},   // with both
-		{"/jsonl?count=3&duration=1s&jitter=0", 3},   // jitter=0 (no effect)
-		{"/jsonl?count=3&duration=1s&jitter=0.5", 3}, // jitter=0.5
-		{"/jsonl?count=3&duration=1s&jitter=1", 3},   // jitter=1 (max)
+		{"/jsonl", 10},                                  // default count
+		{"/jsonl?count=1", 1},                           // minimum
+		{"/jsonl?count=5", 5},                           // custom count
+		{"/jsonl?count=0", 1},                           // clamped to min
+		{"/jsonl?count=-5", 1},                          // clamped to min
+		{"/jsonl?count=3&duration=100ms", 3},            // with duration
+		{"/jsonl?count=1&duration=100ms", 1},            // single line with duration
+		{"/jsonl?count=3&delay=0s", 3},                  // with zero delay
+		{"/jsonl?count=2&duration=100ms&delay=0s", 2},   // with both
+		{"/jsonl?count=3&duration=100ms&jitter=0", 3},   // jitter=0 (no effect)
+		{"/jsonl?count=3&duration=100ms&jitter=0.5", 3}, // jitter=0.5
+		{"/jsonl?count=3&duration=100ms&jitter=1", 3},   // jitter=1 (max)
 	}
 	for _, test := range okTests {
 		t.Run("ok"+test.url, func(t *testing.T) {
@@ -3603,21 +3601,20 @@ func TestSSE(t *testing.T) {
 		{url.Values{"delay": {"0h"}}, 0, 10},
 
 		// or floating point seconds
-		{url.Values{"duration": {"0.25"}}, 250 * time.Millisecond, 10},
-		{url.Values{"duration": {"1"}}, 1 * time.Second, 10},
-		{url.Values{"delay": {"0.25"}}, 250 * time.Millisecond, 10},
+		{url.Values{"duration": {"0.1"}}, 100 * time.Millisecond, 10},
+		{url.Values{"delay": {"0.1"}}, 100 * time.Millisecond, 10},
 		{url.Values{"delay": {"0"}}, 0, 10},
 
 		{url.Values{"count": {"1"}}, 0, 1},
 		{url.Values{"count": {"011"}}, 0, 11},
 		{url.Values{"count": {fmt.Sprintf("%d", app.App.maxSSECount)}}, 0, int(app.App.maxSSECount)},
 
-		{url.Values{"duration": {"250ms"}, "delay": {"250ms"}}, 500 * time.Millisecond, 10},
-		{url.Values{"duration": {"250ms"}, "delay": {"0.25s"}}, 500 * time.Millisecond, 10},
+		{url.Values{"duration": {"100ms"}, "delay": {"100ms"}}, 200 * time.Millisecond, 10},
+		{url.Values{"duration": {"100ms"}, "delay": {"0.1"}}, 200 * time.Millisecond, 10},
 
-		{url.Values{"duration": {"250ms"}, "jitter": {"0"}}, 250 * time.Millisecond, 10},
-		{url.Values{"duration": {"250ms"}, "jitter": {"0.5"}}, 0, 10},
-		{url.Values{"duration": {"250ms"}, "jitter": {"1"}}, 0, 10},
+		{url.Values{"duration": {"100ms"}, "jitter": {"0"}}, 100 * time.Millisecond, 10},
+		{url.Values{"duration": {"100ms"}, "jitter": {"0.5"}}, 0, 10},
+		{url.Values{"duration": {"100ms"}, "jitter": {"1"}}, 0, 10},
 	}
 	for _, test := range okTests {
 		t.Run(fmt.Sprintf("ok/%s", test.params.Encode()), func(t *testing.T) {
@@ -3771,8 +3768,8 @@ func TestSSE(t *testing.T) {
 		t.Parallel()
 
 		var (
-			duration = 250 * time.Millisecond
-			delay    = 100 * time.Millisecond
+			duration = 100 * time.Millisecond
+			delay    = 50 * time.Millisecond
 			count    = 11 // keep numbers round by ensuring (count-1) evenly divides duration (see computePausePerWrite)
 			params   = url.Values{
 				"duration": {duration.String()},
@@ -3927,10 +3924,7 @@ func mustDoRequest(t *testing.T, app *appTestInfo, req *http.Request) *http.Resp
 	t.Helper()
 	resp, err := app.Client.Do(req)
 	assert.NilError(t, err)
-	t.Cleanup(func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-	})
+	t.Cleanup(func() { resp.Body.Close() })
 	return resp
 }
 

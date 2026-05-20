@@ -228,7 +228,7 @@ func TestConnectionLimits(t *testing.T) {
 	t.Run("maximum request duration is enforced", func(t *testing.T) {
 		t.Parallel()
 
-		maxDuration := 500 * time.Millisecond
+		maxDuration := 200 * time.Millisecond
 
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ws := websocket.New(w, r, websocket.Limits{
