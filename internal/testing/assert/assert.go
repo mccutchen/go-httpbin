@@ -57,6 +57,7 @@ func Error(t *testing.T, got, expected error) {
 	}
 }
 
+// MinDuration asserts that got >= min.
 func MinDuration(t *testing.T, got time.Duration, min time.Duration) {
 	t.Helper()
 	if got < min {
