@@ -335,10 +335,6 @@ func TestConnectionLimits(t *testing.T) {
 		assert.NilError(t, err)
 		defer conn.Close()
 
-		// should cause the client end of the connection to close well before
-		// the max request time configured above
-		conn.SetDeadline(time.Now().Add(clientTimeout))
-
 		reqParts := []string{
 			"GET /websocket/echo HTTP/1.1",
 			"Host: test",
@@ -350,10 +346,14 @@ func TestConnectionLimits(t *testing.T) {
 		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
 		t.Logf("raw request:\n%q", reqBytes)
 
-		// start timer before sending the request to ensure the client
-		// duration measurement is at least as long as the server's duration,
-		// to avoid flakiness
+		// start client timer before setting conn deadline or writing the
+		// request to ensure the client duration measurement is at least as
+		// long as the server's duration to avoid flakiness
 		start := time.Now()
+
+		// deadline should cause the client end of the connection to close
+		// well before the max request time configured above
+		conn.SetDeadline(time.Now().Add(clientTimeout))
 
 		// first, we write the request line and headers, which should cause the
 		// server to respond with a 101 Switching Protocols response.
