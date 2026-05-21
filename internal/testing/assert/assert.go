@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/must"
 )
@@ -53,6 +54,14 @@ func Error(t *testing.T, got, expected error) {
 			}
 		}
 		t.Fatalf("expected error %v, got %v", expected, got)
+	}
+}
+
+// MinDuration asserts that got >= min.
+func MinDuration(t *testing.T, got time.Duration, min time.Duration) {
+	t.Helper()
+	if got < min {
+		t.Errorf("expected duration %s >= %s", got, min)
 	}
 }
 

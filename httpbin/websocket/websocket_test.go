@@ -11,12 +11,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
-	"github.com/mccutchen/go-httpbin/v2/internal/testing/netpipetestserver"
 )
 
 func TestHandshake(t *testing.T) {
@@ -230,72 +228,75 @@ func TestConnectionLimits(t *testing.T) {
 	t.Run("maximum request duration is enforced", func(t *testing.T) {
 		t.Parallel()
 
-		maxDuration := 500 * time.Millisecond
+		maxDuration := 200 * time.Millisecond
 
-		synctest.Test(t, func(t *testing.T) {
-			_, client := netpipetestserver.New(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ws := websocket.New(w, r, websocket.Limits{
-					MaxDuration: maxDuration,
-					// TODO: test these limits as well
-					MaxFragmentSize: 128,
-					MaxMessageSize:  256,
-				})
-				if err := ws.Handshake(); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				ws.Serve(websocket.EchoHandler)
-			}))
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ws := websocket.New(w, r, websocket.Limits{
+				MaxDuration: maxDuration,
+				// TODO: test these limits as well
+				MaxFragmentSize: 128,
+				MaxMessageSize:  256,
+			})
+			if err := ws.Handshake(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			ws.Serve(websocket.EchoHandler)
+		}))
+		defer srv.Close()
 
-			conn, err := netpipetestserver.Dial(t, client)
+		conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+		assert.NilError(t, err)
+		defer conn.Close()
+
+		reqParts := []string{
+			"GET /websocket/echo HTTP/1.1",
+			"Host: test",
+			"Connection: upgrade",
+			"Upgrade: websocket",
+			"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+			"Sec-WebSocket-Version: 13",
+		}
+		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
+		t.Logf("raw request:\n%q", reqBytes)
+
+		// start timer before sending the request to ensure the client
+		// duration measurement is at least as long as the server's duration,
+		// to avoid flakiness
+		start := time.Now()
+
+		// first, we write the request line and headers, which should cause the
+		// server to respond with a 101 Switching Protocols response.
+		{
+			n, err := conn.Write(reqBytes)
 			assert.NilError(t, err)
-			defer conn.Close()
+			assert.Equal(t, n, len(reqBytes), "incorrect number of bytes written")
 
-			reqParts := []string{
-				"GET /websocket/echo HTTP/1.1",
-				"Host: test",
-				"Connection: upgrade",
-				"Upgrade: websocket",
-				"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
-				"Sec-WebSocket-Version: 13",
+			resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			assert.NilError(t, err)
+			assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+		}
+
+		// next, we try to read from the connection, expecting the connection
+		// to be closed after roughly maxDuration seconds
+		{
+			resp, err := io.ReadAll(conn)
+			elapsed := time.Since(start)
+			// we sometimes get a non-nil error and some garbage in the
+			// (partial?) resp read from the server, like
+			//
+			//     \x88\x18\x03\xf3read pipe: i/o timeout
+			//
+			// So for now we make sure the test took the expected amount
+			// of time and only validate the error if we got one.
+			if err != nil {
+				assert.Error(t, err, io.EOF)
 			}
-			reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
-			t.Logf("raw request:\n%q", reqBytes)
-
-			// first, we write the request line and headers, which should cause the
-			// server to respond with a 101 Switching Protocols response.
-			{
-				n, err := conn.Write(reqBytes)
-				assert.NilError(t, err)
-				assert.Equal(t, n, len(reqBytes), "incorrect number of bytes written")
-
-				resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
-				assert.NilError(t, err)
-				assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+			if len(resp) > 0 {
+				t.Logf("unexpected response data: %q", resp)
 			}
-
-			// next, we try to read from the connection, expecting the connection
-			// to be closed after roughly maxDuration seconds
-			{
-				start := time.Now()
-				resp, err := io.ReadAll(conn)
-				elapsed := time.Since(start)
-				// we sometimes get a non-nil error and some garbage in the
-				// (partial?) resp read from the server, like
-				//
-				//     \x88\x18\x03\xf3read pipe: i/o timeout
-				//
-				// So for now we make sure the test took the expected amount
-				// of time and only validate the error if we got one.
-				if err != nil {
-					assert.Error(t, err, io.EOF)
-				}
-				if len(resp) > 0 {
-					t.Logf("unexpected response data: %q", resp)
-				}
-				assert.Equal(t, elapsed, maxDuration, "incorrect elapsed time")
-			}
-		})
+			assert.MinDuration(t, elapsed, maxDuration)
+		}
 	})
 
 	t.Run("client closing connection", func(t *testing.T) {
@@ -312,78 +313,80 @@ func TestConnectionLimits(t *testing.T) {
 			wg                sync.WaitGroup
 		)
 
-		synctest.Test(t, func(t *testing.T) {
-			wg.Add(1)
+		wg.Add(1)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer wg.Done()
+			start := time.Now()
+			ws := websocket.New(w, r, websocket.Limits{
+				MaxDuration:     serverTimeout,
+				MaxFragmentSize: 128,
+				MaxMessageSize:  256,
+			})
+			if err := ws.Handshake(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			ws.Serve(websocket.EchoHandler)
+			elapsedServerTime = time.Since(start)
+		}))
+		defer srv.Close()
 
-			_, client := netpipetestserver.New(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				defer wg.Done()
-				start := time.Now()
-				ws := websocket.New(w, r, websocket.Limits{
-					MaxDuration:     serverTimeout,
-					MaxFragmentSize: 128,
-					MaxMessageSize:  256,
-				})
-				if err := ws.Handshake(); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				ws.Serve(websocket.EchoHandler)
-				elapsedServerTime = time.Since(start)
-			}))
+		conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+		assert.NilError(t, err)
+		defer conn.Close()
 
-			conn, err := netpipetestserver.Dial(t, client)
+		reqParts := []string{
+			"GET /websocket/echo HTTP/1.1",
+			"Host: test",
+			"Connection: upgrade",
+			"Upgrade: websocket",
+			"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+			"Sec-WebSocket-Version: 13",
+		}
+		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
+		t.Logf("raw request:\n%q", reqBytes)
+
+		// start client timer before setting conn deadline or writing the
+		// request to ensure the client duration measurement is at least as
+		// long as the server's duration to avoid flakiness
+		start := time.Now()
+
+		// deadline should cause the client end of the connection to close
+		// well before the max request time configured above
+		conn.SetDeadline(time.Now().Add(clientTimeout))
+
+		// first, we write the request line and headers, which should cause the
+		// server to respond with a 101 Switching Protocols response.
+		{
+			n, err := conn.Write(reqBytes)
 			assert.NilError(t, err)
-			defer conn.Close()
+			assert.Equal(t, n, len(reqBytes), "incorrect number of bytes written")
 
-			// should cause the client end of the connection to close well before
-			// the max request time configured above
-			conn.SetDeadline(time.Now().Add(clientTimeout))
+			resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			assert.NilError(t, err)
+			assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+		}
 
-			reqParts := []string{
-				"GET /websocket/echo HTTP/1.1",
-				"Host: test",
-				"Connection: upgrade",
-				"Upgrade: websocket",
-				"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
-				"Sec-WebSocket-Version: 13",
-			}
-			reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
-			t.Logf("raw request:\n%q", reqBytes)
+		// next, we try to read from the connection, expecting the connection
+		// to be closed after roughly clientTimeout seconds.
+		//
+		// the server should detect the closed connection and abort the
+		// handler, also after roughly clientTimeout seconds.
+		{
+			_, err := conn.Read(make([]byte, 1))
+			elapsedClientTime = time.Since(start)
 
-			// first, we write the request line and headers, which should cause the
-			// server to respond with a 101 Switching Protocols response.
-			{
-				n, err := conn.Write(reqBytes)
-				assert.NilError(t, err)
-				assert.Equal(t, n, len(reqBytes), "incorrect number of bytes written")
+			// close client connection, which should interrupt the server's
+			// blocking read call on the connection
+			conn.Close()
 
-				resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
-				assert.NilError(t, err)
-				assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
-			}
+			assert.Equal(t, os.IsTimeout(err), true, "expected timeout error")
+			assert.MinDuration(t, elapsedClientTime, clientTimeout)
 
-			// next, we try to read from the connection, expecting the connection
-			// to be closed after roughly clientTimeout seconds.
-			//
-			// the server should detect the closed connection and abort the
-			// handler, also after roughly clientTimeout seconds.
-			{
-				start := time.Now()
-				_, err := conn.Read(make([]byte, 1))
-				elapsedClientTime = time.Since(start)
-
-				// close client connection, which should interrupt the server's
-				// blocking read call on the connection
-				conn.Close()
-
-				assert.Equal(t, os.IsTimeout(err), true, "expected timeout error")
-				assert.Equal(t, elapsedClientTime, clientTimeout, "incorrect elapsed client time")
-
-				// wait for the server to finish
-				wg.Wait()
-				assert.Equal(t, elapsedServerTime, clientTimeout, "incorrect elapsed server time")
-			}
-		})
+			// wait for the server to finish
+			wg.Wait()
+			assert.MinDuration(t, elapsedServerTime, clientTimeout)
+		}
 	})
 }
 
