@@ -311,12 +311,16 @@ func TestConnectionLimits(t *testing.T) {
 			elapsedClientTime time.Duration
 			elapsedServerTime time.Duration
 			wg                sync.WaitGroup
+
+			// avoid racy/flaky test timings by starting server timer before
+			// starting server itself to ensure elapsedServerTime is always
+			// longer than clientTimeot
+			serverStart = time.Now()
 		)
 
 		wg.Add(1)
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
-			start := time.Now()
 			ws := websocket.New(w, r, websocket.Limits{
 				MaxDuration:     serverTimeout,
 				MaxFragmentSize: 128,
@@ -327,7 +331,7 @@ func TestConnectionLimits(t *testing.T) {
 				return
 			}
 			ws.Serve(websocket.EchoHandler)
-			elapsedServerTime = time.Since(start)
+			elapsedServerTime = time.Since(serverStart)
 		}))
 		defer srv.Close()
 
@@ -346,10 +350,10 @@ func TestConnectionLimits(t *testing.T) {
 		reqBytes := []byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n")
 		t.Logf("raw request:\n%q", reqBytes)
 
-		// start client timer before setting conn deadline or writing the
-		// request to ensure the client duration measurement is at least as
-		// long as the server's duration to avoid flakiness
-		start := time.Now()
+		// avoid racy/flaky test timings by starting client timer before
+		// setting conn deadline to ensure elapsedClientTime is at least as
+		// long as clientTimeout
+		clientStart := time.Now()
 
 		// deadline should cause the client end of the connection to close
 		// well before the max request time configured above
@@ -374,7 +378,7 @@ func TestConnectionLimits(t *testing.T) {
 		// handler, also after roughly clientTimeout seconds.
 		{
 			_, err := conn.Read(make([]byte, 1))
-			elapsedClientTime = time.Since(start)
+			elapsedClientTime = time.Since(clientStart)
 
 			// close client connection, which should interrupt the server's
 			// blocking read call on the connection
