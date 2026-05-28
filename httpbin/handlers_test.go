@@ -434,6 +434,46 @@ func TestIP(t *testing.T) {
 		result := must.Unmarshal[ipResponse](t, resp.Body)
 		assert.Equal(t, result.Origin, "127.0.0.1", "incorrect origin")
 	})
+
+	t.Run("format=text", func(t *testing.T) {
+		t.Parallel()
+
+		textFormatCases := map[string]struct {
+			remoteAddr string
+			headers    map[string]string
+			wantOrigin string
+		}{
+			"remote addr": {
+				remoteAddr: "192.168.0.100",
+				wantOrigin: "192.168.0.100",
+			},
+			"x-forwarded-for": {
+				remoteAddr: "192.168.0.100",
+				headers:    map[string]string{"X-Forwarded-For": "10.1.1.1, 10.2.2.2"},
+				wantOrigin: "10.1.1.1",
+			},
+		}
+
+		for name, tc := range textFormatCases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				app := createApp()
+				w := httptest.NewRecorder()
+
+				req, _ := http.NewRequest("GET", "/ip?format=text", nil)
+				req.RemoteAddr = tc.remoteAddr
+				for k, v := range tc.headers {
+					req.Header.Set(k, v)
+				}
+
+				app.ServeHTTP(w, req)
+				assert.Equal(t, w.Code, http.StatusOK, "wrong status code")
+				assert.Equal(t, w.Header().Get("Content-Type"), textContentType, "wrong content type")
+				assert.Equal(t, w.Body.String(), tc.wantOrigin+"\n", "wrong body")
+			})
+		}
+	})
 }
 
 func TestUserAgent(t *testing.T) {
