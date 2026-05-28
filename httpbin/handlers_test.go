@@ -1651,64 +1651,194 @@ func TestCookies(t *testing.T) {
 		t.Run("set"+prefix, func(t *testing.T) {
 			t.Parallel()
 
-			cookies := cookiesResponse{
-				Cookies: map[string]string{
-					"k1": "v1",
-					"k2": "v2",
+			testCases := map[string]struct {
+				params       url.Values
+				headers      http.Header
+				wantDomain   string
+				wantHttpOnly bool
+				wantPath     string
+				wantSameSite http.SameSite
+				wantSecure   bool
+			}{
+				"defaults/http": {
+					params:       url.Values{"k1": {"v1"}, "k2": {"v2"}},
+					wantHttpOnly: true,
+					wantPath:     "/",
+				},
+				"defaults/https": {
+					params:       url.Values{"k": {"v"}},
+					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
+					wantHttpOnly: true,
+					wantPath:     "/",
+					wantSecure:   true,
+				},
+				"defaults/https via X-Forwarded-Ssl": {
+					params:       url.Values{"k": {"v"}},
+					headers:      http.Header{"X-Forwarded-Ssl": {"on"}},
+					wantHttpOnly: true,
+					wantPath:     "/",
+					wantSecure:   true,
+				},
+				"defaults/https via X-Forwarded-Protocol": {
+					params:       url.Values{"k": {"v"}},
+					headers:      http.Header{"X-Forwarded-Protocol": {"https"}},
+					wantHttpOnly: true,
+					wantPath:     "/",
+					wantSecure:   true,
+				},
+				"attr[Secure]=true": {
+					params:       url.Values{"k": {"v"}, "attr[Secure]": {"true"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+				},
+				"attr[Secure]=1": {
+					params:       url.Values{"k": {"v"}, "attr[Secure]": {"1"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+				},
+				"attr[Secure]=false overrides https": {
+					params:       url.Values{"k": {"v"}, "attr[Secure]": {"false"}},
+					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+				},
+				"attr[Secure]=bananas is false": {
+					params:       url.Values{"k": {"v"}, "attr[Secure]": {"bananas"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+				},
+				"attr[HttpOnly]=false": {
+					params:       url.Values{"k": {"v"}, "attr[HttpOnly]": {"false"}},
+					wantHttpOnly: false, wantPath: "/",
+				},
+				"attr[HttpOnly]=0 is false": {
+					params:       url.Values{"k": {"v"}, "attr[HttpOnly]": {"0"}},
+					wantHttpOnly: false, wantPath: "/",
+				},
+				"attr[Path]=/custom": {
+					params:       url.Values{"k": {"v"}, "attr[Path]": {"/custom"}},
+					wantHttpOnly: true, wantPath: "/custom",
+				},
+				"attr[Domain]=example.com": {
+					params:       url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
+					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+				},
+				"attr[SameSite]=strict": {
+					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"strict"}},
+					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteStrictMode,
+				},
+				"attr[SameSite]=lax": {
+					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"lax"}},
+					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteLaxMode,
+				},
+				"attr[SameSite]=none": {
+					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"none"}},
+					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteNoneMode,
+				},
+				"attr[SameSite]=invalid is omitted": {
+					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"bogus"}},
+					wantHttpOnly: true, wantPath: "/",
+				},
+				"attr names are case-insensitive": {
+					params:       url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
+					wantDomain:   "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
 				},
 			}
-			params := url.Values{}
-			for k, v := range cookies.Cookies {
-				params.Set(k, v)
-			}
 
-			req := newTestRequest(t, "GET", app.URL(prefix+"/cookies/set", params), nil)
-			resp := mustDoRequest(t, app, req)
+			for name, tc := range testCases {
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 
-			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", prefix+"/cookies")
+					req := newTestRequest(t, "GET", app.URL(prefix+"/cookies/set", tc.params), nil)
+					for k, v := range tc.headers {
+						req.Header[k] = v
+					}
 
-			for _, c := range resp.Cookies() {
-				v, ok := cookies.Cookies[c.Name]
-				if !ok {
-					t.Fatalf("got unexpected cookie %s=%s", c.Name, c.Value)
-				}
-				assert.Equal(t, v, c.Value, "value mismatch for cookie %q", c.Name)
+					resp := mustDoRequest(t, app, req)
+					assert.StatusCode(t, resp, http.StatusFound)
+					assert.Header(t, resp, "Location", prefix+"/cookies")
+
+					for _, c := range resp.Cookies() {
+						if isCookieAttrParam(c.Name) {
+							t.Fatalf("unexpected cookie with attr param name %q", c.Name)
+						}
+						assert.Equal(t, tc.wantDomain, c.Domain, "Domain mismatch for cookie %q", c.Name)
+						assert.Equal(t, tc.wantHttpOnly, c.HttpOnly, "HttpOnly mismatch for cookie %q", c.Name)
+						assert.Equal(t, tc.wantPath, c.Path, "Path mismatch for cookie %q", c.Name)
+						assert.Equal(t, tc.wantSameSite, c.SameSite, "SameSite mismatch for cookie %q", c.Name)
+						assert.Equal(t, tc.wantSecure, c.Secure, "Secure mismatch for cookie %q", c.Name)
+					}
+				})
 			}
 		})
 
 		t.Run("delete"+prefix, func(t *testing.T) {
 			t.Parallel()
 
-			cookies := cookiesResponse{
-				Cookies: map[string]string{
-					"k1": "v1",
-					"k2": "v2",
+			testCases := map[string]struct {
+				params       url.Values
+				headers      http.Header
+				wantDomain   string
+				wantHttpOnly bool
+				wantPath     string
+				wantSecure   bool
+			}{
+				"defaults/http": {
+					params:       url.Values{"k2": {""}},
+					wantHttpOnly: true,
+					wantPath:     "/",
+				},
+				"defaults/https": {
+					params:       url.Values{"k2": {""}},
+					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+				},
+				"attr[Secure]=true": {
+					params:       url.Values{"k2": {""}, "attr[Secure]": {"true"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+				},
+				"attr[Secure]=false overrides https": {
+					params:       url.Values{"k2": {""}, "attr[Secure]": {"false"}},
+					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
+					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+				},
+				"attr[Domain]=example.com": {
+					params:       url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
+					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+				},
+				"attr[Path]=/custom": {
+					params:       url.Values{"k2": {""}, "attr[Path]": {"/custom"}},
+					wantHttpOnly: true, wantPath: "/custom",
 				},
 			}
 
-			toDelete := "k2"
-			params := url.Values{}
-			params.Set(toDelete, "")
+			for name, tc := range testCases {
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 
-			req := newTestRequest(t, "GET", app.URL(prefix+"/cookies/delete", params), nil)
-			for k, v := range cookies.Cookies {
-				req.AddCookie(&http.Cookie{
-					Name:  k,
-					Value: v,
-				})
-			}
-
-			resp := mustDoRequest(t, app, req)
-			assert.StatusCode(t, resp, http.StatusFound)
-			assert.Header(t, resp, "Location", prefix+"/cookies")
-
-			for _, c := range resp.Cookies() {
-				if c.Name == toDelete {
-					if time.Since(c.Expires) < (24*365-1)*time.Hour {
-						t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
+					toDelete := "k2"
+					req := newTestRequest(t, "GET", app.URL(prefix+"/cookies/delete", tc.params), nil)
+					req.AddCookie(&http.Cookie{Name: "k1", Value: "v1"})
+					req.AddCookie(&http.Cookie{Name: toDelete, Value: "v2"})
+					for k, v := range tc.headers {
+						req.Header[k] = v
 					}
-				}
+
+					resp := mustDoRequest(t, app, req)
+					assert.StatusCode(t, resp, http.StatusFound)
+					assert.Header(t, resp, "Location", prefix+"/cookies")
+
+					for _, c := range resp.Cookies() {
+						if isCookieAttrParam(c.Name) {
+							t.Fatalf("unexpected cookie with attr param name %q", c.Name)
+						}
+						if c.Name == toDelete {
+							if time.Since(c.Expires) < (24*365-1)*time.Hour {
+								t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
+							}
+							assert.Equal(t, tc.wantDomain, c.Domain, "Domain mismatch")
+							assert.Equal(t, tc.wantHttpOnly, c.HttpOnly, "HttpOnly mismatch")
+							assert.Equal(t, tc.wantPath, c.Path, "Path mismatch")
+							assert.Equal(t, tc.wantSecure, c.Secure, "Secure mismatch")
+						}
+					}
+				})
 			}
 		})
 	}

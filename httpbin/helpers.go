@@ -107,6 +107,75 @@ func getURL(r *http.Request) *url.URL {
 	}
 }
 
+func isHTTPS(r *http.Request) bool {
+	return getURL(r).Scheme == "https"
+}
+
+func isCookieAttrParam(k string) bool {
+	return strings.HasPrefix(k, "attr[") && strings.HasSuffix(k, "]")
+}
+
+// parseCookies builds the list of cookies to set from the request's query
+// params, applying attribute overrides from attr[Name] params.
+func parseCookies(r *http.Request) []http.Cookie {
+	params := r.URL.Query()
+	attrs := parseCookieAttrs(params, isHTTPS(r))
+	var cookies []http.Cookie
+	for k := range params {
+		if isCookieAttrParam(k) {
+			continue
+		}
+		cookie := attrs
+		cookie.Name = k
+		cookie.Value = params.Get(k)
+		cookies = append(cookies, cookie)
+	}
+	return cookies
+}
+
+// parseCookieAttrs returns an [http.Cookie] with attributes optionally
+// controlled by attr[Name] query params. E.g.
+//
+//	?attr[Secure]=true&attr[Path]=/foo
+//
+// Attribute names are case-insensitive.
+func parseCookieAttrs(params url.Values, defaultSecure bool) http.Cookie {
+	c := http.Cookie{
+		HttpOnly: true,
+		Path:     "/",
+		Secure:   defaultSecure,
+	}
+	for k, v := range params {
+		if !isCookieAttrParam(k) || len(v) == 0 {
+			continue
+		}
+		switch strings.ToLower(k[5 : len(k)-1]) {
+		case "domain":
+			c.Domain = v[0]
+		case "httponly":
+			c.HttpOnly = parseBoolParam(v[0])
+		case "path":
+			c.Path = v[0]
+		case "samesite":
+			switch strings.ToLower(v[0]) {
+			case "strict":
+				c.SameSite = http.SameSiteStrictMode
+			case "lax":
+				c.SameSite = http.SameSiteLaxMode
+			case "none":
+				c.SameSite = http.SameSiteNoneMode
+			}
+		case "secure":
+			c.Secure = parseBoolParam(v[0])
+		}
+	}
+	return c
+}
+
+func parseBoolParam(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
+}
+
 func writeResponse(w http.ResponseWriter, status int, contentType string, body []byte) {
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
