@@ -38,14 +38,39 @@ type appTestInfo struct {
 	App *HTTPBin
 	// Srv is an [httptest.Server] running that instance.
 	Srv *httptest.Server
-	// Client is an [http.Client] configured to connect to the test server.
+	// Client is an [http.Client] configured to connect to the target server.
 	Client *http.Client
+	// baseURL is the URL for the instance under test (i.e. Srv.URL).
+	baseURL string
+	// cfg represents the configuration for the server under test.
+	cfg targetConfig
+}
+
+// targetConfig captures the configuration values tests need to know about the
+// server under test.
+type targetConfig struct {
+	Prefix        string
+	MaxBodySize   int64
+	MaxDuration   time.Duration
+	MaxSSECount   int64
+	MaxJSONLCount int64
+}
+
+// configFromApp builds a [targetConfig] from an in-process [HTTPBin].
+func configFromApp(app *HTTPBin) targetConfig {
+	return targetConfig{
+		Prefix:        app.prefix,
+		MaxBodySize:   app.MaxBodySize,
+		MaxDuration:   app.MaxDuration,
+		MaxSSECount:   app.maxSSECount,
+		MaxJSONLCount: app.maxJSONLCount,
+	}
 }
 
 // URL generates the full URL for the given path and optional query params,
-// pointing at the current test server.
+// pointing at the current target server.
 func (appT *appTestInfo) URL(path string, params ...url.Values) string {
-	u := appT.Srv.URL + path
+	u := appT.baseURL + path
 	for i, p := range params {
 		if i == 0 && p != nil { // ignore nil params always passed through by some helpers (e.g. doGetRequest)
 			u += "?"
@@ -72,9 +97,11 @@ func setupTestApp(t *testing.T, opts ...OptionFunc) *appTestInfo {
 	}
 
 	return &appTestInfo{
-		App:    app,
-		Srv:    srv,
-		Client: client,
+		App:     app,
+		Srv:     srv,
+		Client:  client,
+		baseURL: srv.URL,
+		cfg:     configFromApp(app),
 	}
 }
 
@@ -1030,7 +1057,7 @@ func testRequestWithBodyInvalidJSON(t *testing.T, app *appTestInfo, verb, path s
 }
 
 func testRequestWithBodyBodyTooBig(t *testing.T, app *appTestInfo, verb, path string) {
-	body := make([]byte, app.App.MaxBodySize+1)
+	body := make([]byte, app.cfg.MaxBodySize+1)
 	req := newTestRequest(t, verb, app.URL(path), bytes.NewReader(body))
 	resp := mustDoRequest(t, app, req)
 	assert.StatusCode(t, resp, http.StatusBadRequest)
@@ -1716,8 +1743,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/custom",
 				},
 				"attr[Domain]=example.com": {
-					params:       url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
-					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+					params:     url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
+					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
 				},
 				"attr[SameSite]=strict": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"strict"}},
@@ -1736,8 +1763,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/",
 				},
 				"attr names are case-insensitive": {
-					params:       url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
-					wantDomain:   "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
+					params:     url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
+					wantDomain: "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
 				},
 			}
 
@@ -1799,8 +1826,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/", wantSecure: false,
 				},
 				"attr[Domain]=example.com": {
-					params:       url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
-					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+					params:     url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
+					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
 				},
 				"attr[Path]=/custom": {
 					params:       url.Values{"k2": {""}, "attr[Path]": {"/custom"}},
@@ -2582,7 +2609,7 @@ func TestRange(t *testing.T) {
 	t.Run("ok_no_range", func(t *testing.T) {
 		t.Parallel()
 
-		wantBytes := app.App.MaxBodySize - 1
+		wantBytes := app.cfg.MaxBodySize - 1
 		url := fmt.Sprintf("/range/%d", wantBytes)
 		req := newTestRequest(t, "GET", app.URL(url), nil)
 
@@ -3332,7 +3359,7 @@ func TestBase64(t *testing.T) {
 			"decode failed",
 		},
 		{
-			"/base64/decode/" + strings.Repeat("X", int(app.App.MaxBodySize)+1),
+			"/base64/decode/" + strings.Repeat("X", int(app.cfg.MaxBodySize)+1),
 			http.StatusBadRequest,
 			"input data exceeds max length",
 		},
@@ -3444,7 +3471,7 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("ok/count clamped to max", func(t *testing.T) {
 		t.Parallel()
-		maxCount := int(app.App.maxJSONLCount)
+		maxCount := int(app.cfg.MaxJSONLCount)
 		url := fmt.Sprintf("/jsonl?count=%d", maxCount+500)
 		req := newTestRequest(t, "GET", app.URL(url), nil)
 		resp := mustDoRequest(t, app, req)
@@ -3777,7 +3804,7 @@ func TestSSE(t *testing.T) {
 
 		{url.Values{"count": {"1"}}, 0, 1},
 		{url.Values{"count": {"011"}}, 0, 11},
-		{url.Values{"count": {fmt.Sprintf("%d", app.App.maxSSECount)}}, 0, int(app.App.maxSSECount)},
+		{url.Values{"count": {fmt.Sprintf("%d", app.cfg.MaxSSECount)}}, 0, int(app.cfg.MaxSSECount)},
 
 		{url.Values{"duration": {"100ms"}, "delay": {"100ms"}}, 200 * time.Millisecond, 10},
 		{url.Values{"duration": {"100ms"}, "delay": {"0.1"}}, 200 * time.Millisecond, 10},
@@ -3827,7 +3854,7 @@ func TestSSE(t *testing.T) {
 		{url.Values{"count": {"0"}}, http.StatusBadRequest},
 		{url.Values{"count": {"-1"}}, http.StatusBadRequest},
 		{url.Values{"count": {"0xff"}}, http.StatusBadRequest},
-		{url.Values{"count": {fmt.Sprintf("%d", app.App.maxSSECount+1)}}, http.StatusBadRequest},
+		{url.Values{"count": {fmt.Sprintf("%d", app.cfg.MaxSSECount+1)}}, http.StatusBadRequest},
 
 		{url.Values{"jitter": {"-0.1"}}, http.StatusBadRequest},
 		{url.Values{"jitter": {"1.5"}}, http.StatusBadRequest},
