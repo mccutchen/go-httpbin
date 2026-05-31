@@ -34,26 +34,20 @@ import (
 // the basis for a mini test "framework" used across the test suite. It
 // comprises
 type appTestInfo struct {
-	// App is the [HTTPBin] instance under test, configured by [createApp]. It
-	// is nil when the suite runs against a remote target (see TARGET_URL).
+	// App is the [HTTPBin] instance under test, configured by [createApp].
 	App *HTTPBin
-	// Srv is an [httptest.Server] running that instance. It is nil when the
-	// suite runs against a remote target.
+	// Srv is an [httptest.Server] running that instance.
 	Srv *httptest.Server
 	// Client is an [http.Client] configured to connect to the target server.
 	Client *http.Client
-	// baseURL is the scheme://host[/prefix] that URL builds upon. Locally this
-	// is Srv.URL; against a remote target it is derived from TARGET_URL.
+	// baseURL is the URL for the instance under test (i.e. Srv.URL).
 	baseURL string
-	// cfg captures the target's configuration (limits, prefix, etc.) so tests
-	// can assert behavior without reaching into the in-process [HTTPBin].
+	// cfg represents the configuration for the server under test.
 	cfg targetConfig
 }
 
 // targetConfig captures the configuration values tests need to know about the
-// server under test. Locally these are read from the constructed [HTTPBin];
-// against a remote target they are derived from the same environment
-// variables used to configure the deployment (see [configFromEnv]).
+// server under test.
 type targetConfig struct {
 	Prefix        string
 	MaxBodySize   int64
@@ -1749,8 +1743,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/custom",
 				},
 				"attr[Domain]=example.com": {
-					params:       url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
-					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+					params:     url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
+					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
 				},
 				"attr[SameSite]=strict": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"strict"}},
@@ -1769,8 +1763,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/",
 				},
 				"attr names are case-insensitive": {
-					params:       url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
-					wantDomain:   "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
+					params:     url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
+					wantDomain: "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
 				},
 			}
 
@@ -1832,8 +1826,8 @@ func TestCookies(t *testing.T) {
 					wantHttpOnly: true, wantPath: "/", wantSecure: false,
 				},
 				"attr[Domain]=example.com": {
-					params:       url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
-					wantDomain:   "example.com", wantHttpOnly: true, wantPath: "/",
+					params:     url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
+					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
 				},
 				"attr[Path]=/custom": {
 					params:       url.Values{"k2": {""}, "attr[Path]": {"/custom"}},
