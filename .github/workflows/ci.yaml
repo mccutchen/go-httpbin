@@ -39,7 +39,7 @@ jobs:
     - name: test
       run: make testci
 
-    - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+    - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
       if: ${{ matrix.go-version == 'stable' }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
         with:
           go-version: 'stable'
 
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      - uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version: latest
 
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+      - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
