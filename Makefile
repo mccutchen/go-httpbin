@@ -9,6 +9,7 @@ TEST_ARGS     ?= -race
 # 3rd party tools
 GOFUMPT     := go run mvdan.cc/gofumpt@v0.9.2
 GORELEASER  := go run github.com/goreleaser/goreleaser/v2@v2.15.2
+PINACT      := go run github.com/suzuki-shunsuke/pinact/v4/cmd/pinact@v4.1.0
 REFLEX      := go run github.com/cespare/reflex@v0.3.2
 REVIVE      := go run github.com/mgechev/revive@v1.15.0
 STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2026.1
@@ -80,6 +81,9 @@ fmt:
 	$(GOFUMPT) -w .
 .PHONY: fmt
 
+update-actions:
+	GITHUB_TOKEN=$(shell gh auth token) $(PINACT) run --update
+.PHONY: update-actions
 
 # =============================================================================
 # run locally
