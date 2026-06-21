@@ -122,6 +122,47 @@ func (h *HTTPBin) RequestWithBodyDiscard(w http.ResponseWriter, r *http.Request)
 	writeJSON(http.StatusOK, w, resp)
 }
 
+// Echo returns the request body as plain text. If the incoming request uses
+// gzip or deflate Content-Encoding, the body is decompressed before echoing.
+func (h *HTTPBin) Echo(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var reader io.Reader = r.Body
+	encoding := strings.ToLower(r.Header.Get("Content-Encoding"))
+
+	switch {
+	case strings.Contains(encoding, "gzip"):
+		gzr, err := gzip.NewReader(r.Body)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding gzip request body: %w", err))
+			return
+		}
+		defer gzr.Close()
+		reader = gzr
+
+	case strings.Contains(encoding, "deflate"):
+		zr, err := zlib.NewReader(r.Body)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding deflate request body: %w", err))
+			return
+		}
+		defer zr.Close()
+		reader = zr
+	}
+
+	body, err := io.ReadAll(io.LimitReader(reader, h.MaxBodySize+1))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("error reading request body: %w", err))
+		return
+	}
+	if int64(len(body)) > h.MaxBodySize {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("request body exceeds maximum size of %d bytes", h.MaxBodySize))
+		return
+	}
+
+	writeResponse(w, http.StatusOK, textContentType, body)
+}
+
 // Gzip returns a gzipped response
 func (h *HTTPBin) Gzip(w http.ResponseWriter, r *http.Request) {
 	var (

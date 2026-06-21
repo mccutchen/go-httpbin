@@ -194,6 +194,7 @@ func (h *HTTPBin) Handler() http.Handler {
 	mux.HandleFunc("/digest-auth/{qop}/{user}/{password}/{algorithm}", h.DigestAuth)
 	mux.HandleFunc("/drip", h.Drip)
 	mux.HandleFunc("/dump/request", h.DumpRequest)
+	mux.HandleFunc("/echo", h.Echo)
 	mux.HandleFunc("/env", h.Env)
 	mux.HandleFunc("/etag/{etag}", h.ETag)
 	mux.HandleFunc("/gzip", h.Gzip)
