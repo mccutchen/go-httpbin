@@ -56,6 +56,16 @@ type targetConfig struct {
 	MaxJSONLCount int64
 }
 
+type errorReadCloser struct{}
+
+func (errorReadCloser) Read(_ []byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
+}
+
+func (errorReadCloser) Close() error {
+	return nil
+}
+
 // configFromApp builds a [targetConfig] from an in-process [HTTPBin].
 func configFromApp(app *HTTPBin) targetConfig {
 	return targetConfig{
@@ -148,6 +158,8 @@ func TestIndex(t *testing.T) {
 			body := must.ReadAll(t, resp.Body)
 			assert.Contains(t, body, "go-httpbin", "body")
 			assert.Contains(t, body, prefix+"/get", "body")
+			assert.Contains(t, body, prefix+"/echo", "body")
+			assert.Contains(t, body, "?raw", "body")
 		})
 
 		t.Run("not found"+prefix, func(t *testing.T) {
@@ -771,6 +783,21 @@ func TestEcho(t *testing.T) {
 		resp := mustDoRequest(t, app, req)
 
 		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
+
+	t.Run("body read error", func(t *testing.T) {
+		t.Parallel()
+
+		app := createApp()
+		req := httptest.NewRequest("POST", "/echo", nil)
+		req.Body = errorReadCloser{}
+		w := httptest.NewRecorder()
+
+		app.Echo(w, req)
+		resp := w.Result()
+
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+		assert.BodyContains(t, resp, "error reading request body")
 	})
 }
 
