@@ -610,6 +610,18 @@ func TestEcho(t *testing.T) {
 		assert.BodyEquals(t, resp, "I am deflater mouse")
 	})
 
+	t.Run("preserves request content type", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequest(t, "POST", app.URL("/echo"), strings.NewReader(`{"ok":true}`))
+		req.Header.Set("Content-Type", "application/json")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, "application/json")
+		assert.BodyEquals(t, resp, `{"ok":true}`)
+	})
+
 	t.Run("gzip content encoding", func(t *testing.T) {
 		t.Parallel()
 
@@ -626,6 +638,39 @@ func TestEcho(t *testing.T) {
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.ContentType(t, resp, textContentType)
 		assert.BodyEquals(t, resp, "I am gzip mouse")
+	})
+
+	t.Run("invalid gzip content encoding", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequest(t, "POST", app.URL("/echo"), strings.NewReader("not gzip"))
+		req.Header.Set("Content-Encoding", "gzip")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
+
+	t.Run("gzip content encoding exactly at decoded limit", func(t *testing.T) {
+		t.Parallel()
+
+		app := setupTestApp(t, WithMaxBodySize(64))
+		decodedBody := strings.Repeat("x", 64)
+
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		_, err := gzw.Write([]byte(decodedBody))
+		assert.NilError(t, err)
+		assert.NilError(t, gzw.Close())
+		if buf.Len() >= 64 {
+			t.Fatalf("compressed test body must stay under MaxBodySize to exercise the decoded limit")
+		}
+
+		req := newTestRequest(t, "POST", app.URL("/echo"), &buf)
+		req.Header.Set("Content-Encoding", "gzip")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.BodyEquals(t, resp, decodedBody)
 	})
 
 	t.Run("gzip content encoding too big after decompression", func(t *testing.T) {
@@ -664,6 +709,16 @@ func TestEcho(t *testing.T) {
 		assert.StatusCode(t, resp, http.StatusOK)
 		assert.ContentType(t, resp, textContentType)
 		assert.BodyEquals(t, resp, "I am deflate mouse")
+	})
+
+	t.Run("invalid deflate content encoding", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequest(t, "POST", app.URL("/echo"), strings.NewReader("not deflate"))
+		req.Header.Set("Content-Encoding", "deflate")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusBadRequest)
 	})
 
 	t.Run("deflate content encoding too big after decompression", func(t *testing.T) {
