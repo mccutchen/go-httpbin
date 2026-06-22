@@ -640,6 +640,27 @@ func TestEcho(t *testing.T) {
 		assert.BodyEquals(t, resp, "I am gzip mouse")
 	})
 
+	t.Run("gzip content encoding raw", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		_, err := gzw.Write([]byte("I am raw gzip mouse"))
+		assert.NilError(t, err)
+		assert.NilError(t, gzw.Close())
+		compressedBody := append([]byte(nil), buf.Bytes()...)
+
+		req := newTestRequest(t, "POST", app.URL("/echo?raw"), bytes.NewReader(compressedBody))
+		req.Header.Set("Content-Encoding", "gzip")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.ContentType(t, resp, textContentType)
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, body, compressedBody, "raw echo body")
+	})
+
 	t.Run("invalid gzip content encoding", func(t *testing.T) {
 		t.Parallel()
 
@@ -648,6 +669,17 @@ func TestEcho(t *testing.T) {
 		resp := mustDoRequest(t, app, req)
 
 		assert.StatusCode(t, resp, http.StatusBadRequest)
+	})
+
+	t.Run("invalid gzip content encoding raw", func(t *testing.T) {
+		t.Parallel()
+
+		req := newTestRequest(t, "POST", app.URL("/echo?raw"), strings.NewReader("not gzip"))
+		req.Header.Set("Content-Encoding", "gzip")
+		resp := mustDoRequest(t, app, req)
+
+		assert.StatusCode(t, resp, http.StatusOK)
+		assert.BodyEquals(t, resp, "not gzip")
 	})
 
 	t.Run("gzip content encoding exactly at decoded limit", func(t *testing.T) {

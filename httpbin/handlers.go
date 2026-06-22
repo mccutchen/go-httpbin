@@ -123,7 +123,8 @@ func (h *HTTPBin) RequestWithBodyDiscard(w http.ResponseWriter, r *http.Request)
 }
 
 // Echo returns the request body. If the incoming request uses gzip or deflate
-// Content-Encoding, the body is decompressed before echoing.
+// Content-Encoding, the body is decompressed before echoing unless the raw
+// query parameter is set.
 func (h *HTTPBin) Echo(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -134,24 +135,26 @@ func (h *HTTPBin) Echo(w http.ResponseWriter, r *http.Request) {
 		contentType = textContentType
 	}
 
-	switch {
-	case strings.Contains(encoding, "gzip"):
-		gzr, err := gzip.NewReader(r.Body)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding gzip request body: %w", err))
-			return
-		}
-		defer gzr.Close()
-		reader = gzr
+	if !r.URL.Query().Has("raw") {
+		switch {
+		case strings.Contains(encoding, "gzip"):
+			gzr, err := gzip.NewReader(r.Body)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding gzip request body: %w", err))
+				return
+			}
+			defer gzr.Close()
+			reader = gzr
 
-	case strings.Contains(encoding, "deflate"):
-		zr, err := zlib.NewReader(r.Body)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding deflate request body: %w", err))
-			return
+		case strings.Contains(encoding, "deflate"):
+			zr, err := zlib.NewReader(r.Body)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, fmt.Errorf("error decoding deflate request body: %w", err))
+				return
+			}
+			defer zr.Close()
+			reader = zr
 		}
-		defer zr.Close()
-		reader = zr
 	}
 
 	// Read one byte past the limit so over-limit decoded bodies can be
