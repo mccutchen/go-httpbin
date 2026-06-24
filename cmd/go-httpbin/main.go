@@ -20,5 +20,4 @@ func main() {
 		Commit:  commit,
 		Date:    buildDate,
 	}))
-
 }
