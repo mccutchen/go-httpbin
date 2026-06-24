@@ -23,7 +23,6 @@ func TestNew(t *testing.T) {
 		t.Fatalf("expected default Observer == nil, got %#v", h.Observer)
 	}
 	assert.DeepEqual(t, h.version, versionResponse{Service: "go-httpbin"}, "incorrect default versionResponse")
-
 }
 
 func TestNewOptions(t *testing.T) {
