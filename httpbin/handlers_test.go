@@ -1682,89 +1682,89 @@ func TestCookies(t *testing.T) {
 				params       url.Values
 				headers      http.Header
 				wantDomain   string
-				wantHttpOnly bool
+				wantHTTPOnly bool
 				wantPath     string
 				wantSameSite http.SameSite
 				wantSecure   bool
 			}{
 				"defaults/http": {
 					params:       url.Values{"k1": {"v1"}, "k2": {"v2"}},
-					wantHttpOnly: true,
+					wantHTTPOnly: true,
 					wantPath:     "/",
 				},
 				"defaults/https": {
 					params:       url.Values{"k": {"v"}},
 					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
-					wantHttpOnly: true,
+					wantHTTPOnly: true,
 					wantPath:     "/",
 					wantSecure:   true,
 				},
 				"defaults/https via X-Forwarded-Ssl": {
 					params:       url.Values{"k": {"v"}},
 					headers:      http.Header{"X-Forwarded-Ssl": {"on"}},
-					wantHttpOnly: true,
+					wantHTTPOnly: true,
 					wantPath:     "/",
 					wantSecure:   true,
 				},
 				"defaults/https via X-Forwarded-Protocol": {
 					params:       url.Values{"k": {"v"}},
 					headers:      http.Header{"X-Forwarded-Protocol": {"https"}},
-					wantHttpOnly: true,
+					wantHTTPOnly: true,
 					wantPath:     "/",
 					wantSecure:   true,
 				},
 				"attr[Secure]=true": {
 					params:       url.Values{"k": {"v"}, "attr[Secure]": {"true"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: true,
 				},
 				"attr[Secure]=1": {
 					params:       url.Values{"k": {"v"}, "attr[Secure]": {"1"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: true,
 				},
 				"attr[Secure]=false overrides https": {
 					params:       url.Values{"k": {"v"}, "attr[Secure]": {"false"}},
 					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: false,
 				},
 				"attr[Secure]=bananas is false": {
 					params:       url.Values{"k": {"v"}, "attr[Secure]": {"bananas"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: false,
 				},
 				"attr[HttpOnly]=false": {
 					params:       url.Values{"k": {"v"}, "attr[HttpOnly]": {"false"}},
-					wantHttpOnly: false, wantPath: "/",
+					wantHTTPOnly: false, wantPath: "/",
 				},
 				"attr[HttpOnly]=0 is false": {
 					params:       url.Values{"k": {"v"}, "attr[HttpOnly]": {"0"}},
-					wantHttpOnly: false, wantPath: "/",
+					wantHTTPOnly: false, wantPath: "/",
 				},
 				"attr[Path]=/custom": {
 					params:       url.Values{"k": {"v"}, "attr[Path]": {"/custom"}},
-					wantHttpOnly: true, wantPath: "/custom",
+					wantHTTPOnly: true, wantPath: "/custom",
 				},
 				"attr[Domain]=example.com": {
 					params:     url.Values{"k": {"v"}, "attr[Domain]": {"example.com"}},
-					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
+					wantDomain: "example.com", wantHTTPOnly: true, wantPath: "/",
 				},
 				"attr[SameSite]=strict": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"strict"}},
-					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteStrictMode,
+					wantHTTPOnly: true, wantPath: "/", wantSameSite: http.SameSiteStrictMode,
 				},
 				"attr[SameSite]=lax": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"lax"}},
-					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteLaxMode,
+					wantHTTPOnly: true, wantPath: "/", wantSameSite: http.SameSiteLaxMode,
 				},
 				"attr[SameSite]=none": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"none"}},
-					wantHttpOnly: true, wantPath: "/", wantSameSite: http.SameSiteNoneMode,
+					wantHTTPOnly: true, wantPath: "/", wantSameSite: http.SameSiteNoneMode,
 				},
 				"attr[SameSite]=invalid is omitted": {
 					params:       url.Values{"k": {"v"}, "attr[SameSite]": {"bogus"}},
-					wantHttpOnly: true, wantPath: "/",
+					wantHTTPOnly: true, wantPath: "/",
 				},
 				"attr names are case-insensitive": {
 					params:     url.Values{"k": {"v"}, "attr[secure]": {"true"}, "attr[httponly]": {"false"}, "attr[path]": {"/x"}, "attr[DOMAIN]": {"a.com"}, "attr[SameSite]": {"Lax"}},
-					wantDomain: "a.com", wantHttpOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
+					wantDomain: "a.com", wantHTTPOnly: false, wantPath: "/x", wantSameSite: http.SameSiteLaxMode, wantSecure: true,
 				},
 			}
 
@@ -1786,7 +1786,7 @@ func TestCookies(t *testing.T) {
 							t.Fatalf("unexpected cookie with attr param name %q", c.Name)
 						}
 						assert.Equal(t, tc.wantDomain, c.Domain, "Domain mismatch for cookie %q", c.Name)
-						assert.Equal(t, tc.wantHttpOnly, c.HttpOnly, "HttpOnly mismatch for cookie %q", c.Name)
+						assert.Equal(t, tc.wantHTTPOnly, c.HttpOnly, "HttpOnly mismatch for cookie %q", c.Name)
 						assert.Equal(t, tc.wantPath, c.Path, "Path mismatch for cookie %q", c.Name)
 						assert.Equal(t, tc.wantSameSite, c.SameSite, "SameSite mismatch for cookie %q", c.Name)
 						assert.Equal(t, tc.wantSecure, c.Secure, "Secure mismatch for cookie %q", c.Name)
@@ -1802,36 +1802,36 @@ func TestCookies(t *testing.T) {
 				params       url.Values
 				headers      http.Header
 				wantDomain   string
-				wantHttpOnly bool
+				wantHTTPOnly bool
 				wantPath     string
 				wantSecure   bool
 			}{
 				"defaults/http": {
 					params:       url.Values{"k2": {""}},
-					wantHttpOnly: true,
+					wantHTTPOnly: true,
 					wantPath:     "/",
 				},
 				"defaults/https": {
 					params:       url.Values{"k2": {""}},
 					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: true,
 				},
 				"attr[Secure]=true": {
 					params:       url.Values{"k2": {""}, "attr[Secure]": {"true"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: true,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: true,
 				},
 				"attr[Secure]=false overrides https": {
 					params:       url.Values{"k2": {""}, "attr[Secure]": {"false"}},
 					headers:      http.Header{"X-Forwarded-Proto": {"https"}},
-					wantHttpOnly: true, wantPath: "/", wantSecure: false,
+					wantHTTPOnly: true, wantPath: "/", wantSecure: false,
 				},
 				"attr[Domain]=example.com": {
 					params:     url.Values{"k2": {""}, "attr[Domain]": {"example.com"}},
-					wantDomain: "example.com", wantHttpOnly: true, wantPath: "/",
+					wantDomain: "example.com", wantHTTPOnly: true, wantPath: "/",
 				},
 				"attr[Path]=/custom": {
 					params:       url.Values{"k2": {""}, "attr[Path]": {"/custom"}},
-					wantHttpOnly: true, wantPath: "/custom",
+					wantHTTPOnly: true, wantPath: "/custom",
 				},
 			}
 
@@ -1860,7 +1860,7 @@ func TestCookies(t *testing.T) {
 								t.Fatalf("expected cookie %s to be deleted; got %#v", toDelete, c)
 							}
 							assert.Equal(t, tc.wantDomain, c.Domain, "Domain mismatch")
-							assert.Equal(t, tc.wantHttpOnly, c.HttpOnly, "HttpOnly mismatch")
+							assert.Equal(t, tc.wantHTTPOnly, c.HttpOnly, "HttpOnly mismatch")
 							assert.Equal(t, tc.wantPath, c.Path, "Path mismatch")
 							assert.Equal(t, tc.wantSecure, c.Secure, "Secure mismatch")
 						}

@@ -58,10 +58,10 @@ func Error(t *testing.T, got, expected error) {
 }
 
 // MinDuration asserts that got >= min.
-func MinDuration(t *testing.T, got time.Duration, min time.Duration) {
+func MinDuration(t *testing.T, got time.Duration, wantMin time.Duration) {
 	t.Helper()
-	if got < min {
-		t.Errorf("expected duration %s >= %s", got, min)
+	if got < wantMin {
+		t.Errorf("expected duration %s >= %s", got, wantMin)
 	}
 }
 
