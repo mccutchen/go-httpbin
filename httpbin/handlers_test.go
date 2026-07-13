@@ -1567,8 +1567,6 @@ func TestRedirectTo(t *testing.T) {
 
 		{"/redirect-to?url=/get", "/get", http.StatusFound},
 		{"/redirect-to?url=/get&status_code=307", "/get", http.StatusTemporaryRedirect},
-
-		{"/redirect-to?url=foo", "foo", http.StatusFound},
 	}
 
 	for _, test := range okTests {
@@ -1587,10 +1585,11 @@ func TestRedirectTo(t *testing.T) {
 	}{
 		{"/redirect-to", http.StatusBadRequest},                                               // missing url
 		{"/redirect-to?status_code=302", http.StatusBadRequest},                               // missing url
-		{"/redirect-to?url=foo&status_code=201", http.StatusBadRequest},                       // invalid status code
-		{"/redirect-to?url=foo&status_code=418", http.StatusBadRequest},                       // invalid status code
-		{"/redirect-to?url=foo&status_code=foo", http.StatusBadRequest},                       // invalid status code
+		{"/redirect-to?url=/get&status_code=201", http.StatusBadRequest},                      // invalid status code
+		{"/redirect-to?url=/get&status_code=418", http.StatusBadRequest},                      // invalid status code
+		{"/redirect-to?url=/get&status_code=/get", http.StatusBadRequest},                     // invalid status code
 		{"/redirect-to?url=http%3A%2F%2Ffoo%25%25bar&status_code=418", http.StatusBadRequest}, // invalid URL
+		{"/redirect-to?url=foo", http.StatusForbidden},                                        // relative target URL must be root-relative or is considered malicious
 	}
 	for _, test := range badTests {
 		t.Run("bad"+test.url, func(t *testing.T) {
@@ -1613,6 +1612,16 @@ func TestRedirectTo(t *testing.T) {
 
 		// See https://github.com/mccutchen/go-httpbin/issues/173
 		{"/redirect-to?url=//evil.com", http.StatusForbidden}, // missing scheme to attempt to bypass allowlist
+
+		// Percent-encoded scheme/host used to smuggle a disallowed domain
+		// past the allowlist check.
+		{"/redirect-to?url=http%3A%2F%2Fevil.com", http.StatusForbidden},       // single-encoded
+		{"/redirect-to?url=http%253A%252F%252Fevil.com", http.StatusForbidden}, // double-encoded
+
+		// Malicious requests from live httpbingo traffic
+		{"/redirect-to?url=http%253A//%255B%253A%253Affff%253A169.254.169.254%255D/latest/meta-data/", http.StatusForbidden},
+		{"/redirect-to?url=http%253A%252F%252F169.254.169.254%252Flatest%252Fmeta-data%252Fiam%252Fsecurity-credentials%252F", http.StatusForbidden},
+		{"/redirect-to?url=http%253A%252F%252Flocalhost%253A8080%252Factuator%252Fenv&status_code=302", http.StatusForbidden},
 	}
 	for _, test := range allowListTests {
 		t.Run("allowlist"+test.url, func(t *testing.T) {
