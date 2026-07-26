@@ -1,6 +1,7 @@
 package httpbin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +18,7 @@ func TestTestMode(t *testing.T) {
 	// will cause a panic. This happens most often when we forget to return
 	// early after writing an error response, and has helped identify and fix
 	// some subtly broken error handling.
-	observer := func(_ Result) {}
+	observer := func(_ context.Context, _ Result) {}
 	handler := observe(observer, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.WriteHeader(http.StatusOK)
