@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,7 +24,7 @@ func main() {
 }
 
 func datadogObserver(client statsd.ClientInterface) httpbin.Observer {
-	return func(result httpbin.Result) {
+	return func(_ context.Context, result httpbin.Result) {
 		// Log the request
 		log.Printf("%d %s %s %s", result.Status, result.Method, result.URI, result.Duration)
 

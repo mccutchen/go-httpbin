@@ -1,6 +1,7 @@
 package httpbin
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +30,7 @@ func TestNewOptions(t *testing.T) {
 	t.Parallel()
 	maxDuration := 1 * time.Second
 	maxBodySize := int64(1024)
-	observer := func(_ Result) {}
+	observer := func(_ context.Context, _ Result) {}
 
 	h := New(
 		WithMaxBodySize(maxBodySize),
@@ -61,7 +62,7 @@ func TestNewObserver(t *testing.T) {
 	expectedStatus := http.StatusTeapot
 
 	observed := false
-	observer := func(r Result) {
+	observer := func(_ context.Context, r Result) {
 		observed = true
 		if r.Status != expectedStatus {
 			t.Fatalf("expected result status = %d, got %d", expectedStatus, r.Status)
