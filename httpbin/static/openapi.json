@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.3",
+  "openapi": "3.1.0",
   "info": {
     "title": "go-httpbin",
     "description": "A golang port of the venerable httpbin.org HTTP request & response testing service.",
@@ -388,7 +388,7 @@
             "description": "Arbitrary path \u2014 ignored by the server.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           },
           {
@@ -427,7 +427,7 @@
             "description": "Arbitrary path \u2014 ignored by the server.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           },
           {
@@ -469,7 +469,7 @@
             "description": "Arbitrary path \u2014 ignored by the server.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           },
           {
@@ -511,7 +511,7 @@
             "description": "Arbitrary path \u2014 ignored by the server.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           },
           {
@@ -553,7 +553,7 @@
             "description": "Arbitrary path \u2014 ignored by the server.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           },
           {
@@ -655,7 +655,7 @@
                     "origin": {
                       "type": "string",
                       "description": "The client's IP address.",
-                      "example": "192.168.1.1"
+                      "examples": ["192.168.1.1"]
                     }
                   },
                   "required": ["origin"]
@@ -683,7 +683,7 @@
                     "user-agent": {
                       "type": "string",
                       "description": "The User-Agent string from the request.",
-                      "example": "curl/8.4.0"
+                      "examples": ["curl/8.4.0"]
                     }
                   },
                   "required": ["user-agent"]
@@ -711,7 +711,7 @@
                     "hostname": {
                       "type": "string",
                       "description": "The server's hostname.",
-                      "example": "go-httpbin-abc123"
+                      "examples": ["go-httpbin-abc123"]
                     }
                   },
                   "required": ["hostname"]
@@ -738,23 +738,23 @@
                   "properties": {
                     "service": {
                       "type": "string",
-                      "example": "go-httpbin"
+                      "examples": ["go-httpbin"]
                     },
                     "version": {
                       "type": "string",
-                      "example": "v2.14.0"
+                      "examples": ["v2.14.0"]
                     },
                     "commit": {
                       "type": "string",
-                      "example": "abc1234"
+                      "examples": ["abc1234"]
                     },
                     "build_date": {
                       "type": "string",
-                      "example": "2024-01-01"
+                      "examples": ["2024-01-01"]
                     },
                     "go_version": {
                       "type": "string",
-                      "example": "go1.22.0"
+                      "examples": ["go1.22.0"]
                     }
                   },
                   "required": ["service"]
@@ -780,15 +780,16 @@
                   "type": "object",
                   "properties": {
                     "env": {
-                      "type": "object",
+                      "type": ["object", "null"],
                       "additionalProperties": {
                         "type": "string"
                       },
                       "description": "Map of allowlisted HTTPBIN_ environment variable names to values, or null if none are configured.",
-                      "example": {
-                        "MY_VAR": "my_value"
-                      },
-                      "nullable": true
+                      "examples": [
+                        {
+                          "MY_VAR": "my_value"
+                        }
+                      ]
                     }
                   },
                   "required": ["env"]
@@ -812,7 +813,9 @@
               "text/plain": {
                 "schema": {
                   "type": "string",
-                  "example": "GET /dump/request HTTP/1.1\r\nHost: localhost\r\nUser-Agent: curl/8.4.0\r\n\r\n"
+                  "examples": [
+                    "GET /dump/request HTTP/1.1\r\nHost: localhost\r\nUser-Agent: curl/8.4.0\r\n\r\n"
+                  ]
                 }
               }
             }
@@ -842,7 +845,7 @@
             "description": "Expected username.",
             "schema": {
               "type": "string",
-              "example": "alice"
+              "examples": ["alice"]
             }
           },
           {
@@ -852,7 +855,7 @@
             "description": "Expected password.",
             "schema": {
               "type": "string",
-              "example": "secret"
+              "examples": ["secret"]
             }
           }
         ],
@@ -873,7 +876,7 @@
               "WWW-Authenticate": {
                 "schema": {
                   "type": "string",
-                  "example": "Basic realm=\"Fake Realm\""
+                  "examples": ["Basic realm=\"Fake Realm\""]
                 }
               }
             },
@@ -907,7 +910,7 @@
             "description": "Expected username.",
             "schema": {
               "type": "string",
-              "example": "alice"
+              "examples": ["alice"]
             }
           },
           {
@@ -917,7 +920,7 @@
             "description": "Expected password.",
             "schema": {
               "type": "string",
-              "example": "secret"
+              "examples": ["secret"]
             }
           }
         ],
@@ -966,12 +969,12 @@
                   "properties": {
                     "authenticated": {
                       "type": "boolean",
-                      "example": true
+                      "examples": [true]
                     },
                     "token": {
                       "type": "string",
                       "description": "The token that was provided.",
-                      "example": "my-secret-token"
+                      "examples": ["my-secret-token"]
                     }
                   },
                   "required": ["authenticated", "token"]
@@ -985,7 +988,7 @@
               "WWW-Authenticate": {
                 "schema": {
                   "type": "string",
-                  "example": "Bearer"
+                  "examples": ["Bearer"]
                 }
               }
             }
@@ -1008,7 +1011,7 @@
             "schema": {
               "type": "string",
               "enum": ["auth"],
-              "example": "auth"
+              "examples": ["auth"]
             }
           },
           {
@@ -1018,7 +1021,7 @@
             "description": "Expected username.",
             "schema": {
               "type": "string",
-              "example": "alice"
+              "examples": ["alice"]
             }
           },
           {
@@ -1028,7 +1031,7 @@
             "description": "Expected password.",
             "schema": {
               "type": "string",
-              "example": "secret"
+              "examples": ["secret"]
             }
           }
         ],
@@ -1074,7 +1077,7 @@
             "schema": {
               "type": "string",
               "enum": ["auth"],
-              "example": "auth"
+              "examples": ["auth"]
             }
           },
           {
@@ -1084,7 +1087,7 @@
             "description": "Expected username.",
             "schema": {
               "type": "string",
-              "example": "alice"
+              "examples": ["alice"]
             }
           },
           {
@@ -1094,7 +1097,7 @@
             "description": "Expected password.",
             "schema": {
               "type": "string",
-              "example": "secret"
+              "examples": ["secret"]
             }
           },
           {
@@ -1105,7 +1108,7 @@
             "schema": {
               "type": "string",
               "enum": ["MD5", "SHA-256"],
-              "example": "MD5"
+              "examples": ["MD5"]
             }
           }
         ],
@@ -1150,7 +1153,7 @@
             "description": "A single HTTP status code, or a comma-separated list of codes with optional weights (e.g. `200`, `200,404,500`, `200:0.7,500:0.3`).",
             "schema": {
               "type": "string",
-              "example": "200",
+              "examples": ["200"],
               "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
@@ -1274,6 +1277,9 @@
           },
           "504": {
             "description": "Gateway Timeout"
+          },
+          "default": {
+            "description": "The status code requested via the `codes` path parameter. Any code in [100, 599] may be returned, including codes without a dedicated entry above."
           }
         }
       },
@@ -1290,7 +1296,7 @@
             "description": "A single HTTP status code, or a comma-separated weighted list.",
             "schema": {
               "type": "string",
-              "example": "200",
+              "examples": ["200"],
               "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$"
             }
           }
@@ -1300,7 +1306,10 @@
             "description": "OK (or the code(s) you specified)"
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request \u2014 either the code you requested, or an invalid `codes` value. Returned with an empty body."
+          },
+          "default": {
+            "description": "The status code requested via the `codes` path parameter. Any code in [100, 599] may be returned, including codes without a dedicated entry above."
           }
         }
       },
@@ -1318,7 +1327,7 @@
             "schema": {
               "type": "string",
               "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$",
-              "example": "200"
+              "examples": ["200"]
             }
           }
         ],
@@ -1327,7 +1336,10 @@
             "description": "OK (or the code(s) you specified)"
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request \u2014 either the code you requested, or an invalid `codes` value. Returned with an empty body."
+          },
+          "default": {
+            "description": "The status code requested via the `codes` path parameter. Any code in [100, 599] may be returned, including codes without a dedicated entry above."
           }
         }
       },
@@ -1345,7 +1357,7 @@
             "schema": {
               "type": "string",
               "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$",
-              "example": "200"
+              "examples": ["200"]
             }
           }
         ],
@@ -1354,7 +1366,10 @@
             "description": "OK (or the code(s) you specified)"
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request \u2014 either the code you requested, or an invalid `codes` value. Returned with an empty body."
+          },
+          "default": {
+            "description": "The status code requested via the `codes` path parameter. Any code in [100, 599] may be returned, including codes without a dedicated entry above."
           }
         }
       },
@@ -1372,7 +1387,7 @@
             "schema": {
               "type": "string",
               "pattern": "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$",
-              "example": "200"
+              "examples": ["200"]
             }
           }
         ],
@@ -1381,7 +1396,10 @@
             "description": "OK (or the code(s) you specified)"
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request \u2014 either the code you requested, or an invalid `codes` value. Returned with an empty body."
+          },
+          "default": {
+            "description": "The status code requested via the `codes` path parameter. Any code in [100, 599] may be returned, including codes without a dedicated entry above."
           }
         }
       }
@@ -1403,7 +1421,7 @@
               "minimum": 0,
               "maximum": 1,
               "default": 0.5,
-              "example": 0.5
+              "examples": [0.5]
             }
           },
           {
@@ -1412,7 +1430,10 @@
             "description": "Random seed for reproducible results.",
             "schema": {
               "type": "integer",
-              "example": 42
+              "examples": [42],
+              "format": "int64",
+              "minimum": -9223372036854775808,
+              "maximum": 9223372036854775807
             }
           }
         ],
@@ -1440,12 +1461,12 @@
             "name": "n",
             "in": "path",
             "required": true,
-            "description": "Number of redirects to perform. Must be >= 1.",
+            "description": "Number of redirects to perform. Must be in [1, 100].",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
-              "example": 1
+              "maximum": 100,
+              "examples": [1]
             }
           },
           {
@@ -1489,12 +1510,12 @@
             "name": "n",
             "in": "path",
             "required": true,
-            "description": "Number of redirects to perform. Must be >= 1.",
+            "description": "Number of redirects to perform. Must be in [1, 100].",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
-              "example": 1
+              "maximum": 100,
+              "examples": [1]
             }
           }
         ],
@@ -1505,7 +1526,7 @@
               "Location": {
                 "schema": {
                   "type": "string",
-                  "example": "/relative-redirect/2"
+                  "examples": ["/relative-redirect/2"]
                 }
               }
             }
@@ -1530,12 +1551,12 @@
             "name": "n",
             "in": "path",
             "required": true,
-            "description": "Number of redirects to perform. Must be >= 1.",
+            "description": "Number of redirects to perform. Must be in [1, 100].",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
-              "example": 1
+              "maximum": 100,
+              "examples": [1]
             }
           }
         ],
@@ -1546,7 +1567,7 @@
               "Location": {
                 "schema": {
                   "type": "string",
-                  "example": "http://localhost/absolute-redirect/2"
+                  "examples": ["http://localhost/absolute-redirect/2"]
                 }
               }
             }
@@ -1571,11 +1592,11 @@
             "name": "url",
             "in": "query",
             "required": true,
-            "description": "The URL to redirect to.",
+            "description": "The URL to redirect to. Absolute and relative URLs are both accepted; absolute URLs are subject to the server's -allowed-redirect-domains allowlist, if one is configured.",
             "schema": {
               "type": "string",
               "format": "uri",
-              "example": "http://localhost:8080/get"
+              "examples": ["http://localhost:8080/get"]
             }
           },
           {
@@ -1624,8 +1645,9 @@
             "schema": {
               "type": "string",
               "format": "uri",
-              "example": "http://localhost:8080/get"
-            }
+              "examples": ["http://localhost:8080/get"]
+            },
+            "description": "The URL to redirect to. Absolute and relative URLs are both accepted; absolute URLs are subject to the server's -allowed-redirect-domains allowlist, if one is configured."
           },
           {
             "name": "status_code",
@@ -1673,10 +1695,12 @@
                         "type": "string"
                       },
                       "description": "Map of cookie names to values.",
-                      "example": {
-                        "session": "abc123",
-                        "theme": "dark"
-                      }
+                      "examples": [
+                        {
+                          "session": "abc123",
+                          "theme": "dark"
+                        }
+                      ]
                     }
                   },
                   "required": ["cookies"]
@@ -1700,7 +1724,7 @@
             "description": "Each query parameter name/value pair becomes a cookie. (The parameter name shown here is illustrative \u2014 use any name.)",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           }
         ],
@@ -1711,13 +1735,13 @@
               "Location": {
                 "schema": {
                   "type": "string",
-                  "example": "/cookies"
+                  "examples": ["/cookies"]
                 }
               },
               "Set-Cookie": {
                 "schema": {
                   "type": "string",
-                  "example": "my_cookie=my_value; HttpOnly"
+                  "examples": ["my_cookie=my_value; HttpOnly"]
                 }
               }
             }
@@ -1751,7 +1775,7 @@
             "description": "Each query parameter name identifies a cookie to delete. The value is ignored.",
             "schema": {
               "type": "string",
-              "example": "foo"
+              "examples": ["foo"]
             }
           }
         ],
@@ -1762,7 +1786,7 @@
               "Location": {
                 "schema": {
                   "type": "string",
-                  "example": "/cookies"
+                  "examples": ["/cookies"]
                 }
               },
               "Set-Cookie": {
@@ -1802,7 +1826,7 @@
               "Content-Encoding": {
                 "schema": {
                   "type": "string",
-                  "example": "gzip"
+                  "examples": ["gzip"]
                 }
               }
             },
@@ -1818,7 +1842,7 @@
                       "properties": {
                         "gzipped": {
                           "type": "boolean",
-                          "example": true
+                          "examples": [true]
                         }
                       }
                     }
@@ -1843,7 +1867,7 @@
               "Content-Encoding": {
                 "schema": {
                   "type": "string",
-                  "example": "deflate"
+                  "examples": ["deflate"]
                 }
               }
             },
@@ -1859,7 +1883,7 @@
                       "properties": {
                         "deflated": {
                           "type": "boolean",
-                          "example": true
+                          "examples": [true]
                         }
                       }
                     }
@@ -1897,7 +1921,7 @@
             "description": "Each query parameter name/value pair becomes a response header. (The parameter name shown here is illustrative \u2014 use any valid header name.)",
             "schema": {
               "type": "string",
-              "example": "X-My-Header"
+              "examples": ["X-My-Header"]
             }
           }
         ],
@@ -1922,10 +1946,12 @@
                     ]
                   },
                   "description": "The headers set on the response, reflected as a JSON object.",
-                  "example": {
-                    "X-My-Header": "my-value",
-                    "Content-Type": "application/json"
-                  }
+                  "examples": [
+                    {
+                      "X-My-Header": "my-value",
+                      "Content-Type": "application/json"
+                    }
+                  ]
                 }
               }
             }
@@ -1943,7 +1969,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "example": "X-My-Header"
+              "examples": ["X-My-Header"]
             }
           }
         ],
@@ -2021,7 +2047,7 @@
             "description": "Number of seconds for `max-age`.",
             "schema": {
               "type": "integer",
-              "example": 60
+              "examples": [60]
             }
           }
         ],
@@ -2032,7 +2058,7 @@
               "Cache-Control": {
                 "schema": {
                   "type": "string",
-                  "example": "public, max-age=60"
+                  "examples": ["public, max-age=60"]
                 }
               }
             },
@@ -2064,7 +2090,7 @@
             "description": "The ETag value to set on the response.",
             "schema": {
               "type": "string",
-              "example": "abc123"
+              "examples": ["abc123"]
             }
           },
           {
@@ -2122,11 +2148,11 @@
             "name": "delay",
             "in": "path",
             "required": true,
-            "description": "Delay duration as seconds (float) or a Go duration string (e.g. `1s`, `500ms`).",
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|((\\d+(ns|us|ms|s|m|h))+$",
-              "example": "250ms"
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
             }
           }
         ],
@@ -2165,9 +2191,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
-              "example": "250ms"
-            }
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
+            },
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s)."
           }
         ],
         "responses": {
@@ -2194,9 +2221,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
-              "example": "250ms"
-            }
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
+            },
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s)."
           }
         ],
         "responses": {
@@ -2220,9 +2248,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
-              "example": "250ms"
-            }
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
+            },
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s)."
           }
         ],
         "responses": {
@@ -2246,9 +2275,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(\\d+)|(\\d+(\\.\\d+)?(ns|us|\u00b5s|ms|s|m|h))+$",
-              "example": "250ms"
-            }
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
+            },
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s)."
           }
         ],
         "responses": {
@@ -2271,8 +2301,11 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "examples": ["250ms"]
+            },
+            "description": "Delay duration as a Go duration string (e.g. `1s`, `500ms`) or seconds as a float. Capped at the server's configured maximum duration (default 10s)."
           }
         ],
         "responses": {
@@ -2295,21 +2328,23 @@
           {
             "name": "duration",
             "in": "query",
-            "description": "Total time to stream the response. Accepts a float (seconds) or Go duration string. Defaults to `2s`.",
+            "description": "Total time to stream the response. Accepts a Go duration string or a float (seconds). Defaults to `2s`. Capped at the server's configured maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "default": "2s",
-              "example": "500ms"
+              "examples": ["500ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "default": "2s"
             }
           },
           {
             "name": "delay",
             "in": "query",
-            "description": "Delay before streaming begins. Defaults to `2s`.",
+            "description": "Delay before streaming begins. Accepts a Go duration string or a float (seconds). Defaults to `2s`. Capped at the server's configured maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "default": "2s",
-              "example": "250ms"
+              "examples": ["250ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$",
+              "default": "2s"
             }
           },
           {
@@ -2320,7 +2355,8 @@
               "type": "integer",
               "minimum": 1,
               "default": 10,
-              "example": 100
+              "examples": [100],
+              "maximum": 1048576
             }
           },
           {
@@ -2330,7 +2366,7 @@
             "schema": {
               "type": "integer",
               "default": 200,
-              "example": 200,
+              "examples": [200],
               "minimum": 100,
               "maximum": 599
             }
@@ -2395,7 +2431,7 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "example": 256,
+              "examples": [256],
               "maximum": 1048576
             }
           },
@@ -2404,7 +2440,11 @@
             "in": "query",
             "description": "Random seed for reproducible output.",
             "schema": {
-              "example": 42
+              "type": "integer",
+              "examples": [42],
+              "format": "int64",
+              "minimum": -9223372036854775808,
+              "maximum": 9223372036854775807
             }
           }
         ],
@@ -2455,7 +2495,7 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "example": 1024,
+              "examples": [1024],
               "maximum": 1048576
             }
           },
@@ -2464,7 +2504,10 @@
             "in": "query",
             "description": "Random seed for reproducible output.",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "int64",
+              "minimum": -9223372036854775808,
+              "maximum": 9223372036854775807
             }
           },
           {
@@ -2474,7 +2517,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "default": 10240
+              "default": 10240,
+              "maximum": 1048576
             }
           }
         ],
@@ -2510,7 +2554,7 @@
             "description": "URL-safe base64-encoded data to decode.",
             "schema": {
               "type": "string",
-              "example": "SGVsbG8gV29ybGQ=",
+              "examples": ["SGVsbG8gV29ybGQ="],
               "minLength": 4
             }
           },
@@ -2520,7 +2564,7 @@
             "description": "Content-Type to set on the response.",
             "schema": {
               "type": "string",
-              "example": "text/plain"
+              "examples": ["text/plain"]
             }
           }
         ],
@@ -2556,7 +2600,7 @@
             "description": "Arbitrary data to encode.",
             "schema": {
               "type": "string",
-              "example": "Hello World"
+              "examples": ["Hello World"]
             }
           },
           {
@@ -2599,7 +2643,7 @@
             "schema": {
               "type": "string",
               "pattern": "^[A-Za-z0-9+/\\-_=]+$",
-              "example": "SGVsbG8gV29ybGQ=",
+              "examples": ["SGVsbG8gV29ybGQ="],
               "minLength": 4
             }
           },
@@ -2646,7 +2690,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100,
-              "example": 5
+              "examples": [5]
             }
           }
         ],
@@ -2668,7 +2712,7 @@
                           "id": {
                             "type": "integer",
                             "description": "Zero-based line index.",
-                            "example": 0
+                            "examples": [0]
                           }
                         },
                         "required": ["id"]
@@ -2706,19 +2750,21 @@
           {
             "name": "duration",
             "in": "query",
-            "description": "Total duration over which to stream all lines. Must be >= 1s if provided.",
+            "description": "Total duration over which to emit all lines. Accepts a Go duration string or a float (seconds). Must be greater than zero, and `duration` + `delay` must not exceed the server's maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "example": "500ms"
+              "examples": ["500ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$"
             }
           },
           {
             "name": "delay",
             "in": "query",
-            "description": "Initial delay before the first line is sent.",
+            "description": "Initial delay before the first line is sent. Accepts a Go duration string or a float (seconds). Capped at the server's configured maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "example": "250ms"
+              "examples": ["250ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$"
             }
           },
           {
@@ -2782,19 +2828,21 @@
           {
             "name": "duration",
             "in": "query",
-            "description": "Total duration over which to send all events. Must be >= 1s if provided.",
+            "description": "Total duration over which to emit all events. Accepts a Go duration string or a float (seconds). Must be greater than zero, and `duration` + `delay` must not exceed the server's maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "example": "500ms"
+              "examples": ["500ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$"
             }
           },
           {
             "name": "delay",
             "in": "query",
-            "description": "Initial delay before the first event is sent.",
+            "description": "Initial delay before the first event is sent. Accepts a Go duration string or a float (seconds). Capped at the server's configured maximum duration (default 10s).",
             "schema": {
               "type": "string",
-              "example": "250ms"
+              "examples": ["250ms"],
+              "pattern": "^([0-9]+(\\.[0-9]+)?|([0-9]+(\\.[0-9]+)?(ns|us|\u00b5s|ms|s|m|h))+)$"
             }
           },
           {
@@ -2817,13 +2865,13 @@
               "Content-Type": {
                 "schema": {
                   "type": "string",
-                  "example": "text/event-stream; charset=utf-8"
+                  "examples": ["text/event-stream; charset=utf-8"]
                 }
               },
               "Cache-Control": {
                 "schema": {
                   "type": "string",
-                  "example": "no-cache"
+                  "examples": ["no-cache"]
                 }
               }
             },
@@ -2835,12 +2883,12 @@
                   "properties": {
                     "event": {
                       "type": "string",
-                      "example": "ping"
+                      "examples": ["ping"]
                     },
                     "data": {
                       "type": "string",
                       "description": "JSON-encoded payload: {\"id\": <integer>, \"timestamp\": <unix ms>}",
-                      "example": "{\"id\":0,\"timestamp\":1700000000123}"
+                      "examples": ["{\"id\":0,\"timestamp\":1700000000123}"]
                     }
                   }
                 }
@@ -2866,7 +2914,7 @@
             "description": "Each query parameter name/value pair becomes an HTTP trailer. (The parameter name shown here is illustrative \u2014 use any allowed trailer name.)",
             "schema": {
               "type": "string",
-              "example": "X-Trailer"
+              "examples": ["X-Trailer"]
             }
           }
         ],
@@ -2903,7 +2951,7 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "example": 1024,
+              "examples": [1024],
               "maximum": 1048576
             }
           },
@@ -2913,7 +2961,7 @@
             "description": "Standard HTTP Range header for requesting partial content (e.g. `bytes=0-1023`).",
             "schema": {
               "type": "string",
-              "example": "bytes=0-99"
+              "examples": ["bytes=0-99"]
             }
           }
         ],
@@ -2929,7 +2977,7 @@
               "Accept-Ranges": {
                 "schema": {
                   "type": "string",
-                  "example": "bytes"
+                  "examples": ["bytes"]
                 }
               },
               "Content-Length": {
@@ -2952,7 +3000,7 @@
               "Content-Range": {
                 "schema": {
                   "type": "string",
-                  "example": "bytes 0-99/1024"
+                  "examples": ["bytes 0-99/1024"]
                 }
               },
               "Content-Length": {
@@ -2978,7 +3026,7 @@
               "Content-Range": {
                 "schema": {
                   "type": "string",
-                  "example": "bytes */1024"
+                  "examples": ["bytes */1024"]
                 }
               }
             }
@@ -3129,7 +3177,7 @@
             "schema": {
               "type": "string",
               "enum": ["png", "jpeg", "webp", "svg"],
-              "example": "png"
+              "examples": ["png"]
             }
           }
         ],
@@ -3185,7 +3233,7 @@
                     "uuid": {
                       "type": "string",
                       "format": "uuid",
-                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
                     }
                   },
                   "required": ["uuid"]
@@ -3212,7 +3260,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 256,
-              "example": 5
+              "examples": [5]
             }
           }
         ],
@@ -3223,7 +3271,7 @@
               "Location": {
                 "schema": {
                   "type": "string",
-                  "example": "/links/10/0"
+                  "examples": ["/links/10/0"]
                 }
               }
             }
@@ -3253,7 +3301,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 256,
-              "example": 5
+              "examples": [5]
             }
           },
           {
@@ -3264,7 +3312,8 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "example": 2
+              "examples": [2],
+              "maximum": 256
             }
           }
         ],
@@ -3355,7 +3404,7 @@
                         "bytes_received": {
                           "type": "integer",
                           "description": "Number of bytes received in the request body.",
-                          "example": 1024
+                          "examples": [1024]
                         }
                       },
                       "required": ["bytes_received"]
@@ -3409,7 +3458,7 @@
               "text/plain": {
                 "schema": {
                   "type": "string",
-                  "example": "User-agent: *\nDisallow: /deny\n"
+                  "examples": ["User-agent: *\nDisallow: /deny\n"]
                 }
               }
             }
@@ -3430,7 +3479,7 @@
               "text/plain": {
                 "schema": {
                   "type": "string",
-                  "example": "YOU SHOULDN'T BE HERE"
+                  "examples": ["YOU SHOULDN'T BE HERE"]
                 }
               }
             }
@@ -3452,7 +3501,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "example": 1024
+              "examples": [1024],
+              "maximum": 1048576
             }
           },
           {
@@ -3461,8 +3511,9 @@
             "description": "Maximum WebSocket message size in bytes. Must be between 1 and the server's max body size.",
             "schema": {
               "type": "integer",
-              "minimum": 524288,
-              "example": 524288
+              "minimum": 1,
+              "examples": [524288],
+              "maximum": 1048576
             }
           }
         ],
@@ -3472,6 +3523,26 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "OpenAPI specification",
+        "description": "Returns this OpenAPI specification document as JSON.",
+        "operationId": "getOpenAPISpec",
+        "tags": ["Meta"],
+        "responses": {
+          "200": {
+            "description": "The OpenAPI specification for this service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         }
       }
@@ -3488,11 +3559,13 @@
           }
         },
         "description": "Map of HTTP header names to their values (each value is a list of strings).",
-        "example": {
-          "Host": ["localhost"],
-          "User-Agent": ["curl/8.4.0"],
-          "Accept": ["*/*"]
-        }
+        "examples": [
+          {
+            "Host": ["localhost"],
+            "User-Agent": ["curl/8.4.0"],
+            "Accept": ["*/*"]
+          }
+        ]
       },
       "NoBodyResponse": {
         "type": "object",
@@ -3514,10 +3587,12 @@
               ]
             },
             "description": "URL query parameters.",
-            "example": {
-              "foo": "bar",
-              "multi": ["a", "b"]
-            }
+            "examples": [
+              {
+                "foo": "bar",
+                "multi": ["a", "b"]
+              }
+            ]
           },
           "headers": {
             "$ref": "#/components/schemas/Headers"
@@ -3525,17 +3600,17 @@
           "method": {
             "type": "string",
             "description": "HTTP method of the request.",
-            "example": "GET"
+            "examples": ["GET"]
           },
           "origin": {
             "type": "string",
             "description": "Client IP address.",
-            "example": "192.168.1.1"
+            "examples": ["192.168.1.1"]
           },
           "url": {
             "type": "string",
             "description": "Full URL of the request.",
-            "example": "http://localhost/get?foo=bar"
+            "examples": ["http://localhost/get?foo=bar"]
           }
         },
         "required": ["args", "headers", "origin", "url"]
@@ -3552,14 +3627,15 @@
               "data": {
                 "type": "string",
                 "description": "Raw request body as a string (for non-form, non-JSON content types).",
-                "example": "raw body text"
+                "examples": ["raw body text"]
               },
               "json": {
                 "description": "Parsed JSON body, if the request `Content-Type` was `application/json` and the body was valid JSON. `null` otherwise.",
-                "nullable": true,
-                "example": {
-                  "key": "value"
-                }
+                "examples": [
+                  {
+                    "key": "value"
+                  }
+                ]
               },
               "form": {
                 "type": "object",
@@ -3577,10 +3653,12 @@
                   ]
                 },
                 "description": "Form fields from a `application/x-www-form-urlencoded` or `multipart/form-data` body.",
-                "example": {
-                  "username": "alice",
-                  "tags": ["a", "b"]
-                }
+                "examples": [
+                  {
+                    "username": "alice",
+                    "tags": ["a", "b"]
+                  }
+                ]
               },
               "files": {
                 "type": "object",
@@ -3598,9 +3676,11 @@
                   ]
                 },
                 "description": "File contents from a `multipart/form-data` body, keyed by field name.",
-                "example": {
-                  "upload": "file contents..."
-                }
+                "examples": [
+                  {
+                    "upload": "file contents..."
+                  }
+                ]
               }
             }
           }
@@ -3613,17 +3693,17 @@
           "authenticated": {
             "type": "boolean",
             "description": "`true` if valid credentials were present in the request.",
-            "example": true
+            "examples": [true]
           },
           "authorized": {
             "type": "boolean",
             "description": "`true` if the credentials match the expected values.",
-            "example": true
+            "examples": [true]
           },
           "user": {
             "type": "string",
             "description": "The authenticated username, if credentials were valid.",
-            "example": "alice"
+            "examples": ["alice"]
           }
         },
         "required": ["authenticated"]
@@ -3635,17 +3715,19 @@
           "status_code": {
             "type": "integer",
             "description": "HTTP status code.",
-            "example": 400
+            "examples": [400]
           },
           "error": {
             "type": "string",
             "description": "Short error description.",
-            "example": "Bad Request"
+            "examples": ["Bad Request"]
           },
           "detail": {
             "type": "string",
             "description": "Detailed error message.",
-            "example": "invalid value for parameter 'n': must be a positive integer"
+            "examples": [
+              "invalid value for parameter 'n': must be a positive integer"
+            ]
           }
         }
       },
@@ -3721,7 +3803,7 @@
           "Allow": {
             "schema": {
               "type": "string",
-              "example": "GET, HEAD"
+              "examples": ["GET, HEAD"]
             }
           }
         }

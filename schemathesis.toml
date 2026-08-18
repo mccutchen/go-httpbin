@@ -1,9 +1,51 @@
-# Do not follow redirects — test only the 3xx response itself, not the
-# redirect destination. Schemathesis uses httpx under the hood, whose default
-# is follow_redirects=False (returns 3xx response directly). Setting
-# max-redirects to any value switches to follow_redirects=True mode, which
-# throws an exception on any redirect when set to 0. So we omit the setting
-# entirely to get the correct "return 3xx without following" behavior.
+# NOTE ON REDIRECTS: Schemathesis uses `requests` under the hood and never
+# passes `allow_redirects`, so it always *follows* redirects. There is no
+# config knob to turn that off — `max-redirects` only caps the chain length,
+# and setting it to 0 makes `requests` raise TooManyRedirects on the first hop.
+# So for every redirecting endpoint the status Schemathesis observes is the one
+# from the final destination, not the 3xx itself. The redirect endpoints
+# document a `default` response to cover that.
+
+# The redirect endpoints accept counts up to 100, so the chain has to be
+# allowed to run to completion; `requests` defaults to 30.
+max-redirects = 120
+
+# NOTE ON PARAMETER VALUES: several parameters accept far more than it is
+# useful (or safe) to generate at random — durations bounded only at runtime,
+# redirect targets that would send the test client to an arbitrary internet
+# host, byte ranges whose satisfiability depends on a second parameter. Rather
+# than narrowing openapi.json (which documents the real API, not this test
+# run), the values are pinned here via dictionaries.
+
+[dictionaries]
+
+# Durations comfortably inside the server's maximum duration (10s by default).
+# Kept short so that slow responses do not hold a keep-alive connection open
+# and stall the requests queued behind them.
+short-durations.values = ["0", "1ms", "50ms", "0.1s", "250ms", "500ms"]
+
+# /jsonl and /sse reject a `duration` of zero, and additionally reject
+# `duration` + `delay` greater than the server's maximum duration.
+positive-durations.values = ["1ms", "50ms", "0.1s", "250ms", "500ms"]
+
+# Same-origin redirect targets, so following a redirect never leaves the
+# server under test.
+local-redirect-targets.values = ["/get", "/anything", "/html", "/status/200"]
+
+# Ranges starting at 0 are satisfiable for any `numbytes`, because the end of
+# the range is clamped to the content length.
+satisfiable-ranges.values = ["bytes=0-", "bytes=0-0", "bytes=0-9", "bytes=0-1023"]
+
+[generation]
+# Generate only schema-valid data. Schemathesis defaults to running both
+# positive and negative generation, but go-httpbin is deliberately permissive
+# about unexpected input (which is why `negative_data_rejection` is disabled
+# below), so negative generation produces no actionable signal here. It does
+# actively get in the way: negative values for the redirect-count parameters
+# ignore the documented maximum, and the server will happily begin an
+# arbitrarily long redirect chain, which fails the run with a transport error
+# rather than a check failure.
+mode = "positive"
 
 [phases.coverage]
 # go-httpbin intentionally accepts any HTTP method on endpoints that are not
@@ -20,6 +62,12 @@ generate-duplicate-query-parameters = false
 # to test strict APIs, but this is not meaningful for go-httpbin which is
 # designed to be permissive. Disable the check globally.
 negative_data_rejection = {enabled = false}
+
+# go-httpbin is entirely stateless — no endpoint creates, stores, or frees a
+# resource. The stateful phase nonetheless reads a DELETE followed by a
+# successful GET on the same path (e.g. /anything/{anything}, /delay/{delay})
+# as a use-after-free, which cannot happen here by construction.
+use_after_free = {enabled = false}
 
 # /brotli intentionally returns 501 Not Implemented — it is a known,
 # documented stub for an unimplemented feature, not a real server error.
@@ -45,6 +93,45 @@ include-path-regex = "^/(drip|delay|sse)"
 
 [operations.checks]
 max_response_time = 10
+
+# Pin the duration-valued parameters to short, always-in-bounds values. The
+# schema documents the full Go duration syntax the server accepts, but the
+# upper bound is a runtime limit (MaxDuration) that a JSON Schema pattern
+# cannot express, and long durations stall the connections queued behind them.
+[[operations]]
+include-path = "/delay/{delay}"
+
+[operations.parameters]
+"path.delay" = {dictionary = "short-durations", probability = 1.0}
+
+[[operations]]
+include-path = "/drip"
+
+[operations.parameters]
+"query.duration" = {dictionary = "short-durations", probability = 1.0}
+"query.delay" = {dictionary = "short-durations", probability = 1.0}
+
+[[operations]]
+include-path = "/jsonl"
+
+[operations.parameters]
+"query.duration" = {dictionary = "positive-durations", probability = 1.0}
+"query.delay" = {dictionary = "short-durations", probability = 1.0}
+
+[[operations]]
+include-path = "/sse"
+
+[operations.parameters]
+"query.duration" = {dictionary = "positive-durations", probability = 1.0}
+"query.delay" = {dictionary = "short-durations", probability = 1.0}
+
+# A range's satisfiability depends on `numbytes`, which the schema cannot
+# express, so pin it to ranges that are valid for any content length.
+[[operations]]
+include-path = "/range/{numbytes}"
+
+[operations.parameters]
+"header.Range" = {dictionary = "satisfiable-ranges", probability = 1.0}
 
 # /unstable randomly returns 500 by design (it's the whole point of the
 # endpoint). Disable the server-error check for it.
@@ -93,4 +180,42 @@ include-path = "/drip"
 
 [operations.checks]
 not_a_server_error = {enabled = false}
+positive_data_acceptance = {enabled = false}
+
+# /status/{codes} returns whatever status code the caller asks for, anywhere in
+# [100, 599] — that is the entire purpose of the endpoint. As with /drip below,
+# a requested 4xx is not a rejection of valid input and a requested 5xx is not a
+# server error.
+[[operations]]
+include-path = "/status/{codes}"
+
+[operations.checks]
+not_a_server_error = {enabled = false}
+positive_data_acceptance = {enabled = false}
+
+# /redirect-to is followed to its destination (see the note at the top of this
+# file), so the status Schemathesis sees comes from the target endpoint rather
+# than from /redirect-to. Pointing it at, say, /upload yields a 405 that says
+# nothing about whether /redirect-to accepted its own input.
+[[operations]]
+include-path = "/redirect-to"
+
+[operations.checks]
+positive_data_acceptance = {enabled = false}
+
+# The schema documents `url` as any URI, which is what the endpoint accepts.
+# Generating one at random would send the test client (which follows
+# redirects) off to an arbitrary internet host, so pin it to same-origin paths.
+[operations.parameters]
+"query.url" = {dictionary = "local-redirect-targets", probability = 1.0}
+
+# /websocket/echo only speaks HTTP far enough to perform a WebSocket upgrade
+# handshake. Schemathesis issues ordinary HTTP requests, which the endpoint
+# correctly rejects with 400 ("missing required `Upgrade: websocket` header").
+# That rejection is the documented behavior, not a failure to accept valid
+# input, and the handshake itself is not expressible in OpenAPI.
+[[operations]]
+include-path = "/websocket/echo"
+
+[operations.checks]
 positive_data_acceptance = {enabled = false}

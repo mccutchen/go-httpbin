@@ -21,6 +21,12 @@ import (
 	"github.com/mccutchen/go-httpbin/v2/httpbin/websocket"
 )
 
+// maxRedirects is the largest number of redirects the /redirect,
+// /relative-redirect, and /absolute-redirect endpoints will issue. Requests
+// for more are rejected, so that a single request cannot send a client into an
+// effectively unbounded redirect chain.
+const maxRedirects = 100
+
 var nilValues = url.Values{}
 
 func notImplementedHandler(w http.ResponseWriter, _ *http.Request) {
@@ -331,7 +337,11 @@ func (h *HTTPBin) Unstable(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// rng/seed
-	rng := parseSeed(r.URL.Query().Get("seed"))
+	rng, err := parseSeed(r.URL.Query().Get("seed"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
+		return
+	}
 
 	// failure_rate
 	failureRate := 0.5
@@ -425,8 +435,8 @@ func (h *HTTPBin) handleRedirect(w http.ResponseWriter, r *http.Request, relativ
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid redirect count: %w", err))
 		return
-	} else if n < 1 {
-		writeError(w, http.StatusBadRequest, errors.New("redirect count must be > 0"))
+	} else if n < 1 || n > maxRedirects {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid redirect count: %d must be in range [1, %d]", n, maxRedirects))
 		return
 	}
 	h.doRedirect(w, h.redirectLocation(r, relative, n-1), http.StatusFound)
@@ -921,7 +931,11 @@ func (h *HTTPBin) handleBytes(w http.ResponseWriter, r *http.Request, streaming 
 	}
 
 	// rng/seed
-	rng := parseSeed(r.URL.Query().Get("seed"))
+	rng, err := parseSeed(r.URL.Query().Get("seed"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid seed: %w", err))
+		return
+	}
 
 	if numBytes < 0 {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid byte count: %d must be greater than 0", numBytes))
@@ -1182,11 +1196,6 @@ func (h *HTTPBin) JSON(w http.ResponseWriter, _ *http.Request) {
 // OpenAPIJSON serves the OpenAPI spec as JSON.
 func (h *HTTPBin) OpenAPIJSON(w http.ResponseWriter, _ *http.Request) {
 	writeResponse(w, http.StatusOK, jsonContentType, mustStaticAsset("openapi.json"))
-}
-
-// OpenAPIYAML serves the OpenAPI spec as YAML.
-func (h *HTTPBin) OpenAPIYAML(w http.ResponseWriter, _ *http.Request) {
-	writeResponse(w, http.StatusOK, "application/yaml", mustStaticAsset("openapi.yaml"))
 }
 
 // JSONL - returns a stream of JSON Lines data, one JSON object per line.

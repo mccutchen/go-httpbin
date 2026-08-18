@@ -367,19 +367,22 @@ func parseBoundedDuration(input string, minVal, maxVal time.Duration) (time.Dura
 	return d, err
 }
 
-// Returns a new rand.Rand from the given seed string. If the seed is empty or
-// cannot be parsed as an integer, a random seed based on the current time is
-// used.
-func parseSeed(rawSeed string) *rand.Rand {
+// Returns a new rand.Rand from the given seed string.
+func parseSeed(rawSeed string) (*rand.Rand, error) {
 	var seed int64
-	if s, err := strconv.ParseInt(rawSeed, 10, 64); err == nil {
-		seed = s
+	if rawSeed != "" {
+		var err error
+		seed, err = strconv.ParseInt(rawSeed, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		seed = time.Now().UnixNano()
 	}
 
 	src := rand.NewSource(seed)
-	return rand.New(src)
+	rng := rand.New(src)
+	return rng, nil
 }
 
 func computePausePerWrite(duration time.Duration, count int64) time.Duration {
