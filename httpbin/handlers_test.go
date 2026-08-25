@@ -3197,6 +3197,7 @@ func TestImage(t *testing.T) {
 		{"image/jpeg", "image/jpeg", http.StatusOK},
 		{"image/webp", "image/webp", http.StatusOK},
 		{"image/svg+xml", "image/svg+xml", http.StatusOK},
+		{"image/avif", "image/avif", http.StatusOK},
 
 		{"image/raw", "", http.StatusUnsupportedMediaType},
 		{"image/jpg", "", http.StatusUnsupportedMediaType},
@@ -3226,6 +3227,7 @@ func TestImage(t *testing.T) {
 		{"/image/jpeg", http.StatusOK},
 		{"/image/webp", http.StatusOK},
 		{"/image/svg", http.StatusOK},
+		{"/image/avif", http.StatusOK},
 
 		{"/image/raw", http.StatusNotFound},
 		{"/image/jpg", http.StatusNotFound},
