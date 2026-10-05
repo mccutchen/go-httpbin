@@ -363,7 +363,7 @@ func TestCORS(t *testing.T) {
 		}{
 			{"Access-Control-Allow-Origin", "*"},
 			{"Access-Control-Allow-Credentials", "true"},
-			{"Access-Control-Allow-Methods", "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS"},
+			{"Access-Control-Allow-Methods", "GET, POST, HEAD, PUT, DELETE, PATCH, QUERY, OPTIONS"},
 			{"Access-Control-Max-Age", "3600"},
 			{"Access-Control-Allow-Headers", ""},
 		}
