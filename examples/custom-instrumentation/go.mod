@@ -1,6 +1,6 @@
 module httpbin-instrumentation
 
-go 1.27.0
+go 1.26.0
 
 require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible
