@@ -2,6 +2,7 @@ package websocket_test
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
@@ -390,6 +391,128 @@ func TestConnectionLimits(t *testing.T) {
 			// wait for the server to finish
 			wg.Wait()
 			assert.MinDuration(t, elapsedServerTime, clientTimeout)
+		}
+	})
+
+	t.Run("frame size limits are enforced before reading payload", func(t *testing.T) {
+		t.Parallel()
+
+		const (
+			maxFragmentSize = 128
+			maxMessageSize  = 256
+		)
+
+		// maskedFrame builds a complete client frame with a 16-bit payload
+		// length and an all-zero masking key
+		maskedFrame := func(b0 byte, payload []byte) []byte {
+			frame := append([]byte{b0, 0x80 | 126}, binary.BigEndian.AppendUint16(nil, uint16(len(payload)))...)
+			frame = append(frame, 0, 0, 0, 0)
+			return append(frame, payload...)
+		}
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ws := websocket.New(w, r, websocket.Limits{
+				MaxDuration:     time.Hour, // should never be reached
+				MaxFragmentSize: maxFragmentSize,
+				MaxMessageSize:  maxMessageSize,
+			})
+			if err := ws.Handshake(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			ws.Serve(websocket.EchoHandler)
+		}))
+		t.Cleanup(srv.Close)
+
+		testCases := map[string]struct {
+			// optional complete frames to send before header
+			prelude []byte
+			// frame header up to (but not including) the masking key; no
+			// payload is ever sent, so the server must reject the frame based
+			// on the header alone
+			header    []byte
+			wantCode  websocket.StatusCode
+			wantError string
+		}{
+			"64-bit length exceeding max fragment size": {
+				header:    append([]byte{0x82, 0x80 | 127}, binary.BigEndian.AppendUint64(nil, 1<<62)...),
+				wantCode:  websocket.StatusTooLarge,
+				wantError: fmt.Sprintf("frame too large: payload size %d exceeds maximum of %d bytes", uint64(1<<62), maxFragmentSize),
+			},
+			"64-bit length with most significant bit set": {
+				header:    append([]byte{0x82, 0x80 | 127}, binary.BigEndian.AppendUint64(nil, 1<<63)...),
+				wantCode:  websocket.StatusProtocolError,
+				wantError: "invalid payload length: most significant bit of 64-bit length must be 0",
+			},
+			"16-bit length exceeding max fragment size": {
+				header:    append([]byte{0x81, 0x80 | 126}, binary.BigEndian.AppendUint16(nil, maxFragmentSize+1)...),
+				wantCode:  websocket.StatusTooLarge,
+				wantError: fmt.Sprintf("frame too large: payload size %d exceeds maximum of %d bytes", maxFragmentSize+1, maxFragmentSize),
+			},
+			"control frame exceeding 125 bytes": {
+				header:    append([]byte{0x89, 0x80 | 126}, binary.BigEndian.AppendUint16(nil, 126)...),
+				wantCode:  websocket.StatusProtocolError,
+				wantError: "invalid control frame: payload size 126 exceeds 125 bytes",
+			},
+			"continuation frame exceeding max message size": {
+				// two max-size fragments fill the message to exactly the max
+				// message size, so any continuation payload exceeds it
+				prelude: append(
+					maskedFrame(0x02, make([]byte, maxFragmentSize)),
+					maskedFrame(0x00, make([]byte, maxFragmentSize))...,
+				),
+				header:    append([]byte{0x80, 0x80 | 126}, binary.BigEndian.AppendUint16(nil, 1)...),
+				wantCode:  websocket.StatusTooLarge,
+				wantError: fmt.Sprintf("message too large: size %d exceeds maximum of %d bytes", maxMessageSize+1, maxMessageSize),
+			},
+			"unmasked frame": {
+				header:    []byte{0x81, 5},
+				wantCode:  websocket.StatusProtocolError,
+				wantError: "received unmasked client frame",
+			},
+		}
+		for name, tc := range testCases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+				assert.NilError(t, err)
+				defer conn.Close()
+				conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+				reqParts := []string{
+					"GET /websocket/echo HTTP/1.1",
+					"Host: test",
+					"Connection: upgrade",
+					"Upgrade: websocket",
+					"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+					"Sec-WebSocket-Version: 13",
+				}
+				_, err = conn.Write([]byte(strings.Join(reqParts, "\r\n") + "\r\n\r\n"))
+				assert.NilError(t, err)
+
+				br := bufio.NewReader(conn)
+				resp, err := http.ReadResponse(br, nil)
+				assert.NilError(t, err)
+				assert.StatusCode(t, resp, http.StatusSwitchingProtocols)
+
+				_, err = conn.Write(append(tc.prelude, tc.header...))
+				assert.NilError(t, err)
+
+				// manually read and minimally parse header and payload
+				// because current websocket API does not expose this
+				// functionality in a way we can use it here.
+				hdr := make([]byte, 2)
+				_, err = io.ReadFull(br, hdr)
+				assert.NilError(t, err)
+				assert.Equal(t, hdr[0], byte(0x88), "expected close frame")
+
+				payload := make([]byte, hdr[1])
+				_, err = io.ReadFull(br, payload)
+				assert.NilError(t, err)
+				assert.Equal(t, websocket.StatusCode(binary.BigEndian.Uint16(payload[:2])), tc.wantCode, "incorrect close status code")
+				assert.Equal(t, string(payload[2:]), tc.wantError, "incorrect close reason")
+			})
 		}
 	})
 }
