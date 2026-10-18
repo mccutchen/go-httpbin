@@ -5,6 +5,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -429,7 +430,16 @@ func listenAndServeGracefully(srv *http.Server, cfg *config, logger *slog.Logger
 	var err error
 	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
 		logger.Info(fmt.Sprintf("go-httpbin listening on https://%s", srv.Addr))
-		err = srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
+		var reloader *certReloader
+		reloader, err = newCertReloader(cfg.TLSCertFile, cfg.TLSKeyFile, logger)
+		if err != nil {
+			return err
+		}
+		if srv.TLSConfig == nil {
+			srv.TLSConfig = &tls.Config{}
+		}
+		srv.TLSConfig.GetCertificate = reloader.GetCertificate
+		err = srv.ListenAndServeTLS("", "")
 	} else {
 		logger.Info(fmt.Sprintf("go-httpbin listening on http://%s", srv.Addr))
 		err = srv.ListenAndServe()
