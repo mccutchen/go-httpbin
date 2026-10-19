@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/mccutchen/go-httpbin/v2/internal/testing/assert"
@@ -4141,4 +4142,258 @@ func mustParseResponse[T any](t *testing.T, resp *http.Response) T {
 	assert.StatusCode(t, resp, http.StatusOK)
 	assert.ContentType(t, resp, jsonContentType)
 	return must.Unmarshal[T](t, resp.Body)
+}
+
+// timedWriter records how long after start the first byte of the response
+// (status line or body) was written.
+type timedWriter struct {
+	*httptest.ResponseRecorder
+	start      time.Time
+	firstWrite time.Duration
+	wrote      bool
+}
+
+func (w *timedWriter) mark() {
+	if !w.wrote {
+		w.wrote = true
+		w.firstWrite = time.Since(w.start)
+	}
+}
+
+func (w *timedWriter) WriteHeader(code int) {
+	w.mark()
+	w.ResponseRecorder.WriteHeader(code)
+}
+
+func (w *timedWriter) Write(b []byte) (int, error) {
+	w.mark()
+	return w.ResponseRecorder.Write(b)
+}
+
+func TestRequestDelay(t *testing.T) {
+	t.Parallel()
+
+	// serve runs the request through app in-process, returning the recorded
+	// response and the (fake, under synctest) time it took.
+	serve := func(app *HTTPBin, req *http.Request) (*timedWriter, time.Duration) {
+		w := &timedWriter{ResponseRecorder: httptest.NewRecorder(), start: time.Now()}
+		app.ServeHTTP(w, req)
+		return w, time.Since(w.start)
+	}
+
+	serverTimings := func(w *timedWriter) map[string]serverTiming {
+		return decodeServerTimings(strings.Join(w.Header().Values("Server-Timing"), ", "))
+	}
+
+	t.Run("AnyEndpoint", func(t *testing.T) {
+		t.Parallel()
+		tests := []struct {
+			method     string
+			prefix     string
+			path       string
+			wantStatus int
+		}{
+			{"GET", "", "/get", http.StatusOK},
+			{"GET", "", "/status/503", http.StatusServiceUnavailable},
+			{"GET", "", "/bytes/10", http.StatusOK},
+			{"GET", "", "/image/png", http.StatusOK},
+			{"HEAD", "", "/head", http.StatusOK},
+			{"OPTIONS", "", "/get", http.StatusOK},
+			{"OPTIONS", "", "/drip", http.StatusOK},
+			// canonical-path redirect: any 3xx status the mux already uses is fine
+			{"GET", "", "/delay//0", 0},
+			{"GET", "", "/does-not-exist", http.StatusNotFound},
+			{"GET", "/a-prefix", "/get", http.StatusOK},
+		}
+		for _, test := range tests {
+			t.Run(test.method+test.prefix+test.path, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					app := createApp(WithPrefix(test.prefix))
+					req := httptest.NewRequest(test.method, test.prefix+test.path+"?_delay=250ms", nil)
+					if test.method == "OPTIONS" {
+						req.Header.Set("Origin", "https://example.com")
+						req.Header.Set("Access-Control-Request-Method", "GET")
+					}
+					w, elapsed := serve(app, req)
+					if test.wantStatus == 0 {
+						assert.Equal(t, w.Code/100, 3, "expected a redirect, got status %d", w.Code)
+						assert.Equal(t, w.Header().Get("Location"), "/delay/0?_delay=250ms", "incorrect redirect location")
+					} else {
+						assert.Equal(t, w.Code, test.wantStatus, "incorrect status code")
+					}
+					assert.MinDuration(t, elapsed, 250*time.Millisecond)
+					assert.MinDuration(t, w.firstWrite, 250*time.Millisecond)
+					if test.method == "OPTIONS" {
+						assert.Equal(t, w.Header().Get("Access-Control-Max-Age"), "3600", "preflight response expected")
+					}
+				})
+			})
+		}
+	})
+
+	t.Run("ValueFormats", func(t *testing.T) {
+		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := createApp()
+			tests := []struct {
+				query string
+				want  time.Duration
+			}{
+				{"?_delay=250ms", 250 * time.Millisecond},
+				{"?_delay=0.25", 250 * time.Millisecond},
+				{"?_delay=0", 0},
+				{"?_delay=", 0},
+				{"", 0},
+			}
+			for _, test := range tests {
+				w, elapsed := serve(app, httptest.NewRequest("GET", "/get"+test.query, nil))
+				assert.Equal(t, w.Code, http.StatusOK, "incorrect status code for %q", test.query)
+				assert.Equal(t, elapsed, test.want, "incorrect delay for %q", test.query)
+				if test.query == "" || test.query == "?_delay=" {
+					_, found := serverTimings(w)["request_delay"]
+					assert.Equal(t, found, false, "request_delay timing for %q", test.query)
+				}
+			}
+		})
+	})
+
+	t.Run("InvalidValues", func(t *testing.T) {
+		t.Parallel()
+		for _, value := range []string{"bogus", "-1s", "-0.5", "NaN", "-Inf"} {
+			t.Run(value, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					w, elapsed := serve(createApp(), httptest.NewRequest("GET", "/cookies/set?a=b&_delay="+value, nil))
+					assert.Equal(t, w.Code, http.StatusBadRequest, "incorrect status code")
+					assert.Equal(t, elapsed, 0, "an invalid _delay must be rejected without waiting")
+					assert.Equal(t, w.Header().Get("Content-Type"), jsonContentType, "incorrect content type")
+					assert.Equal(t, w.Header().Get("Set-Cookie"), "", "endpoint must not run")
+				})
+			})
+		}
+	})
+
+	t.Run("UpperBound", func(t *testing.T) {
+		t.Parallel()
+		synctest.Test(t, func(t *testing.T) {
+			app := createApp(WithMaxDuration(time.Second))
+
+			w, elapsed := serve(app, httptest.NewRequest("GET", "/get?_delay=1s", nil))
+			assert.Equal(t, w.Code, http.StatusOK, "_delay equal to the max duration is allowed")
+			assert.Equal(t, elapsed, time.Second, "incorrect delay")
+
+			w, elapsed = serve(app, httptest.NewRequest("GET", "/get?_delay=1001ms", nil))
+			assert.Equal(t, w.Code, http.StatusBadRequest, "_delay above the max duration is rejected")
+			assert.Equal(t, elapsed, 0, "rejected without waiting")
+		})
+	})
+
+	t.Run("SharedBudget", func(t *testing.T) {
+		t.Parallel()
+		// With a max duration of 1s, each endpoint's own time plus _delay
+		// must fit.
+		tests := []struct {
+			name        string
+			fits        string
+			fitsAtLeast time.Duration
+			tooLong     string
+		}{
+			{"delay", "/delay/0.4?_delay=600ms", time.Second, "/delay/0.5?_delay=600ms"},
+			{"drip", "/drip?delay=200ms&duration=200ms&numbytes=2&_delay=600ms", 800 * time.Millisecond, "/drip?delay=200ms&duration=200ms&numbytes=2&_delay=700ms"},
+			{"sse", "/sse?delay=200ms&duration=200ms&count=2&_delay=600ms", 800 * time.Millisecond, "/sse?delay=200ms&duration=200ms&count=2&_delay=700ms"},
+			{"jsonl", "/jsonl?delay=200ms&duration=200ms&count=2&_delay=600ms", 800 * time.Millisecond, "/jsonl?delay=200ms&duration=200ms&count=2&_delay=700ms"},
+			{"range", "/range/10?duration=400ms&_delay=600ms", 600 * time.Millisecond, "/range/10?duration=500ms&_delay=600ms"},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					app := createApp(WithMaxDuration(time.Second))
+
+					w, elapsed := serve(app, httptest.NewRequest("GET", test.fits, nil))
+					assert.Equal(t, w.Code, http.StatusOK, "incorrect status code when the total fits")
+					assert.MinDuration(t, elapsed, test.fitsAtLeast)
+
+					w, elapsed = serve(app, httptest.NewRequest("GET", test.tooLong, nil))
+					assert.Equal(t, w.Code, http.StatusBadRequest, "incorrect status code when the total is too long")
+					assert.Equal(t, elapsed, 0, "rejected without waiting")
+				})
+			})
+		}
+	})
+
+	t.Run("Cancellation", func(t *testing.T) {
+		t.Parallel()
+		for _, path := range []string{
+			"/cookies/set?a=b&_delay=500ms",
+			"/delay/0.05?_delay=500ms",
+			"/drip?duration=50ms&numbytes=1&_delay=500ms",
+			"/range/10?_delay=500ms",
+			"/jsonl?count=1&_delay=500ms",
+			"/sse?count=1&duration=50ms&_delay=500ms",
+		} {
+			t.Run(path, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					var status int
+					app := createApp(WithObserver(func(_ context.Context, r Result) { status = r.Status }))
+
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+					timer := time.AfterFunc(100*time.Millisecond, cancel)
+					w, elapsed := serve(app, httptest.NewRequest("GET", path, nil).WithContext(ctx))
+					timer.Stop()
+					assert.Equal(t, status, 499, "incorrect status recorded for a canceled request")
+					assert.Equal(t, elapsed, 100*time.Millisecond, "should stop waiting when the client goes away")
+					assert.Equal(t, w.Header().Get("Set-Cookie"), "", "endpoint must not run")
+				})
+			})
+		}
+	})
+
+	t.Run("ServerTiming", func(t *testing.T) {
+		t.Parallel()
+		tests := []struct {
+			path       string
+			wantOthers []string
+		}{
+			{"/get?_delay=250ms", nil},
+			{"/delay/0.1?_delay=250ms", []string{"initial_delay"}},
+			{"/drip?delay=100ms&duration=100ms&numbytes=2&_delay=250ms", []string{"total_duration", "initial_delay", "write_duration", "pause_per_write"}},
+		}
+		for _, test := range tests {
+			t.Run(test.path, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					w, _ := serve(createApp(), httptest.NewRequest("GET", test.path, nil))
+					assert.Equal(t, w.Code, http.StatusOK, "incorrect status code")
+					timings := serverTimings(w)
+					rd, found := timings["request_delay"]
+					assert.Equal(t, found, true, "missing request_delay timing")
+					assert.Equal(t, rd.dur, 250*time.Millisecond, "incorrect request_delay duration")
+					for _, name := range test.wantOthers {
+						_, found := timings[name]
+						assert.Equal(t, found, true, "missing endpoint timing %s", name)
+					}
+				})
+			})
+		}
+	})
+
+	t.Run("EchoArgs", func(t *testing.T) {
+		t.Parallel()
+		for _, path := range []string{"/get?_delay=250ms&x=1", "/anything?_delay=250ms&x=1"} {
+			t.Run(path, func(t *testing.T) {
+				t.Parallel()
+				synctest.Test(t, func(t *testing.T) {
+					w, elapsed := serve(createApp(), httptest.NewRequest("GET", path, nil))
+					assert.Equal(t, w.Code, http.StatusOK, "incorrect status code")
+					assert.MinDuration(t, elapsed, 250*time.Millisecond)
+					resp := must.Unmarshal[noBodyResponse](t, w.Body)
+					assert.DeepEqual(t, resp.Args, url.Values{"_delay": {"250ms"}, "x": {"1"}}, "incorrect args")
+				})
+			})
+		}
+	})
 }
