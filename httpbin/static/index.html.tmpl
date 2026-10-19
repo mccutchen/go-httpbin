@@ -75,6 +75,7 @@
 <li><a href="{{.Prefix}}/cookies/set?k1=v1&amp;k2=v2&amp;attr[SameSite]=lax"><code>{{.Prefix}}/cookies/set?name=value&attr[Name]=value</code></a> Sets one or more simple cookies with optional attribute overrides <code>?attr[SameSite]=lax</code>).</li>
 <li><a href="{{.Prefix}}/deflate"><code>{{.Prefix}}/deflate</code></a> Returns deflate-encoded data.</li>
 <li><a href="{{.Prefix}}/delay/3"><code>{{.Prefix}}/delay/:n</code></a> Delays responding for <em>min(n, 10)</em> seconds.</li>
+<li><a href="{{.Prefix}}/get?_delay=3"><code>?_delay=n</code></a> Delays responding to any endpoint for <em>n</em> seconds, counted against the same limit.</li>
 <li><code>{{.Prefix}}/delete</code> Returns request data.  Allows only <code>DELETE</code> requests.</li>
 <li><a href="{{.Prefix}}/deny"><code>{{.Prefix}}/deny</code></a> Denied by robots.txt file.</li>
 <li><a href="{{.Prefix}}/digest-auth/auth/user/password"><code>{{.Prefix}}/digest-auth/:qop/:user/:password</code></a> Challenges HTTP Digest Auth using default MD5 algorithm</li>

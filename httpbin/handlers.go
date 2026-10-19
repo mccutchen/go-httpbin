@@ -663,13 +663,22 @@ func (h *HTTPBin) Delay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	requestDelay := getRequestDelay(r)
+	if requestDelay+delay > h.MaxDuration {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("too much time: %v+%v > %v", requestDelay, delay, h.MaxDuration))
+		return
+	}
+	if !waitRequestDelay(w, r) {
+		return
+	}
+
 	select {
 	case <-r.Context().Done():
 		w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
 		return
 	case <-time.After(delay):
 	}
-	w.Header().Set("Server-Timing", encodeServerTimings([]serverTiming{
+	w.Header().Add("Server-Timing", encodeServerTimings([]serverTiming{
 		{"initial_delay", delay, "initial delay"},
 	}))
 	h.RequestWithBody(w, r)
@@ -731,8 +740,12 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if duration+delay > h.MaxDuration {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("too much time: %v+%v > %v", duration, delay, h.MaxDuration))
+	requestDelay := getRequestDelay(r)
+	if requestDelay+duration+delay > h.MaxDuration {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("too much time: %v+%v+%v > %v", requestDelay, duration, delay, h.MaxDuration))
+		return
+	}
+	if !waitRequestDelay(w, r) {
 		return
 	}
 
@@ -751,7 +764,7 @@ func (h *HTTPBin) Drip(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", textContentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", numBytes))
-	w.Header().Set("Server-Timing", encodeServerTimings([]serverTiming{
+	w.Header().Add("Server-Timing", encodeServerTimings([]serverTiming{
 		{"total_duration", delay + duration, "total request duration"},
 		{"initial_delay", delay, "initial delay"},
 		{"write_duration", duration, "duration of writes after initial delay"},
@@ -830,6 +843,15 @@ func (h *HTTPBin) Range(w http.ResponseWriter, r *http.Request) {
 
 	if numBytes <= 0 || numBytes > h.MaxBodySize {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid count: %d not in range [1, %d]", numBytes, h.MaxBodySize))
+		return
+	}
+
+	requestDelay := getRequestDelay(r)
+	if requestDelay+duration > h.MaxDuration {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("too much time: %v+%v > %v", requestDelay, duration, h.MaxDuration))
+		return
+	}
+	if !waitRequestDelay(w, r) {
 		return
 	}
 
@@ -1240,8 +1262,11 @@ func (h *HTTPBin) JSONL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if duration+delay > h.MaxDuration {
+	if getRequestDelay(r)+duration+delay > h.MaxDuration {
 		http.Error(w, "Too much time", http.StatusBadRequest)
+		return
+	}
+	if !waitRequestDelay(w, r) {
 		return
 	}
 
@@ -1368,8 +1393,11 @@ func (h *HTTPBin) SSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if duration+delay > h.MaxDuration {
+	if getRequestDelay(r)+duration+delay > h.MaxDuration {
 		http.Error(w, "Too much time", http.StatusBadRequest)
+		return
+	}
+	if !waitRequestDelay(w, r) {
 		return
 	}
 

@@ -192,7 +192,8 @@ public internet, consider tuning it appropriately:
 2. **Tune per-request limits**
 
    Because go-httpbin allows clients send arbitrary data in request bodies and
-   control the duration some requests (e.g. `/delay/60s`), it's important to
+   control the duration some requests (e.g. `/delay/60s`, or any request via
+   the `_delay` query parameter), it's important to
    properly tune limits to prevent misbehaving or malicious clients from taking
    too many resources.
 

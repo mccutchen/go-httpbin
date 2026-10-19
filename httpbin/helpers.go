@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"mime"
 	"mime/multipart"
@@ -345,6 +346,9 @@ func parseDuration(input string) (time.Duration, error) {
 		n, err := strconv.ParseFloat(input, 64)
 		if err != nil {
 			return 0, err
+		}
+		if math.IsNaN(n) || math.IsInf(n, 0) {
+			return 0, fmt.Errorf("invalid duration %q", input)
 		}
 		d = time.Duration(n*1000) * time.Millisecond
 	}
@@ -699,6 +703,38 @@ func weightedRandomChoice[T any](choices []weightedChoice[T], randomFloat64 func
 		}
 	}
 	panic("failed to select a weighted random choice")
+}
+
+// requestDelayKey is the context key under which the requestDelay middleware
+// stores the delay requested via the _delay query parameter.
+type requestDelayKey struct{}
+
+// getRequestDelay returns the delay requested via the _delay query parameter,
+// or zero if none was requested.
+func getRequestDelay(r *http.Request) time.Duration {
+	delay, _ := r.Context().Value(requestDelayKey{}).(time.Duration)
+	return delay
+}
+
+// waitRequestDelay waits out the delay requested via the _delay query
+// parameter and reports it in the Server-Timing header. It returns false if
+// the client went away while waiting, in which case the response has already
+// been written.
+func waitRequestDelay(w http.ResponseWriter, r *http.Request) bool {
+	delay := getRequestDelay(r)
+	if delay == 0 {
+		return true
+	}
+	select {
+	case <-r.Context().Done():
+		w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
+		return false
+	case <-time.After(delay):
+	}
+	w.Header().Add("Server-Timing", encodeServerTimings([]serverTiming{
+		{"request_delay", delay, "delay requested via _delay"},
+	}))
+	return true
 }
 
 // Server-Timing header/trailer helpers. See MDN docs for reference:

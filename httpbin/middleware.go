@@ -43,6 +43,43 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	})
 }
 
+// timeAwareHandler marks the handlers of endpoints that take time of their own.
+// They wait out any _delay themselves, after checking that it fits within the
+// max duration alongside their own delay/duration parameters.
+type timeAwareHandler http.HandlerFunc
+
+func (f timeAwareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f(w, r)
+}
+
+// requestDelay implements the _delay query parameter, which delays the
+// response to any request by the given duration.
+func requestDelay(maxDuration time.Duration, mux *http.ServeMux, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userDelay := r.URL.Query().Get("_delay")
+		if userDelay == "" {
+			h.ServeHTTP(w, r)
+			return
+		}
+		delay, err := parseBoundedDuration(userDelay, 0, maxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid _delay: %w", err))
+			return
+		}
+		r = r.WithContext(context.WithValue(r.Context(), requestDelayKey{}, delay))
+
+		// CORS preflight requests are answered without reaching the mux, and
+		// the mux may answer with a redirect instead of the matched handler.
+		handler, _ := mux.Handler(r)
+		if _, ok := handler.(timeAwareHandler); !ok || r.Method == http.MethodOptions {
+			if !waitRequestDelay(w, r) {
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // headResponseWriter implements http.ResponseWriter in order to discard the
 // body of the response
 type headResponseWriter struct {
