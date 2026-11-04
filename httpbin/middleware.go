@@ -43,6 +43,43 @@ func limitRequestSize(maxSize int64, h http.Handler) http.Handler {
 	})
 }
 
+// requestDelay applies an optional, client-requested delay before the response
+// is written, via the special `_delay` query parameter, which accepts a
+// golang-style duration (e.g. "100ms") or floating point seconds (e.g. "0.1").
+//
+// The requested delay is bounded by the given maxDuration and may be combined
+// with endpoint-specific durations (e.g. `/delay/100ms?_delay=100ms`), in
+// which case the delays simply add up. Endpoints which set their own
+// Server-Timing header (e.g. `/delay`, `/drip`) will overwrite the header set
+// here.
+func requestDelay(maxDuration time.Duration, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawDelay := r.URL.Query().Get("_delay")
+		if rawDelay == "" {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		delay, err := parseBoundedDuration(rawDelay, 0, maxDuration)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid delay: %w", err))
+			return
+		}
+
+		select {
+		case <-r.Context().Done():
+			w.WriteHeader(499) // "Client Closed Request" https://httpstatuses.com/499
+			return
+		case <-time.After(delay):
+		}
+
+		w.Header().Set("Server-Timing", encodeServerTimings([]serverTiming{
+			{"delay", delay, "requested delay"},
+		}))
+		h.ServeHTTP(w, r)
+	})
+}
+
 // headResponseWriter implements http.ResponseWriter in order to discard the
 // body of the response
 type headResponseWriter struct {

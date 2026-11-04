@@ -2352,6 +2352,100 @@ func TestDelay(t *testing.T) {
 	}
 }
 
+func TestRequestDelay(t *testing.T) {
+	t.Parallel()
+	app := setupTestApp(t)
+
+	okTests := []struct {
+		url           string
+		expectedDelay time.Duration
+	}{
+		// go-style durations are supported
+		{"/anything?_delay=0ms", 0},
+		{"/anything?_delay=100ms", 100 * time.Millisecond},
+
+		// as are floating point seconds
+		{"/anything?_delay=0", 0},
+		{"/anything?_delay=0.1", 100 * time.Millisecond},
+	}
+	for _, test := range okTests {
+		t.Run("ok"+test.url, func(t *testing.T) {
+			t.Parallel()
+
+			start := time.Now()
+			req := newTestRequest(t, "GET", app.URL(test.url), nil)
+			resp := mustDoRequest(t, app, req)
+			elapsed := time.Since(start)
+
+			_ = mustParseResponse[bodyResponse](t, resp)
+
+			if elapsed < test.expectedDelay {
+				t.Fatalf("expected delay of %s, got %s", test.expectedDelay, elapsed)
+			}
+
+			timings := decodeServerTimings(resp.Header.Get("Server-Timing"))
+			assert.DeepEqual(t, timings, map[string]serverTiming{
+				"delay": {"delay", test.expectedDelay, "requested delay"},
+			}, "incorrect Server-Timing header value")
+		})
+	}
+
+	t.Run("delay is echoed like any other query param", func(t *testing.T) {
+		t.Parallel()
+		req := newTestRequest(t, "GET", app.URL("/get?_delay=0"), nil)
+		resp := mustDoRequest(t, app, req)
+		result := mustParseResponse[noBodyResponse](t, resp)
+		assert.Equal(t, result.Args.Get("_delay"), "0", "_delay not echoed")
+	})
+
+	t.Run("combined with endpoint-specific delay", func(t *testing.T) {
+		t.Parallel()
+
+		start := time.Now()
+		req := newTestRequest(t, "GET", app.URL("/delay/100ms?_delay=100ms"), nil)
+		resp := mustDoRequest(t, app, req)
+		elapsed := time.Since(start)
+
+		_ = mustParseResponse[bodyResponse](t, resp)
+		if elapsed < 200*time.Millisecond {
+			t.Fatalf("expected combined delay of 200ms, got %s", elapsed)
+		}
+	})
+
+	t.Run("cancelation causes 499", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+
+		// use httptest.NewRecorder rather than a live httptest.NewServer
+		// because only the former will let us inspect the status code.
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequestWithContext(ctx, "GET", "/anything?_delay=1s", nil)
+		app.App.ServeHTTP(w, req)
+		assert.Equal(t, w.Code, 499, "incorrect status code")
+	})
+
+	badTests := []struct {
+		url  string
+		code int
+	}{
+		{"/anything?_delay=foo", http.StatusBadRequest},
+		{"/anything?_delay=1.5s", http.StatusBadRequest},
+		{"/anything?_delay=1.5", http.StatusBadRequest},
+		{"/anything?_delay=-1ms", http.StatusBadRequest},
+		{"/anything?_delay=-1", http.StatusBadRequest},
+	}
+	for _, test := range badTests {
+		t.Run("bad"+test.url, func(t *testing.T) {
+			t.Parallel()
+			req := newTestRequest(t, "GET", app.URL(test.url), nil)
+			resp := mustDoRequest(t, app, req)
+			assert.StatusCode(t, resp, test.code)
+		})
+	}
+}
+
 func TestDrip(t *testing.T) {
 	t.Parallel()
 
